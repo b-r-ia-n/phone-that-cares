@@ -1,0 +1,61 @@
+# macOS junk
+.DS_Store
+
+# Node
+node_modules/
+
+# Android / Gradle build outputs
+**/.gradle/
+**/build/
+**/.cxx/
+*.apk
+*.aab
+*.keystore
+local.properties
+
+# Java / Kotlin
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+captures/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs / temp
+*.log
+*.tmp
+/tmp/
+
+# Large media artifacts (the project intentionally stores these here, just not in git)
+phone-os/*.mov
+phone-os/*.zip
+
+# Android emulator + SDK + AVD files (if anything sneaks in)
+*.avd/
+*.qcow2
+*.img
+
+# Vercel
+.vercel/
+
+# Env files — never commit
+.env
+.env.local
+.env.*.local
+
+# Reports (screenshots and html, large + transient)
+phone-os/android-v1/reports/
+
+# Big writing extracts that live elsewhere
+words/extracts.bak/
+
+# Worktree directories created by subagents (if they land at root)
+/.claude-worktrees/
