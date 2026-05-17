@@ -1,0 +1,3 @@
+# Derived artifacts — regenerate via ./build-module.sh
+ptc-launcher-module.zip
+module/system/priv-app/com.ptc.launcher/com.ptc.launcher.apk

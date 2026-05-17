@@ -1,0 +1,6 @@
+id=ptc-launcher
+name=PhoneThatCares Launcher (priv-app)
+version=v0.1
+versionCode=1
+author=PTC
+description=Installs the PTC launcher as a system priv-app with permission whitelist for Keyguard-substitution.

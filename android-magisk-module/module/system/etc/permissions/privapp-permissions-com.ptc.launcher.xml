@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Priv-app permission allowlist for com.ptc.launcher.
+  Location: /system/etc/permissions/ (must be on same partition as the priv-app).
+  Filename convention: privapp-permissions-<package>.xml
+
+  Only signature|privileged permissions are listed here. Pure `signature`
+  permissions (STATUS_BAR_SERVICE, INTERNAL_SYSTEM_WINDOW) are deliberately
+  excluded — they require the platform certificate, which is not obtainable
+  on stock Pixel firmware. See research/magisk-stock-pixel6-feasibility.md §4.
+
+  The launcher manifest must also <uses-permission> each of these — the
+  allowlist grants the right, the manifest requests it.
+-->
+<permissions>
+  <privapp-permissions package="com.ptc.launcher">
+    <permission name="android.permission.CONTROL_KEYGUARD"/>
+    <permission name="android.permission.BIND_KEYGUARD_APPWIDGET"/>
+    <permission name="android.permission.MANAGE_USERS"/>
+    <permission name="android.permission.STATUS_BAR"/>
+    <permission name="android.permission.READ_PRIVILEGED_PHONE_STATE"/>
+    <permission name="android.permission.MODIFY_PHONE_STATE"/>
+    <permission name="android.permission.WAKE_LOCK"/>
+    <permission name="android.permission.DISABLE_KEYGUARD"/>
+  </privapp-permissions>
+</permissions>
