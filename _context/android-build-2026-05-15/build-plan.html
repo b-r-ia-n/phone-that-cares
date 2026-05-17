@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PTC Android v1 — build plan</title>
+<style>
+:root {
+  --bg: #f6f3ec; --ink: #1a1714; --muted: #6f6a62;
+  --rule: #d9d3c6; --accent: #8a5a2b; --accent-soft: #c4a07b;
+  --pos: #3d6b3a; --neg: #8a3a2b; --neu: #2b4a6b;
+  --card: #fffdf7; --card-rule: #e6dfd0;
+  --discover: #b18a3c; --ask: #6b4a8a; --connect: #3d6b3a; --home: #2b4a6b;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  font-size: 15px; line-height: 1.55;
+  margin: 0; padding: 0 24px 120px;
+  max-width: 900px; margin-inline: auto;
+}
+header { padding: 56px 0 24px; }
+.kicker { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+.date { color: var(--muted); font-size: 13px; }
+.supersedes { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.supersedes a { color: var(--accent); }
+h2 { font-size: 22px; font-weight: 600; letter-spacing: -0.005em; margin: 48px 0 14px; padding-top: 14px; border-top: 1px solid var(--rule); }
+h3 { font-size: 16px; font-weight: 600; margin: 26px 0 8px; }
+h4 { font-size: 14px; font-weight: 600; margin: 16px 0 6px; }
+p, ul, ol { margin: 0 0 12px; }
+ul, ol { padding-left: 20px; }
+li { margin-bottom: 4px; }
+code { font-family: 'Berkeley Mono', ui-monospace, monospace; font-size: 13px; background: var(--card); padding: 1px 5px; border: 1px solid var(--card-rule); border-radius: 3px; }
+pre { font-family: 'Berkeley Mono', ui-monospace, monospace; font-size: 12.5px; background: var(--card); padding: 12px 14px; border: 1px solid var(--card-rule); border-radius: 4px; overflow-x: auto; line-height: 1.5; }
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+.tldr { background: var(--card); border: 1px solid var(--card-rule); padding: 20px 24px; border-radius: 6px; margin-top: 22px; }
+.tldr h3 { margin-top: 0; }
+
+.tradeoff { background: var(--card); border-left: 3px solid var(--neg); padding: 14px 18px; margin: 18px 0; border-radius: 0 4px 4px 0; }
+.tradeoff strong { color: var(--neg); }
+
+.callout { background: var(--card); border-left: 3px solid var(--accent); padding: 14px 18px; margin: 18px 0; border-radius: 0 4px 4px 0; }
+.callout strong { color: var(--accent); }
+
+.dirs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 16px 0; }
+.dir { border: 1px solid var(--card-rule); background: var(--card); padding: 16px 18px; border-radius: 6px; }
+.dir .arrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; margin-bottom: 4px; }
+.dir.discover .arrow { color: var(--discover); }
+.dir.ask .arrow { color: var(--ask); }
+.dir.connect .arrow { color: var(--connect); }
+.dir.home .arrow { color: var(--home); }
+.dir .name { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.dir .desc { font-size: 13.5px; color: var(--muted); margin-bottom: 8px; }
+.dir .build { font-size: 12.5px; color: var(--ink); }
+.dir .build strong { font-weight: 600; }
+@media (max-width: 700px) { .dirs { grid-template-columns: 1fr; } }
+
+.phases { display: grid; gap: 0; margin: 14px 0; border-top: 1px solid var(--rule); }
+.phase { display: grid; grid-template-columns: 70px 1fr 110px; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--rule); align-items: baseline; }
+.phase .id { font-weight: 600; font-size: 12.5px; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+.phase .what h4 { margin: 0 0 4px; font-size: 14.5px; }
+.phase .what p { font-size: 13px; color: var(--muted); margin: 0; }
+.phase .when { font-size: 12.5px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+td.num { font-variant-numeric: tabular-nums; }
+
+.meta-grid { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 12px 0; font-size: 13.5px; }
+.meta-grid dt { color: var(--muted); }
+.meta-grid dd { margin: 0; }
+.footnote { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+
+nav.toc { position: sticky; top: 0; background: var(--bg); padding: 14px 0 10px; margin-bottom: 18px; border-bottom: 1px solid var(--rule); font-size: 13px; z-index: 10; }
+nav.toc a { color: var(--muted); border-bottom: none; margin-right: 18px; }
+nav.toc a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+<div class="kicker">Phone That Cares — Android</div>
+<h1>v1 build plan</h1>
+<div class="date">2026-05-15 · ambitious-fork version</div>
+<div class="supersedes">Supersedes the Path-B-cut recommendation in <a href="synthesis.html">synthesis.html</a>. That doc's adversarial briefs remain the source of truth for the underlying research; this is the operational plan after Brian's "be ambitious" call.</div>
+</header>
+
+<nav class="toc">
+<a href="#tldr">TL;DR</a>
+<a href="#substrate">Substrate</a>
+<a href="#tradeoff">Banking</a>
+<a href="#features">Features</a>
+<a href="#dirs">Directions</a>
+<a href="#plan">Plan</a>
+<a href="#parallel">Multi-Claude</a>
+<a href="#open">Open</a>
+</nav>
+
+<section id="tldr">
+<h2>TL;DR</h2>
+
+<div class="tldr">
+<h3>The call</h3>
+<p><strong>Ambitious version. Fork GrapheneOS (renamed, not claiming the GrapheneOS name), rewrite SystemUI for the real two-state lock-screen circle, build all four directions fully, pin to one Android version, no upstream merges for six months.</strong></p>
+<p>Real timeline: ~7–10 calendar weeks with 4–5 parallel Claude worktrees, ~13–17 weeks single-threaded. The single largest piece is Connect (~4 weeks) — not the OS work — because building a Matrix-bridge-backed inbox is itself a substantial product. Live test starts when the device boots stable, holds for 24 hours without intervention, and all four directions route correctly.</p>
+</div>
+
+<p>Three things this plan locks in that weren't locked before:</p>
+<ul>
+<li><strong>The lock screen is the lock screen.</strong> Thumbprint mid-screen authenticates, then a directional swipe completes unlock and routes into that mode. Two-state circle: static pre-auth (time / weather / notifications, same surface), interactive post-auth (the four-direction picker).</li>
+<li><strong>Ask is voice-IN only.</strong> No TTS. Whisper.cpp on-device as Plan A; fall back to Deepgram cloud if quality/latency fails. Response surface is the screen, not audio.</li>
+<li><strong>Connect runs on Matrix + bridges.</strong> Beeper's open-source <code>mautrix</code> ecosystem is healthy and actively maintained. We don't build messaging from scratch; we build a Compose UI on top of the Matrix Rust SDK.</li>
+</ul>
+
+</section>
+
+<section id="substrate">
+<h2>The substrate choice</h2>
+
+<p><strong>Fork GrapheneOS, rename it, pin to one Android version, sign with our own AVB key.</strong> Specifically <em>not</em> claiming to be GrapheneOS — the project is hostile to that for good reasons (brand protection, security-reputation concerns) and we don't need their endorsement.</p>
+
+<p>Why GrapheneOS as substrate vs plain AOSP:</p>
+<ul>
+<li>Better build system, Pixel device tree work done, vendor blob handling solved.</li>
+<li>Their hardening work is free win even if not load-bearing.</li>
+<li>If we ever revisit the banking question post-v1, the Sandboxed Play scaffolding is already there — we just can't <em>use</em> it in v1 (see banking tradeoff below).</li>
+</ul>
+
+<p>Why not stay on stock GrapheneOS as overlay only:</p>
+<ul>
+<li>You want the actual lock-screen replacement with the thumbprint-then-swipe-direction gesture. That requires owning SystemUI. That requires signing SystemUI with the platform key. On stock GrapheneOS we don't have that key.</li>
+</ul>
+
+<p><strong>Pin to one Android version.</strong> Pick the current stable GrapheneOS release at fork time. Don't merge anything for six months. The "AOSP maintenance treadmill" cost in the IMPOSSIBLE-D2 brief disappears entirely under this constraint — it was pricing in monthly Pixel patch tracking we're now skipping.</p>
+
+</section>
+
+<section id="tradeoff">
+<h2>Banking — the real tradeoff</h2>
+
+<div class="tradeoff">
+<p><strong>You can have the lock-screen replacement OR you can have Play-Integrity-passing banking. Not both in 2026.</strong></p>
+<p>GrapheneOS itself passes Play Integrity's device tier because Google whitelisted <em>their specific AVB signing key</em>. When we fork and sign with our own key, that whitelist doesn't transfer. We pass <em>basic integrity</em> (bootloader is locked with a valid key, signature chain intact) but not <em>device integrity</em>. Major US banks check device-tier or higher.</p>
+<p>Apps that only check basic integrity still work. Some smaller banks, brokerages, and most utilities are fine. Specifically out: Venmo (which rejects Zygisk-class environments outright), Chase, Wells, Bank of America, Google Wallet, tap-to-pay. Some subset of these may surprise us either direction.</p>
+<p>Practical handling: a second cheap phone for Venmo and any banking that fails. Physical card for tap-to-pay. This is the cost of the lock-screen replacement.</p>
+</div>
+
+</section>
+
+<section id="features">
+<h2>Feature set, v1</h2>
+
+<h3>Built and shipped</h3>
+<ul>
+<li><strong>Two-state lock-screen circle.</strong> Pre-auth: static, shows time / weather / notifications. Thumbprint mid-screen authenticates. Post-auth: interactive four-direction circle. 80px radius, 60px drag threshold to commit a direction. Color ramps from 33% to 85% of drag distance.</li>
+<li><strong>All four directions, all interactive.</strong> Discover (up), Ask (down), Connect (left), Home (right). Each goes to a real destination (next section).</li>
+<li><strong>Per-app gradual grayscale.</strong> Linear ramp from 0% to 100% saturation loss over the app's daily budget. SurfaceFlinger color matrix driven by a foreground-watcher service. Daily reset at midnight via AlarmManager. <strong>Ramp is feedback, not a limit</strong> — user can stay past the budget; the screen just becomes fully grayscale.</li>
+<li><strong>Per-app config UI.</strong> Sessions screen lets you set per-app mode (off / grayscale / etc.) and daily ramp minutes. Defaults: Instagram 30min grayscale, X 15min, others 20–45min off.</li>
+<li><strong>Passive tracking.</strong> UsageStatsManager ground truth, feeds the ramp progress + dashboard.</li>
+<li><strong>Argos integration.</strong> The val.town backend powers Ask's responses + the relationship memory layer that surfaces in Connect's About Person.</li>
+</ul>
+
+<h3>Deferred — explicitly</h3>
+<ul>
+<li><strong>Feed blur, tweet-spacing, font-cycling, break-cards as treatments on external apps.</strong> The mock has these but applying them to other apps' rendering requires either accessibility-tree walking (fragile, breaks on app updates) or render-injection (genuinely hard). Defer to v2.</li>
+<li><strong>Banking apps that require device-integrity.</strong> Second phone. (See tradeoff above.)</li>
+<li><strong>Banking via Sandboxed Play.</strong> Scaffolding inherited but not configured for v1.</li>
+<li><strong>OTA infrastructure.</strong> You reflash by hand. ~10 minutes per update.</li>
+</ul>
+
+</section>
+
+<section id="dirs">
+<h2>The four directions, precisely</h2>
+
+<div class="dirs">
+
+<div class="dir discover">
+<div class="arrow">↑ Up · gold</div>
+<div class="name">Discover</div>
+<div class="desc">App tiles with progress bars showing time-spent vs daily budget. Tap an app to enter its feed with the configured treatment (grayscale ramp etc.) live. Not a separate "For You Today" feed — each app's own feed, modified.</div>
+<div class="build"><strong>Build:</strong> Compose grid of app tiles, per-tile progress bar bound to <code>timeSpentTodayMs / dailyRampMinutes</code>. Tap launches the target app with the foreground-watcher arming the grayscale matrix. The feed inside the target app is the target app's own — we don't re-render it.</div>
+</div>
+
+<div class="dir ask">
+<div class="arrow">↓ Down · purple</div>
+<div class="name">Ask</div>
+<div class="desc">Voice-IN-only interface. Memory snippets visible (faint, low-opacity context from Argos). Waveform indicator while listening. Response appears on screen as text. No TTS.</div>
+<div class="build"><strong>Build:</strong> Whisper.cpp small/base on Tensor G1 (Plan A); fallback to Deepgram cloud STT. Snippets from Argos memory pulled via val.town backend. Response from Argos LLM rendered as text + memory updates streamed back.</div>
+</div>
+
+<div class="dir connect">
+<div class="arrow">← Left · green</div>
+<div class="name">Connect</div>
+<div class="desc">Unified inbox across SMS, WhatsApp, Signal, Telegram, Instagram DMs, Google Messages, iMessage, Discord. Identical card design with a small platform badge; deliberately not per-platform skinned. Tap → Conversation. Long-press a person → Think Out Loud reflection + About Person + relationship book.</div>
+<div class="build"><strong>Build:</strong> Compose UI on top of Matrix Rust SDK (<code>matrix-sdk-ui</code>). Bridges via <code>mautrix</code>. <strong>Backend decision needed (see open Qs):</strong> Beeper Plus hosted ($10/mo, fastest, covers iMessage) vs self-host on Hetzner with <code>matrix-docker-ansible-deploy</code>. Either way: bridges expose every conversation as a normal Matrix room, so the UI doesn't need per-network code.</div>
+</div>
+
+<div class="dir home">
+<div class="arrow">→ Right · blue</div>
+<div class="name">Home</div>
+<div class="desc">Standard 4×4 app grid + dock. The escape hatch — banking on a second phone is here, plus airlines, maps, anything that doesn't fit the other directions.</div>
+<div class="build"><strong>Build:</strong> Standard Compose launcher screen. App icons from PackageManager. Simplest of the four.</div>
+</div>
+
+</div>
+
+</section>
+
+<section id="plan">
+<h2>Build plan, phase by phase</h2>
+
+<p>Realistic totals: <strong>13–17 weeks single-threaded</strong>, <strong>7–10 weeks with 4–5 parallel worktrees</strong>. The 3× speedup factor (not 10×) reflects that hardware-iteration and OS-build debugging don't compress as well as code generation does.</p>
+
+<div class="phases">
+
+<div class="phase">
+  <div class="id">P0</div>
+  <div class="what">
+    <h4>Tooling + OS substrate</h4>
+    <p>Build server set up. Clone GrapheneOS at pinned tag, rename. Generate AVB signing keys. First boot on Pixel 6 with own key, bootloader relocked. adb-over-Tailscale wired. Watchdog supervisor + recovery flash script. Four worktrees with <code>PROJECT_BRIEF.md</code>.</p>
+  </div>
+  <div class="when">1.5–2 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P1</div>
+  <div class="what">
+    <h4>SystemUI lock screen</h4>
+    <p>Two-state circle. Fingerprint-authenticated transition from static to interactive. Drag physics: 80px radius, 60px commit threshold, ramped color feedback. Direction-to-activity routing. Keep stock unlock paths working (PIN fallback, SIM PIN, emergency dial — these classes get left alone).</p>
+  </div>
+  <div class="when">2.5–3 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P2</div>
+  <div class="what">
+    <h4>Compose launcher shell + Home + Discover</h4>
+    <p>Default-launcher claim. Home (4×4 + dock). Discover screen (Sessions in the mock): app tiles, progress bars, per-app mode + ramp-time config. Per-app state model wired to disk (Room or SharedPreferences). <code>dayKey</code> midnight reset via AlarmManager.</p>
+  </div>
+  <div class="when">2–2.5 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P3</div>
+  <div class="what">
+    <h4>Per-app grayscale ramp</h4>
+    <p>Foreground watcher service (Accessibility + UsageStats fallback). SurfaceFlinger color matrix driven via privileged binder service (we're now in our own fork, so this is clean — no Magisk-module hack). Linear interpolation from <code>timeSpentTodayMs / (dailyRampMinutes × 60000)</code>. 250ms tick with visibility guards and &gt;10s delta cap. Daily reset.</p>
+  </div>
+  <div class="when">1.5–2 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P4</div>
+  <div class="what">
+    <h4>Ask voice-IN</h4>
+    <p>Whisper.cpp build for Tensor G1. Compose UI: waveform, memory snippets, listening state. STT → Argos backend (val.town) → text response render. Memory writebacks. Fall-through to Deepgram cloud if Whisper quality/latency fails real-world test.</p>
+  </div>
+  <div class="when">1.5–2 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P5</div>
+  <div class="what">
+    <h4>Connect via Matrix</h4>
+    <p>Backend stood up (Beeper Plus account or self-hosted Synapse + bridges). Matrix Rust SDK integration in Compose. Unified inbox list. Conversation view. Think Out Loud reflection screen. About Person + relationship book (local, private — never proactive). Wire bridges in order: WhatsApp, iMessage (requires Mac running BlueBubbles or Beeper's bridge), Signal, Telegram, Google Messages. Instagram + Discord second wave.</p>
+  </div>
+  <div class="when">3.5–4.5 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P6</div>
+  <div class="what">
+    <h4>Stabilization</h4>
+    <p>Daily-driver dogfooding. Bug list from your own usage. No new features. Recovery-flash rehearsed end-to-end. Watchdog reports tuned.</p>
+  </div>
+  <div class="when">1–1.5 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P7</div>
+  <div class="what">
+    <h4>Live test</h4>
+    <p>Two weeks. SIM in the Pixel. Second phone for Venmo etc. Daily journal — one explicit question logged: "what did I open on the second phone today?" Mitigation for the developer-is-tester trap.</p>
+  </div>
+  <div class="when">2 wks</div>
+</div>
+
+</div>
+
+<h3>Cycle times (per loop type)</h3>
+
+<table>
+<thead><tr><th>Loop</th><th>Cycle</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Compose launcher change</td><td class="num">~20s</td><td><code>adb install -r</code>, no reboot</td></tr>
+<tr><td>SystemUI hot-swap</td><td class="num">~30s</td><td><code>adb install -r</code> + <code>killall system_server</code>; SystemUI restarts</td></tr>
+<tr><td>SystemUI full reflash</td><td class="num">~5 min</td><td>Patched system partition + reboot</td></tr>
+<tr><td>Whisper.cpp / native</td><td class="num">~1–2 min</td><td>NDK build + push + restart service</td></tr>
+<tr><td>Matrix UI change</td><td class="num">~20s</td><td>Compose hot reload + restart connection</td></tr>
+<tr><td>Recovery from bad boot</td><td class="num">~10–30 min</td><td>fastboot back to known-good factory image</td></tr>
+</tbody>
+</table>
+
+</section>
+
+<section id="parallel">
+<h2>Multi-Claude orchestration</h2>
+
+<p>Five worktrees, at the upper end of the practical 4–8 concurrent ceiling per the loops research. File-ownership splits are clean.</p>
+
+<dl class="meta-grid">
+<dt><code>os-systemui/</code></dt>
+<dd>Opus. The SystemUI rewrite (P1) — most specialized, most asymmetric debugging. Java/Kotlin in the AOSP <code>packages/SystemUI</code> tree.</dd>
+<dt><code>launcher-compose/</code></dt>
+<dd>Sonnet. Home, Discover/Sessions, AboutPerson, ThinkOutLoud, ConversationScreen. P2 + P5-UI.</dd>
+<dt><code>ask-voice/</code></dt>
+<dd>Sonnet. Whisper.cpp build + Ask Compose UI + Argos backend wiring. P4.</dd>
+<dt><code>connect-matrix/</code></dt>
+<dd>Sonnet. Matrix Rust SDK integration, bridge configuration, inbox sync. P5-backend.</dd>
+<dt><code>grayscale-service/</code></dt>
+<dd>Sonnet. Foreground watcher, SurfaceFlinger binder, daily counter persistence. P3.</dd>
+</dl>
+
+<p>The harness lives separately (no resident Claude) — bash + Python + adb. Owns build, push, install, screenshot, logcat, cost cap, time cap, reboot-loop detection. Per the loops research, the supervisor owns cost / time / device safety; Claude owns code.</p>
+
+<h3>Goal-shaped checkpoints</h3>
+
+<p>Each phase has a <code>/goal</code> condition the Haiku judge can verify mechanically:</p>
+
+<pre>P1: keyguard_test.sh exits 0, fingerprint auth succeeds three times,
+    drag-direction routing dispatches the correct intent on each side,
+    no FATAL in logcat across three reboots. Stop after 40 turns.
+
+P3: grayscale_ramp_test.sh exits 0, simulated 30-min Instagram session
+    produces SurfaceFlinger matrix interpolation from 0 to 1 with
+    monotonic progression, dayKey rollover at midnight resets to 0.
+    Stop after 30 turns.
+
+P5: matrix_bridge_test.sh exits 0, all five primary bridges (WhatsApp,
+    iMessage, Signal, Telegram, Google Messages) report sync_complete,
+    Connect inbox renders &gt;= 3 conversations from each bridge.
+    Stop after 50 turns.</pre>
+
+<p>Overnight runs use the Ralph Loop wrapper (fresh context per iteration, git-as-memory, autocommit). Watchdog must-haves still apply: token cap, wall-clock cap, command denylist, autocommit allowlist, no auto-flash without manual unlock.</p>
+
+</section>
+
+<section id="open">
+<h2>Open questions</h2>
+
+<ol>
+<li><strong>Connect backend: Beeper Plus or self-host?</strong> Beeper Plus is $10/mo, fastest to working iMessage, well-supported. Self-host on Hetzner is $10/mo for the box, ~few days to stand up, more control + no third-party cap on accounts but you operate it. For v1 with you as tester, Beeper Plus is probably right; if Connect becomes the centerpiece for v2, self-host is the move. Confirm?</li>
+<li><strong>iMessage requires a Mac running 24/7.</strong> Either a spare Mac mini you own (best), a paid VM with macOS (gray-area legally), or skip iMessage in v1. Beeper Plus includes their hosted Mac bridge but Apple has been fighting this — works currently. What's your Mac situation?</li>
+<li><strong>Banking second phone.</strong> Cheap Android (you keep the Pixel 6's Sandboxed Play scaffolding for v2 if we ever revisit), or your previous phone? Won't affect the build, just the lifestyle plan during the test.</li>
+<li><strong>Whisper.cpp Plan A really Plan A?</strong> Whisper.cpp small (~466MB) on Tensor G1 runs but latency varies. If first-token-to-text is &gt;1s, the felt experience drops. Falling back to Deepgram cloud is a one-line change. Comfortable with the Plan A → fallback structure?</li>
+<li><strong>Where do break-cards / blur / font-cycling etc. live?</strong> The mock has them. Real Android can apply them to <em>our own</em> rendered surfaces (Connect feed, eventually a Discover-built-in feed), but not to Instagram's. Defer entirely, or build them into our own surfaces so they're testable on Connect's inbox?</li>
+<li><strong>Pixel 8a or 9 ordering.</strong> Pixel 6 EOL is Oct 2026. For a second tester later, we need newer hardware. Order during P0 so it's here, or wait?</li>
+</ol>
+
+<p class="footnote">Source artifacts in this folder: <code>possible-pathB.md</code>, <code>impossible-pathB.md</code>, <code>possible-pathD2.md</code>, <code>impossible-pathD2.md</code> (the adversarial round); <code>claude-code-loops-research.md</code> (overnight-loop tooling); <code>mock-deep-read.md</code> (component-level spec from the React mock); <code>beeper-matrix-research.md</code> (Connect backend options).</p>
+
+</section>
+
+</body>
+</html>

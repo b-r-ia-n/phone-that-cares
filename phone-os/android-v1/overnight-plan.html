@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PTC Android — overnight build · 2026-05-16</title>
+<style>
+:root { --bg:#f6f3ec; --ink:#1a1714; --muted:#6f6a62; --rule:#d9d3c6; --accent:#8a5a2b; --accent-soft:#c4a07b; --pos:#3d6b3a; --neg:#8a3a2b; --card:#fffdf7; --card-rule:#e6dfd0; }
+* { box-sizing:border-box; }
+html,body { background:var(--bg); color:var(--ink); }
+body { font-family:'Inter',system-ui,sans-serif; font-feature-settings:'ss01','cv11','tnum'; font-size:15px; line-height:1.55; margin:0; padding:0 24px 120px; max-width:860px; margin-inline:auto; }
+header { padding:48px 0 16px; }
+.kicker { font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+h1 { font-size:30px; font-weight:600; letter-spacing:-0.01em; margin:0 0 4px; }
+.date { color:var(--muted); font-size:13px; }
+h2 { font-size:20px; font-weight:600; margin:40px 0 12px; padding-top:12px; border-top:1px solid var(--rule); }
+h3 { font-size:15px; font-weight:600; margin:22px 0 6px; }
+p, ul, ol { margin:0 0 12px; }
+ul, ol { padding-left:20px; }
+li { margin-bottom:4px; }
+code { font-family:'Berkeley Mono',ui-monospace,monospace; font-size:13px; background:var(--card); padding:1px 5px; border:1px solid var(--card-rule); border-radius:3px; }
+pre { font-family:'Berkeley Mono',ui-monospace,monospace; font-size:12.5px; background:var(--card); padding:12px 14px; border:1px solid var(--card-rule); border-radius:4px; overflow-x:auto; line-height:1.5; }
+.tldr { background:var(--card); border:1px solid var(--card-rule); padding:18px 22px; border-radius:6px; margin-top:18px; }
+.tldr h3 { margin-top:0; }
+.goal { border:1px solid var(--card-rule); background:var(--card); padding:14px 18px; border-radius:6px; margin-bottom:12px; }
+.goal .id { font-weight:600; font-size:12px; letter-spacing:0.05em; text-transform:uppercase; color:var(--accent); margin-bottom:4px; }
+.goal .name { font-weight:600; margin-bottom:6px; }
+.goal .desc { font-size:13.5px; color:var(--muted); margin-bottom:8px; }
+.goal pre { margin:6px 0 0; font-size:12px; }
+a { color:var(--accent); border-bottom:1px solid var(--accent-soft); text-decoration:none; }
+.dim { color:var(--muted); }
+.checklist li { padding:3px 0; }
+.note { color:var(--muted); font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<header>
+<div class="kicker">Phone That Cares — Android v1</div>
+<h1>Overnight build · 2026-05-16</h1>
+<div class="date">Plan that will run while you sleep. Wake-up summary lands at <code>reports/morning.html</code>.</div>
+</header>
+
+<section>
+<div class="tldr">
+<h3>Tonight's bet</h3>
+<p>Run a chain of <code>/goal</code>-conditioned Claude sessions against the Android Emulator (not your Pixel — no flashing tonight) and aim for: <strong>a working Compose launcher with the four-direction post-unlock picker, all four destination screens rendering with mock data, and per-app grayscale via Accessibility-service Color Correction working on at least one target app.</strong> Every goal has a mechanical test; the morning report shows what passed, what failed, what remained.</p>
+<p>Lock-screen replacement and SystemUI rewrite are out tonight (you ditched them this turn). Emulator-only, no root, no Magisk, no AVB key fuss. Everything we build tonight ports cleanly to the Pixel 6 later.</p>
+</div>
+</section>
+
+<section>
+<h2>Scope for tonight</h2>
+
+<h3>In</h3>
+<ul>
+<li>Compose launcher app, claimed as default home on the emulator.</li>
+<li>Post-unlock four-direction picker (Discover ↑ / Ask ↓ / Connect ← / Home →) with the 80px-radius / 60px-threshold drag physics from the mock.</li>
+<li>Discover screen with mocked app tiles + per-app daily ramp progress bars.</li>
+<li>Per-app config (mode + ramp time) persisted to disk.</li>
+<li>Home screen as a stock-ish 4×4 grid pulling installed packages from PackageManager.</li>
+<li>Ask screen as a UI shell — waveform, listening state, memory snippet placeholders. <em>STT integration deferred to a later run.</em></li>
+<li>Connect screen as a UI shell — inbox list with mock conversations, identical card design, platform badges. <em>Matrix bridges deferred.</em></li>
+<li>Per-app gradual grayscale via AccessibilityService toggling system Color Correction, foreground-watched, daily-reset, linear interpolation. <em>The thesis-critical feature.</em></li>
+<li>Passive tracking via UsageStatsManager.</li>
+<li>Per-goal tests + an aggregate morning HTML.</li>
+</ul>
+
+<h3>Out (tonight)</h3>
+<ul>
+<li>OS fork, SystemUI rewrite, AVB key, anything kernel-or-system-image-shaped.</li>
+<li>Real Pixel 6 flashing.</li>
+<li>iMessage, Beeper Plus, Matrix bridges, actual messaging integration.</li>
+<li>Whisper / Deepgram wiring. Voice UI is shell-only.</li>
+<li>Argos backend integration (the val.town endpoints are reachable but the wiring lives in a later goal).</li>
+</ul>
+</section>
+
+<section>
+<h2>The goal chain</h2>
+
+<div class="goal">
+<div class="id">G1 · bootstrap</div>
+<div class="name">Project scaffold + emulator boot</div>
+<div class="desc">Spin up an empty Compose Android project. Build it. Install it on the headless emulator. Verify it launches.</div>
+<pre>condition:
+  ./gradlew :app:assembleDebug exits 0,
+  adb install -r app/build/outputs/apk/debug/app-debug.apk succeeds,
+  adb shell am start -n com.ptc.launcher/.MainActivity launches,
+  adb shell dumpsys activity activities | grep "mResumedActivity.*com.ptc.launcher" matches.
+  Stop after 30 turns.</pre>
+</div>
+
+<div class="goal">
+<div class="id">G2 · home claim</div>
+<div class="name">Launcher claims default home + four-direction picker</div>
+<div class="desc">Declare intent-filters as a launcher app. Claim it on the emulator. Implement the post-unlock four-direction circle (80px / 60px threshold). Tapping each direction navigates to a stub destination.</div>
+<pre>condition:
+  adb shell cmd package set-home-activity com.ptc.launcher/.MainActivity succeeds,
+  pressing HOME from any app returns to the picker (verified via dumpsys),
+  swipe-up/down/left/right gestures dispatch the correct navigation intent
+  (verified by instrumentation test that simulates 4 swipes and asserts on
+  the resulting activity for each). Stop after 40 turns.</pre>
+</div>
+
+<div class="goal">
+<div class="id">G3 · four screens</div>
+<div class="name">Discover, Ask, Connect, Home destinations render</div>
+<div class="desc">Compose screens for each direction. Discover: app tile grid with progress bars bound to per-app state. Ask: waveform + memory snippet placeholders. Connect: unified inbox list with mock conversations. Home: 4×4 grid from PackageManager.</div>
+<pre>condition:
+  Compose UI tests pass for each screen,
+  each screen renders without exception on the emulator,
+  Discover screen shows at least 3 app tiles with progress bars,
+  Connect screen shows at least 5 mock conversations with platform badges,
+  Home screen lists at least 8 installed packages.
+  Stop after 50 turns.</pre>
+</div>
+
+<div class="goal">
+<div class="id">G4 · per-app grayscale</div>
+<div class="name">Grayscale ramp on foreground</div>
+<div class="desc">AccessibilityService that watches foreground app changes. For each app with mode=grayscale, set system Color Correction (DALTONIZER_MODE → grayscale) interpolated linearly by <code>timeSpentTodayMs / (dailyRampMinutes × 60000)</code>. Clear when app leaves foreground. 250ms tick. Daily reset at midnight via AlarmManager.</div>
+<pre>condition:
+  enable_grayscale_service.sh succeeds (asks adb to grant
+  WRITE_SECURE_SETTINGS + bind AccessibilityService),
+  launching com.android.chrome triggers ACCESSIBILITY_DISPLAY_DALTONIZER
+  setting flip from 0 to non-zero within 2 seconds,
+  leaving chrome flips back to 0 within 2 seconds,
+  per-app daily-counter increments visible in app's debug screen.
+  Stop after 40 turns.</pre>
+</div>
+
+<div class="goal">
+<div class="id">G5 · passive tracking</div>
+<div class="name">UsageStatsManager wired</div>
+<div class="desc">Read usage stats since boot. Surface per-app time-today in the Discover tiles. No new visual, just real numbers.</div>
+<pre>condition:
+  Discover screen replaces hardcoded progress values with
+  UsageStatsManager-derived per-app durations,
+  unit test confirms aggregation logic correctly bins by package and day.
+  Stop after 25 turns.</pre>
+</div>
+
+<p class="note">Goals run sequentially. If one fails, the supervisor records the failure but continues to the next (no cascading abort — we want to see what gets done, not stop at the first hiccup). Each goal capped at the turn count above + a 90-minute wall clock.</p>
+
+</section>
+
+<section>
+<h2>The morning report</h2>
+<p>Generated by <code>harness/morning.sh</code>, lands at <code>reports/morning.html</code>. Same aesthetic as this doc. Contents:</p>
+<ul>
+<li>For each goal: pass / partial / fail, the Haiku judge's verdict text, turns used, token spend, wall-clock used.</li>
+<li>Screenshots of the emulator at each goal's checkpoint.</li>
+<li>Logcat slice for any goal that failed.</li>
+<li>Aggregate token spend.</li>
+<li>"What worked" / "What didn't" / "What's next" sections.</li>
+<li>Diff of what was committed to the launcher repo overnight.</li>
+</ul>
+</section>
+
+<section>
+<h2>What's installing right now</h2>
+<ul>
+<li><strong>JDK 17</strong> (Temurin) — required for Android Gradle Plugin.</li>
+<li><strong>Android command-line tools</strong> — gives us <code>sdkmanager</code>, <code>adb</code>, <code>emulator</code>, <code>avdmanager</code> without the Android Studio GUI overhead.</li>
+</ul>
+<p>After those land, the harness setup script will:</p>
+<ul>
+<li>Use <code>sdkmanager</code> to install <code>platform-tools</code>, <code>platforms;android-34</code>, <code>build-tools;34.0.0</code>, <code>emulator</code>, <code>system-images;android-34;google_apis;arm64-v8a</code>.</li>
+<li>Create an AVD called <code>ptc-test</code> on Android 14 ARM64.</li>
+<li>Start it headless in the background.</li>
+<li>Wait for boot complete.</li>
+<li>Kick off the goal chain.</li>
+</ul>
+</section>
+
+<section>
+<h2>Watchdog</h2>
+<ul>
+<li><strong>Token cap.</strong> $30 ceiling across all five goals combined. Kill if exceeded.</li>
+<li><strong>Wall clock cap.</strong> 90 min per goal, 8 hours total.</li>
+<li><strong>Command denylist.</strong> No <code>fastboot</code>, no <code>rm -rf</code> outside the project tree, no writes to system paths.</li>
+<li><strong>Per-iteration autocommit.</strong> Explicit <code>git add</code> allowlist; <code>.gitignore</code> for any keys.</li>
+<li><strong>No real device.</strong> Emulator only tonight. If anything in the chain tries to talk to a physical device, supervisor blocks it.</li>
+</ul>
+</section>
+
+<section>
+<h2>What you might still need to do tonight</h2>
+<ol class="checklist">
+<li><strong>Tell me your <code>ANTHROPIC_API_KEY</code> location</strong> — is it already in your env (e.g. <code>~/.argos.env</code> or shell rc)? If not, paste it once and I'll wire it into the harness.</li>
+<li><strong>Confirm the goal chain.</strong> If G5 looks too ambitious, say so and I'll trim. If G3 should split (one goal per screen), say so.</li>
+<li><strong>Confirm the token cap.</strong> $30 is conservative for five Sonnet goals with Haiku judging. Bump to $50 if you want headroom for retries on stuck goals.</li>
+<li><strong>Click "open" on this doc.</strong> If you're seeing it now, that's done.</li>
+</ol>
+<p>Once you confirm the above, you go to bed. The harness keeps running. Morning report opens itself on completion via a macOS notification + an <code>open reports/morning.html</code>.</p>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>§3 — The Body While Scrolling</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 { font-size: 1.4rem; font-weight: 400; letter-spacing: 0.05em; color: #8b949e; margin-bottom: 8px; }
+  h2 { font-size: 2rem; font-weight: 600; color: #e6edf3; margin-bottom: 48px; }
+
+  .body-container {
+    position: relative;
+    width: 700px;
+    height: 680px;
+  }
+
+  /* The figure silhouette */
+  .silhouette {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* Callout boxes */
+  .callout {
+    position: absolute;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 14px 18px;
+    max-width: 190px;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+  .callout .callout-title {
+    font-weight: 700;
+    font-size: 0.82rem;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .callout .callout-body { color: #8b949e; }
+  .callout .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  /* Line connectors */
+  .connector {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  /* Colors per system */
+  .neuro .dot, .neuro .callout-title { color: #f778ba; }
+  .neuro .dot { background: #f778ba; }
+  .neuro { border-color: rgba(247,120,186,0.3); }
+
+  .hormonal .dot, .hormonal .callout-title { color: #f0883e; }
+  .hormonal .dot { background: #f0883e; }
+  .hormonal { border-color: rgba(240,136,62,0.3); }
+
+  .musculo .dot, .musculo .callout-title { color: #58a6ff; }
+  .musculo .dot { background: #58a6ff; }
+  .musculo { border-color: rgba(88,166,255,0.3); }
+
+  .visual .dot, .visual .callout-title { color: #a371f7; }
+  .visual .dot { background: #a371f7; }
+  .visual { border-color: rgba(163,113,247,0.3); }
+
+  .cardiac .dot, .cardiac .callout-title { color: #f85149; }
+  .cardiac .dot { background: #f85149; }
+  .cardiac { border-color: rgba(248,81,73,0.3); }
+
+  .sleep .dot, .sleep .callout-title { color: #7ee787; }
+  .sleep .dot { background: #7ee787; }
+  .sleep { border-color: rgba(126,231,135,0.3); }
+
+  .callout-asking {
+    font-style: italic;
+    color: #e6edf3;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    border-top: 1px solid #21262d;
+    padding-top: 6px;
+  }
+
+  .footnote {
+    margin-top: 40px;
+    font-size: 0.75rem;
+    color: #484f58;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<h1>§3</h1>
+<h2>The Body While Scrolling — Parts Asking for Things</h2>
+
+<div class="body-container">
+
+  <!-- SVG silhouette of a person hunched over a phone -->
+  <svg class="silhouette" width="200" height="500" viewBox="0 0 200 500" fill="none" style="left:50%; top:46%; transform:translate(-50%,-50%)">
+    <!-- Head -->
+    <circle cx="100" cy="52" r="30" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <!-- Neck tilted forward -->
+    <path d="M100 82 L105 110" stroke="#30363d" stroke-width="3" stroke-linecap="round"/>
+    <!-- Spine / torso — hunched -->
+    <path d="M105 110 Q115 180 108 260" stroke="#30363d" stroke-width="3" stroke-linecap="round"/>
+    <!-- Shoulders -->
+    <path d="M70 130 Q105 120 140 130" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Left arm holding phone -->
+    <path d="M70 130 Q55 180 75 210 Q85 225 95 215" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Right arm -->
+    <path d="M140 130 Q155 180 135 210 Q125 225 110 215" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Phone in hands -->
+    <rect x="82" y="195" width="36" height="56" rx="5" fill="rgba(163,113,247,0.08)" stroke="#a371f7" stroke-width="1.5"/>
+    <rect x="86" y="200" width="28" height="40" rx="2" fill="rgba(163,113,247,0.04)" stroke="#a371f7" stroke-width="0.5"/>
+    <!-- Phone glow -->
+    <ellipse cx="100" cy="218" rx="30" ry="20" fill="rgba(163,113,247,0.06)"/>
+    <!-- Legs -->
+    <path d="M108 260 Q100 320 85 380 Q80 400 75 430" stroke="#30363d" stroke-width="3" stroke-linecap="round"/>
+    <path d="M108 260 Q115 320 125 380 Q128 400 130 430" stroke="#30363d" stroke-width="3" stroke-linecap="round"/>
+    <!-- Feet -->
+    <path d="M75 430 Q70 445 60 448" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M130 430 Q135 445 145 448" stroke="#30363d" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- Eyes looking down at phone -->
+    <circle cx="92" cy="50" r="2.5" fill="#a371f7"/>
+    <circle cx="108" cy="50" r="2.5" fill="#a371f7"/>
+    <!-- Glow lines from phone to face -->
+    <line x1="95" y1="195" x2="95" y2="80" stroke="rgba(163,113,247,0.08)" stroke-width="20"/>
+  </svg>
+
+  <!-- SVG connector lines -->
+  <svg class="connector" width="700" height="680" viewBox="0 0 700 680" style="top:0;left:0">
+    <!-- Brain -->
+    <line x1="280" y1="72" x2="170" y2="72" stroke="rgba(247,120,186,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Cortisol -->
+    <line x1="280" y1="172" x2="195" y2="172" stroke="rgba(240,136,62,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Eyes -->
+    <line x1="510" y1="62" x2="420" y2="62" stroke="rgba(163,113,247,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Heart -->
+    <line x1="510" y1="162" x2="420" y2="180" stroke="rgba(248,81,73,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Neck/Spine -->
+    <line x1="280" y1="290" x2="320" y2="240" stroke="rgba(88,166,255,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Thumb -->
+    <line x1="510" y1="305" x2="420" y2="310" stroke="rgba(88,166,255,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+    <!-- Circadian -->
+    <line x1="510" y1="440" x2="420" y2="400" stroke="rgba(126,231,135,0.25)" stroke-width="1" stroke-dasharray="4,4"/>
+  </svg>
+
+  <!-- BRAIN — top left -->
+  <div class="callout neuro" style="top: 40px; left: 20px;">
+    <div class="callout-title"><span class="dot"></span> Brain (Dopamine System)</div>
+    <div class="callout-body">Variable-ratio reward schedule. Each scroll is a pull of the slot machine.</div>
+    <div class="callout-asking">"Again. One more. Again."</div>
+  </div>
+
+  <!-- CORTISOL — mid left -->
+  <div class="callout hormonal" style="top: 140px; left: 20px;">
+    <div class="callout-title"><span class="dot"></span> Adrenal Glands</div>
+    <div class="callout-body">Cortisol spikes from outrage content and social comparison. Chronic low-grade stress.</div>
+    <div class="callout-asking">"Am I safe? Am I enough?"</div>
+  </div>
+
+  <!-- EYES — top right -->
+  <div class="callout visual" style="top: 28px; right: 20px;">
+    <div class="callout-title"><span class="dot"></span> Eyes</div>
+    <div class="callout-body">Blue light suppresses melatonin. Reduced blink rate dries corneas. Accommodative strain.</div>
+    <div class="callout-asking">"Please look away."</div>
+  </div>
+
+  <!-- HEART — mid right -->
+  <div class="callout cardiac" style="top: 130px; right: 20px;">
+    <div class="callout-title"><span class="dot"></span> Heart / ANS</div>
+    <div class="callout-body">Sympathetic activation from stimulating content. Heart rate variability decreases.</div>
+    <div class="callout-asking">"I can't tell if this is danger."</div>
+  </div>
+
+  <!-- NECK / SPINE — lower left -->
+  <div class="callout musculo" style="top: 260px; left: 20px;">
+    <div class="callout-title"><span class="dot"></span> Neck & Spine</div>
+    <div class="callout-body">Forward head posture adds 27–60 lbs of effective load on the cervical spine.</div>
+    <div class="callout-asking">"I wasn't built for this angle."</div>
+  </div>
+
+  <!-- THUMB — lower right -->
+  <div class="callout musculo" style="top: 272px; right: 20px;">
+    <div class="callout-title"><span class="dot"></span> Thumb & Wrist</div>
+    <div class="callout-body">Repetitive scroll motion. De Quervain's tenosynovitis rising in under-25s.</div>
+    <div class="callout-asking">"This tendon has limits."</div>
+  </div>
+
+  <!-- CIRCADIAN — bottom right -->
+  <div class="callout sleep" style="top: 410px; right: 20px;">
+    <div class="callout-title"><span class="dot"></span> Circadian Clock</div>
+    <div class="callout-body">Screen use past 10pm delays sleep onset by 30–60 min. The body loses its sense of night.</div>
+    <div class="callout-asking">"What time is it, really?"</div>
+  </div>
+
+</div>
+
+<p class="footnote">
+  Every part of the body is asking the user to stop. The phone never does.
+</p>
+
+</body>
+</html>

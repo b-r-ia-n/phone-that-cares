@@ -1,0 +1,3 @@
+- loaded, awaiting task
+- known blockers on /telegram-bot: `@ARGOS_BOT_USERNAME` + `REMIX_LINK_HERE` placeholders
+- deploy via `npx vercel deploy --prod` from `website/` (not git push)

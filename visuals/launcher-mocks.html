@@ -1,0 +1,2226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Launcher mocks — Phone That Cares</title>
+<style>
+  :root {
+    --bg: #f6f3ec;
+    --bg-sunk: #efeadf;
+    --ink: #1a1714;
+    --ink-soft: #5b554c;
+    --ink-faint: #8b8478;
+    --rule: #d7cfc0;
+    --accent: #8a5a2b;
+    --warm: #c8b89a;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'ss01','cv11','tnum';
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+  }
+  .page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 72px 32px 120px;
+  }
+  .kicker {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  h1 {
+    font-weight: 500;
+    font-size: 32px;
+    letter-spacing: -0.015em;
+    line-height: 1.15;
+    margin: 0 0 20px;
+  }
+  .lede {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0 0 12px;
+    max-width: 62ch;
+  }
+  .small {
+    font-size: 14px;
+    color: var(--ink-soft);
+    max-width: 60ch;
+  }
+  .note {
+    font-size: 13px;
+    color: var(--ink-faint);
+    font-style: italic;
+    border-left: 2px solid var(--warm);
+    padding: 0 0 0 14px;
+    margin: 18px 0 24px;
+    max-width: 60ch;
+  }
+
+  /* Variants row */
+  .row {
+    display: flex;
+    gap: 28px;
+    margin: 56px 0 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .variant {
+    width: 300px;
+    flex-shrink: 0;
+  }
+  .variant .head {
+    margin-bottom: 14px;
+  }
+  .variant .label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .variant h2 {
+    font-size: 19px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin: 4px 0 8px;
+  }
+  .variant .desc {
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .variant .desc em {
+    font-style: normal;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  /* Phone frame */
+  .phone {
+    width: 300px;
+    height: 620px;
+    border-radius: 42px;
+    background: #0a0a0a;
+    box-shadow: 0 1px 2px rgba(26,23,20,.05), 0 24px 48px rgba(26,23,20,.08);
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+    margin-top: 18px;
+    border: 1px solid rgba(0,0,0,0.4);
+  }
+  .phone .reset {
+    position: absolute;
+    z-index: 20;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 6px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .phone .reset:hover {
+    color: rgba(255,255,255,0.6);
+    border-color: rgba(255,255,255,0.18);
+  }
+
+  /* Lock screen layer */
+  .lock {
+    position: absolute;
+    inset: 0;
+    color: rgba(255,255,255,0.88);
+    display: flex;
+    flex-direction: column;
+    cursor: grab;
+  }
+  .lock.dragging { cursor: grabbing; }
+  .lock .status-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px 0;
+    font-size: 11px;
+    color: rgba(255,255,255,0.85);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+  .lock .status-bar .icons {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 10px;
+  }
+  .lock .status-bar .icons svg {
+    width: 12px; height: 12px;
+    fill: currentColor;
+  }
+  .lock .time-cluster {
+    text-align: center;
+    margin-top: 30px;
+  }
+  .lock .time {
+    font-size: 60px;
+    font-weight: 200;
+    letter-spacing: -0.025em;
+    line-height: 1;
+  }
+  .lock .date-weather {
+    margin-top: 4px;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+  .lock .date-weather .dot {
+    color: rgba(255,255,255,0.3);
+  }
+  .lock .notifications {
+    margin: 32px 16px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .lock .notif {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 11px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 12px;
+  }
+  .lock .notif .avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    font-weight: 500;
+  }
+  .lock .notif .body { flex: 1; min-width: 0; }
+  .lock .notif .app {
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+  .lock .notif .preview {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .lock .notif .when {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+
+  /* Variant A — center puck */
+  .puck-stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .puck-stage .ring {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.015);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 220ms ease;
+  }
+  .puck-stage .ring.revealed { opacity: 1; }
+  .puck-stage .puck {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.22);
+    z-index: 2;
+    transition: background 180ms ease, transform 180ms ease;
+  }
+  .puck-stage.idle .puck {
+    /* Default thumb-target state — visible without ring */
+    background: rgba(255,255,255,0.14);
+  }
+  .puck-stage.dragging .puck {
+    background: rgba(255,255,255,0.32);
+  }
+  .puck-stage .label {
+    position: absolute;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    opacity: 0;
+    transition: color 200ms ease, opacity 220ms ease;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .puck-stage.revealed .label { opacity: 1; }
+  .puck-stage .label.active { color: rgba(255,255,255,0.95); }
+  /* Labels sit just outside the ring's outer edge */
+  .puck-stage .label.up    { top: -22px;    left: 50%; transform: translate(-50%, 0); }
+  .puck-stage .label.down  { bottom: -22px; left: 50%; transform: translate(-50%, 0); }
+  .puck-stage .label.left  { top: 50%; left: -8px;   transform: translate(-100%, -50%); }
+  .puck-stage .label.right { top: 50%; right: -8px;  transform: translate(100%, -50%); }
+
+  /* Variant B — drag from anywhere */
+  .free-stage {
+    flex: 1;
+    position: relative;
+  }
+  /* Origin label — appears at the point where the user started dragging */
+  .origin-label {
+    position: absolute;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.9);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms ease;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    z-index: 5;
+    text-shadow: 0 0 12px rgba(0,0,0,0.6);
+  }
+  .origin-label.show { opacity: 1; }
+  .origin-label .arrow {
+    margin-right: 4px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  /* Variant D — mood lighting */
+  .mood-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 2;
+    background: transparent;
+  }
+  .dest.mood-discover {
+    background:
+      radial-gradient(ellipse 110% 55% at top, rgba(120, 140, 200, 0.18) 0%, transparent 70%),
+      linear-gradient(180deg, #0c0f1a 0%, #08080d 100%);
+  }
+  .dest.mood-ask {
+    background:
+      radial-gradient(ellipse 110% 55% at bottom, rgba(220, 165, 90, 0.16) 0%, transparent 70%),
+      linear-gradient(0deg, #14100a 0%, #08070a 100%);
+  }
+  .dest.mood-connect {
+    background:
+      radial-gradient(ellipse 55% 110% at left, rgba(220, 145, 135, 0.16) 0%, transparent 70%),
+      linear-gradient(90deg, #160d0d 0%, #09080a 100%);
+  }
+  .dest.mood-home {
+    background:
+      radial-gradient(ellipse 55% 110% at right, rgba(180, 195, 220, 0.10) 0%, transparent 70%),
+      linear-gradient(270deg, #0d0f14 0%, #08080b 100%);
+  }
+
+  /* Destination layer (variants A/B reveal it on commit; C cross-fades it) */
+  .dest {
+    position: absolute;
+    inset: 0;
+    background: #0a0a0a;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 280ms ease;
+  }
+  .dest.revealed {
+    opacity: 1;
+    pointer-events: auto;
+    transition: opacity 220ms ease;
+  }
+
+  /* Destination content — small credible glimpses */
+  .dest-screen {
+    position: absolute;
+    inset: 0;
+    color: rgba(255,255,255,0.88);
+    padding: 20px 18px;
+    box-sizing: border-box;
+    display: none;
+    flex-direction: column;
+  }
+  .dest-screen.show { display: flex; }
+  .dest-screen .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .dest-screen .head h3 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .dest-screen .head .clock {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Discover destination */
+  .dest-discover .apps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px 12px;
+    margin-top: 6px;
+  }
+  .dest-discover .app {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .dest-discover .app .icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.55);
+    font-size: 18px;
+    font-weight: 500;
+    filter: grayscale(1);
+    background: var(--c, #555);
+  }
+  .dest-discover .app .name {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+  }
+  .dest-discover .app .mode {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+
+  /* Ask destination */
+  .dest-ask {
+    align-items: center;
+    text-align: center;
+  }
+  .dest-ask .wave {
+    margin: 60px 0 16px;
+    width: 180px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 3px;
+  }
+  .dest-ask .bar {
+    flex: 1;
+    background: rgba(255,255,255,0.5);
+    border-radius: 2px;
+  }
+  .dest-ask .listening {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 30px;
+  }
+  .dest-ask .snippet {
+    background: rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-align: left;
+    font-size: 11px;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.5;
+    margin-top: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .dest-ask .snippet .who {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 3px;
+  }
+
+  /* Connect destination */
+  .dest-connect .conv {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 10px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .dest-connect .conv .av {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    flex-shrink: 0;
+  }
+  .dest-connect .conv .body { flex: 1; min-width: 0; }
+  .dest-connect .conv .name {
+    font-size: 12px;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 1px;
+  }
+  .dest-connect .conv .platform {
+    font-size: 8px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+  }
+  .dest-connect .conv .preview {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+  .dest-connect .conv .when {
+    font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+
+  /* Home destination */
+  .dest-home .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px 8px;
+  }
+  .dest-home .a {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .dest-home .a .icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    background: var(--c, #444);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255,255,255,0.85);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .dest-home .a .name {
+    font-size: 9px;
+    color: rgba(255,255,255,0.55);
+  }
+  .dest-home .dock {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 22px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .dest-home .dock .icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: var(--c, #444);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 15px;
+  }
+
+  /* Refined section */
+  .refined {
+    margin-top: 96px;
+    padding-top: 56px;
+    border-top: 1px solid var(--rule);
+  }
+  .refined .header-block {
+    max-width: 64ch;
+  }
+  .refined h2.real {
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    text-transform: none;
+    color: var(--ink);
+    border-bottom: none;
+    padding-bottom: 0;
+    margin: 0 0 14px;
+  }
+  .refined-layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 64px;
+    align-items: start;
+    margin-top: 48px;
+  }
+  .refined-layout .phone-wrap {
+    position: sticky;
+    top: 32px;
+  }
+  .refined-layout .phone {
+    width: 340px;
+    height: 720px;
+    border-radius: 46px;
+  }
+  .refined-commentary h3 {
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 28px 0 14px;
+    font-weight: 500;
+  }
+  .refined-commentary h3:first-child { margin-top: 0; }
+  .refined-commentary .item {
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .refined-commentary .item:last-child {
+    border-bottom: none;
+  }
+  .refined-commentary .item .from {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+  .refined-commentary .item .head {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+  .refined-commentary .item .body {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin: 0;
+  }
+
+  /* Full status bar with real icons */
+  .status-bar-full {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 22px 0;
+    font-size: 12px;
+    color: rgba(255,255,255,0.92);
+    font-variant-numeric: tabular-nums;
+    height: 24px;
+    box-sizing: border-box;
+  }
+  .status-bar-full .left,
+  .status-bar-full .right {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .status-bar-full .notif-icon {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: white;
+    font-weight: 600;
+  }
+  .status-bar-full svg { display: block; color: rgba(255,255,255,0.92); }
+
+  /* Fingerprint anchor */
+  .fp-anchor {
+    position: absolute;
+    /* Pixel 8 under-display fingerprint sensor sits ~25% from screen bottom.
+       For a 720px-tall mock that's ~180px. Slightly closer to give visual breathing room. */
+    bottom: 150px;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+    transform: translateX(-50%);
+    background: radial-gradient(circle at center,
+      rgba(255,255,255,0.05) 0%,
+      rgba(255,255,255,0.015) 55%,
+      transparent 100%);
+  }
+  .fp-anchor::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: border-color 220ms ease, background 220ms ease;
+  }
+  .fp-anchor.engaged { cursor: grabbing; }
+  .fp-anchor.engaged::before {
+    border-color: rgba(255,255,255,0.22);
+    background: rgba(255,255,255,0.04);
+  }
+  .fp-anchor svg {
+    color: rgba(255,255,255,0.42);
+    transition: color 200ms ease;
+    position: relative;
+    z-index: 1;
+  }
+  .fp-anchor.engaged svg { color: rgba(255,255,255,0.85); }
+  .fp-anchor .breath {
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.10);
+    animation: fp-breath 2.6s ease-in-out infinite;
+  }
+  .fp-anchor.engaged .breath { animation-play-state: paused; opacity: 0; }
+  @keyframes fp-breath {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50%      { transform: scale(1.12); opacity: 0.12; }
+  }
+
+  /* Destination preview text (during drag) */
+  .dest-preview {
+    position: absolute;
+    top: 58px;
+    left: 24px;
+    font-size: 13px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.88);
+    font-weight: 500;
+    opacity: 0;
+    transition: opacity 220ms ease;
+    pointer-events: none;
+    z-index: 4;
+    text-shadow: 0 0 14px rgba(0,0,0,0.5);
+  }
+  .dest-preview .arrow {
+    display: inline-block;
+    color: rgba(255,255,255,0.45);
+    margin-right: 6px;
+    font-weight: 400;
+  }
+  .dest-preview.show { opacity: 1; }
+
+  /* Subtler mood palette for refined */
+  .dest.mood-r-discover {
+    background:
+      radial-gradient(ellipse 110% 50% at top, rgba(120, 140, 200, 0.11) 0%, transparent 70%),
+      linear-gradient(180deg, #0a0c14 0%, #08080b 100%);
+  }
+  .dest.mood-r-ask {
+    background:
+      radial-gradient(ellipse 110% 50% at bottom, rgba(220, 165, 90, 0.10) 0%, transparent 70%),
+      linear-gradient(0deg, #100c08 0%, #07060a 100%);
+  }
+  .dest.mood-r-connect {
+    background:
+      radial-gradient(ellipse 50% 110% at left, rgba(220, 145, 135, 0.10) 0%, transparent 70%),
+      linear-gradient(90deg, #110a0a 0%, #08070a 100%);
+  }
+  .dest.mood-r-home {
+    background:
+      radial-gradient(ellipse 50% 110% at right, rgba(180, 195, 220, 0.06) 0%, transparent 70%),
+      linear-gradient(270deg, #0a0c10 0%, #08080b 100%);
+  }
+
+  /* Rauno register — alt take */
+  .rauno-section {
+    margin-top: 88px;
+    padding-top: 56px;
+    border-top: 1px solid var(--rule);
+  }
+  .rauno-layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 56px;
+    align-items: start;
+    margin-top: 32px;
+  }
+  .rauno-layout .phone {
+    width: 340px;
+    height: 720px;
+    border-radius: 46px;
+    background: #000;
+  }
+  .rauno-commentary p {
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.65;
+    margin: 0 0 14px;
+    max-width: 56ch;
+  }
+  .rauno-commentary h4 {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 22px 0 8px;
+    font-weight: 500;
+  }
+  .rauno-commentary code {
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+    font-size: 12px;
+    background: var(--bg-sunk);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+
+  .lock-rauno {
+    position: absolute;
+    inset: 0;
+    color: rgba(255,255,255,0.92);
+    background: #000;
+  }
+
+  .rauno-time-block {
+    margin: 56px 22px 0;
+  }
+  .rauno-rule {
+    height: 1px;
+    background: rgba(255,255,255,0.16);
+  }
+  .rauno-time-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    padding: 22px 0 18px;
+  }
+  .rauno-time {
+    font-size: 76px;
+    font-weight: 200;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    color: rgba(255,255,255,0.96);
+    font-variant-numeric: tabular-nums;
+  }
+  .rauno-weather-icon {
+    color: rgba(255,255,255,0.55);
+    display: inline-block;
+    line-height: 0; /* strip inline-SVG typographic spacing */
+  }
+  .rauno-weather-icon svg {
+    display: block;
+  }
+  .rauno-time-meta {
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.42);
+    letter-spacing: 0.14em;
+    padding: 10px 0 12px;
+  }
+
+  .rauno-notifs {
+    margin: 28px 22px 0;
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.58);
+    letter-spacing: 0.04em;
+    line-height: 1.9;
+  }
+  .rauno-notif .idx {
+    color: rgba(255,255,255,0.28);
+    margin-right: 10px;
+  }
+  .rauno-notif .nm {
+    color: rgba(255,255,255,0.78);
+  }
+
+  .rauno-compass {
+    position: absolute;
+    bottom: 84px;
+    left: 0; right: 0;
+    height: 220px;
+  }
+  .rauno-compass .line-svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .rauno-mode {
+    position: absolute;
+    font-family: 'JetBrains Mono', 'IBM Plex Mono', 'SF Mono', Menlo, monospace;
+    font-size: 9px;
+    letter-spacing: 0.20em;
+    color: rgba(255,255,255,0.40);
+    transition: color 220ms ease, letter-spacing 220ms ease;
+    white-space: nowrap;
+  }
+  .rauno-mode .idx {
+    color: rgba(255,255,255,0.20);
+    margin-right: 8px;
+    transition: color 220ms ease;
+  }
+  .rauno-mode.active {
+    color: rgba(255,255,255,1);
+    letter-spacing: 0.24em;
+  }
+  .rauno-mode.active .idx { color: rgba(255,255,255,0.65); }
+  .rauno-mode[data-mode-label="up"]    { top: 8px;    left: 50%; transform: translateX(-50%); }
+  .rauno-mode[data-mode-label="down"]  { bottom: 8px; left: 50%; transform: translateX(-50%); }
+  .rauno-mode[data-mode-label="left"]  { left: 22px;  top: 50%;  transform: translateY(-50%); }
+  .rauno-mode[data-mode-label="right"] { right: 22px; top: 50%;  transform: translateY(-50%); }
+
+  .rauno-anchor {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+    z-index: 3;
+  }
+  .rauno-anchor.engaged { cursor: grabbing; }
+  .rauno-anchor svg {
+    color: rgba(255,255,255,0.62);
+    transition: color 200ms ease;
+  }
+  .rauno-anchor.engaged svg { color: rgba(255,255,255,1); }
+
+  .rauno-utility {
+    position: absolute;
+    bottom: 26px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 32px;
+    pointer-events: none;
+  }
+  .rauno-utility .util {
+    color: rgba(255,255,255,0.42);
+    transition: color 180ms ease;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+  .rauno-utility .util:hover {
+    color: rgba(255,255,255,0.85);
+  }
+
+  footer.metanote {
+    margin-top: 96px;
+    border-top: 1px solid var(--rule);
+    padding-top: 28px;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.65;
+    max-width: 64ch;
+  }
+  footer.metanote h3 {
+    font-size: 13px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+    font-weight: 500;
+  }
+  footer.metanote ul {
+    padding-left: 18px;
+    margin: 8px 0;
+  }
+  footer.metanote li { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main class="page">
+
+<p class="kicker">Launcher mocks · Phone That Cares · 2026.05.16</p>
+<h1>Four ways into the phone</h1>
+<p class="lede">Same content, same destinations, four different gestures for getting between the lock and the four modes. Try each one with a thumb (mouse-drag works too).</p>
+<p class="small">Directions are fixed across all four: ↑ Discover · ↓ Ask · ← Connect · → Home. Once committed, tap "reset" to return to the lock screen.</p>
+<p class="note">Mocks render in the browser with full interactivity — drag and release to commit. The threshold to commit is ~64px for variants B and C; variant A uses the existing puck-in-ring pattern. None of the destinations are themselves interactive in this mock; they're representative glimpses pulled from the Argos 2026 source.</p>
+
+<div class="row">
+  <!-- VARIANT A — current -->
+  <div class="variant">
+    <div class="head">
+      <div class="label">Variant A · current</div>
+      <h2>Puck in a ring</h2>
+      <p class="desc">Press the center puck. Drag toward a direction. Release past the ring's edge to commit. <em>The pattern as built today.</em></p>
+    </div>
+    <div class="phone" id="phone-a">
+      <button class="reset" data-reset>reset</button>
+      <div class="lock">
+        <div class="status-bar">
+          <span>11:11</span>
+          <span class="icons">
+            <span>5G</span>
+            <span>·</span>
+            <span>87%</span>
+          </span>
+        </div>
+        <div class="time-cluster">
+          <div class="time">11:11</div>
+          <div class="date-weather">
+            <span>Tue · May 15</span>
+            <span class="dot">·</span>
+            <span>☀ 68°</span>
+          </div>
+        </div>
+        <div class="notifications">
+          <div class="notif">
+            <div class="avatar" style="background:#3b82f6">S</div>
+            <div class="body">
+              <div class="app">Messages</div>
+              <div class="preview">Sarah: did you see the photos from last weekend?</div>
+            </div>
+            <div class="when">2m</div>
+          </div>
+          <div class="notif">
+            <div class="avatar" style="background:#8b5cf6">#</div>
+            <div class="body">
+              <div class="app">Slack</div>
+              <div class="preview">2 new messages in #general</div>
+            </div>
+            <div class="when">5m</div>
+          </div>
+        </div>
+        <div class="puck-stage idle" data-stage>
+          <div class="ring" data-ring>
+            <div class="puck" data-puck></div>
+            <span class="label up" data-label="up">Discover</span>
+            <span class="label down" data-label="down">Ask</span>
+            <span class="label left" data-label="left">Connect</span>
+            <span class="label right" data-label="right">Home</span>
+          </div>
+        </div>
+      </div>
+      <div class="dest" data-dest></div>
+    </div>
+  </div>
+
+  <!-- VARIANT B — drag from anywhere -->
+  <div class="variant">
+    <div class="head">
+      <div class="label">Variant B · anywhere-drag</div>
+      <h2>Drag from anywhere</h2>
+      <p class="desc">Touch any point on the lock screen, drag ~64px in a direction, release. <em>No center puck — the whole surface accepts the gesture.</em></p>
+    </div>
+    <div class="phone" id="phone-b">
+      <button class="reset" data-reset>reset</button>
+      <div class="lock">
+        <div class="status-bar">
+          <span>11:11</span>
+          <span class="icons">
+            <span>5G</span>
+            <span>·</span>
+            <span>87%</span>
+          </span>
+        </div>
+        <div class="time-cluster">
+          <div class="time">11:11</div>
+          <div class="date-weather">
+            <span>Tue · May 15</span>
+            <span class="dot">·</span>
+            <span>☀ 68°</span>
+          </div>
+        </div>
+        <div class="notifications">
+          <div class="notif">
+            <div class="avatar" style="background:#3b82f6">S</div>
+            <div class="body">
+              <div class="app">Messages</div>
+              <div class="preview">Sarah: did you see the photos from last weekend?</div>
+            </div>
+            <div class="when">2m</div>
+          </div>
+          <div class="notif">
+            <div class="avatar" style="background:#8b5cf6">#</div>
+            <div class="body">
+              <div class="app">Slack</div>
+              <div class="preview">2 new messages in #general</div>
+            </div>
+            <div class="when">5m</div>
+          </div>
+        </div>
+        <div class="free-stage">
+          <div class="origin-label" data-origin-label><span class="arrow"></span><span data-origin-name></span></div>
+        </div>
+      </div>
+      <div class="dest" data-dest></div>
+    </div>
+  </div>
+
+  <!-- VARIANT C — cross-dissolve -->
+  <div class="variant">
+    <div class="head">
+      <div class="label">Variant C · cross-dissolve</div>
+      <h2>Dissolve into the room</h2>
+      <p class="desc">Drag from anywhere. The destination fades in beneath your thumb as you drag — partial commit shows partial destination. Release past 64px to land. <em>Brian's idea.</em></p>
+    </div>
+    <div class="phone" id="phone-c">
+      <button class="reset" data-reset>reset</button>
+      <div class="dest" data-dest-bg style="opacity:0;background:#0a0a0a"></div>
+      <div class="lock" data-lock-c>
+        <div class="status-bar">
+          <span>11:11</span>
+          <span class="icons">
+            <span>5G</span>
+            <span>·</span>
+            <span>87%</span>
+          </span>
+        </div>
+        <div class="time-cluster">
+          <div class="time">11:11</div>
+          <div class="date-weather">
+            <span>Tue · May 15</span>
+            <span class="dot">·</span>
+            <span>☀ 68°</span>
+          </div>
+        </div>
+        <div class="notifications">
+          <div class="notif">
+            <div class="avatar" style="background:#3b82f6">S</div>
+            <div class="body">
+              <div class="app">Messages</div>
+              <div class="preview">Sarah: did you see the photos from last weekend?</div>
+            </div>
+            <div class="when">2m</div>
+          </div>
+          <div class="notif">
+            <div class="avatar" style="background:#8b5cf6">#</div>
+            <div class="body">
+              <div class="app">Slack</div>
+              <div class="preview">2 new messages in #general</div>
+            </div>
+            <div class="when">5m</div>
+          </div>
+        </div>
+        <div class="free-stage"></div>
+      </div>
+      <div class="dest" data-dest></div>
+    </div>
+  </div>
+
+  <!-- VARIANT D — mood lighting -->
+  <div class="variant">
+    <div class="head">
+      <div class="label">Variant D · mood lighting</div>
+      <h2>Light from the next room</h2>
+      <p class="desc">Same drag, but each mode has its own quality of light — a soft glow in the destination's color leaks from the edge you're swiping toward, then envelops the room you arrive in. <em>Atmosphere as wayfinding.</em></p>
+    </div>
+    <div class="phone" id="phone-d">
+      <button class="reset" data-reset>reset</button>
+      <div class="dest" data-dest-bg style="opacity:0;background:#0a0a0a"></div>
+      <div class="lock" data-lock-d>
+        <div class="status-bar">
+          <span>11:11</span>
+          <span class="icons">
+            <span>5G</span>
+            <span>·</span>
+            <span>87%</span>
+          </span>
+        </div>
+        <div class="time-cluster">
+          <div class="time">11:11</div>
+          <div class="date-weather">
+            <span>Tue · May 15</span>
+            <span class="dot">·</span>
+            <span>☀ 68°</span>
+          </div>
+        </div>
+        <div class="notifications">
+          <div class="notif">
+            <div class="avatar" style="background:#3b82f6">S</div>
+            <div class="body">
+              <div class="app">Messages</div>
+              <div class="preview">Sarah: did you see the photos from last weekend?</div>
+            </div>
+            <div class="when">2m</div>
+          </div>
+          <div class="notif">
+            <div class="avatar" style="background:#8b5cf6">#</div>
+            <div class="body">
+              <div class="app">Slack</div>
+              <div class="preview">2 new messages in #general</div>
+            </div>
+            <div class="when">5m</div>
+          </div>
+        </div>
+        <div class="free-stage"></div>
+      </div>
+      <div class="mood-overlay" data-mood></div>
+      <div class="dest" data-dest></div>
+    </div>
+  </div>
+</div>
+
+<section class="refined">
+  <div class="header-block">
+    <p class="kicker">Refined · synthesis</p>
+    <h2 class="real">Light from the next room, with an anchor</h2>
+    <p class="lede" style="margin-top:14px">Combining what worked across A through D. The fingerprint circle is the resting state — a stable visual that says "here is where the gesture begins" before you've touched anything. From it: drag in a direction. The destination's light bleeds in from that edge, then the room itself fades up underneath. The destination's name appears as a quiet preview in the top-left as you commit.</p>
+  </div>
+
+  <div class="refined-layout">
+    <div class="phone-wrap">
+      <div class="phone" id="phone-refined">
+        <button class="reset" data-reset>reset</button>
+        <div class="dest" data-dest-bg style="opacity:0;background:#0a0a0a"></div>
+
+        <div class="lock" data-lock-r>
+          <!-- Status bar with proper SVG icons -->
+          <div class="status-bar-full">
+            <div class="left">
+              <span>11:11</span>
+              <span class="notif-icon" style="background:#3b82f6">M</span>
+              <span class="notif-icon" style="background:#8b5cf6">#</span>
+            </div>
+            <div class="right">
+              <!-- Wifi -->
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor" aria-hidden="true">
+                <path d="M7 1.6 C 4.3 1.6 1.9 2.7 0.4 3.9 L 1.6 5.4 C 2.8 4.4 4.7 3.6 7 3.6 C 9.3 3.6 11.2 4.4 12.4 5.4 L 13.6 3.9 C 12.1 2.7 9.7 1.6 7 1.6 Z" opacity="0.4"/>
+                <path d="M7 4.4 C 5.1 4.4 3.4 5.2 2.4 6 L 3.7 7.6 C 4.5 6.9 5.7 6.4 7 6.4 C 8.3 6.4 9.5 6.9 10.3 7.6 L 11.6 6 C 10.6 5.2 8.9 4.4 7 4.4 Z"/>
+                <circle cx="7" cy="9" r="1"/>
+              </svg>
+              <!-- Signal bars -->
+              <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor" aria-hidden="true">
+                <rect x="0" y="7" width="2.4" height="3"/>
+                <rect x="3.4" y="5" width="2.4" height="5"/>
+                <rect x="6.8" y="2.5" width="2.4" height="7.5"/>
+                <rect x="10.2" y="0" width="2.4" height="10" opacity="0.4"/>
+              </svg>
+              <span>87%</span>
+              <!-- Battery -->
+              <svg width="22" height="10" viewBox="0 0 22 10" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+                <rect x="0.5" y="0.5" width="18" height="9" rx="1.6"/>
+                <rect x="19.5" y="3" width="1.6" height="4" fill="currentColor" stroke="none" rx="0.4"/>
+                <rect x="2" y="2" width="13.5" height="6" fill="currentColor" stroke="none" rx="0.6"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Destination preview (top-left, appears during drag) -->
+          <div class="dest-preview" data-preview><span class="arrow"></span><span data-preview-name></span></div>
+
+          <div class="time-cluster">
+            <div class="time">11:11</div>
+            <div class="date-weather">
+              <span>Tue · May 15</span>
+              <span class="dot">·</span>
+              <span>☀ 68°</span>
+            </div>
+          </div>
+
+          <div class="notifications">
+            <div class="notif">
+              <div class="avatar" style="background:#3b82f6">S</div>
+              <div class="body">
+                <div class="app">Messages</div>
+                <div class="preview">Sarah: did you see the photos from last weekend?</div>
+              </div>
+              <div class="when">2m</div>
+            </div>
+            <div class="notif">
+              <div class="avatar" style="background:#8b5cf6">#</div>
+              <div class="body">
+                <div class="app">Slack</div>
+                <div class="preview">2 new messages in #general</div>
+              </div>
+              <div class="when">5m</div>
+            </div>
+          </div>
+
+          <!-- Fingerprint anchor — the resting state -->
+          <div class="fp-anchor" data-fp>
+            <span class="breath"></span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/>
+              <path d="M14 13.12c0 2.38 0 6.38-1 8.88"/>
+              <path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/>
+              <path d="M2 12a10 10 0 0 1 18-6"/>
+              <path d="M2 16h.01"/>
+              <path d="M21.8 16c.2-2 .131-5.354 0-6"/>
+              <path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/>
+              <path d="M8.65 22c.21-.66.45-1.32.57-2"/>
+              <path d="M9 6.8a6 6 0 0 1 9 5.2c0 .47 0 1.17-.02 2"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="mood-overlay" data-mood></div>
+        <div class="dest" data-dest></div>
+      </div>
+    </div>
+
+    <div class="refined-commentary">
+      <h3>What came from where</h3>
+
+      <div class="item">
+        <div class="from">From A · puck</div>
+        <p class="head">Fingerprint as the resting state.</p>
+        <p class="body">The Pixel pattern: a circle on the lock screen showing where to put your thumb, with a fingerprint icon inside. Always visible, gently breathing at rest. Solves "the user opens the phone and nothing tells them where to start." The whole gesture begins from here.</p>
+      </div>
+
+      <div class="item">
+        <div class="from">From C · cross-dissolve</div>
+        <p class="head">Destination fades in during drag.</p>
+        <p class="body">Smoothstep curve over 74px of drag. Lock dims to 50% as you go. Lets you back out mid-gesture and reconsider — partial drag shows partial destination, not a hard binary.</p>
+      </div>
+
+      <div class="item">
+        <div class="from">From D · mood lighting</div>
+        <p class="head">Each room has its own light.</p>
+        <p class="body">A subtle colored bleed grows from the swipe-direction edge — Discover cool blue (top), Ask amber (bottom), Connect rose (left), Home pale daylight (right). After commit, the destination's own mood-tinted background carries the light forward. Palette dialed down ~35% from D — should read as atmosphere, not theme.</p>
+      </div>
+
+      <div class="item">
+        <div class="from">From B · drag-from-anywhere, repurposed</div>
+        <p class="head">Destination name as a quiet preview.</p>
+        <p class="body">Instead of the four-direction labels around a ring, a single label fades in at the top-left during drag — "↑ Discover" — naming where you're going. The corner is the right place because it stays out of the dissolve's way.</p>
+      </div>
+
+      <h3>Open dials</h3>
+      <div class="item">
+        <p class="head">Breath rate, mood intensity, threshold.</p>
+        <p class="body">Anchor sized to Pixel 8 default (48dp circle, 22dp icon) at ~25% from bottom. Breath: 2.6s ease-in-out at ±12% scale. Anchor drifts up to 16px with the thumb during drag. Mood tints sit at 6–11% on the destination background and bleed at 14–26% during drag. Commit threshold is 70px. All easy to tune once you've held it on a real thumb.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="rauno-section">
+  <p class="kicker">Alt register · for fun</p>
+  <h2 class="real" style="font-size:26px;font-weight:500;letter-spacing:-0.015em;text-transform:none;color:var(--ink);border-bottom:none;padding-bottom:0;margin:0 0 12px">If Rauno designed this</h2>
+  <p class="lede" style="margin-top:8px;max-width:60ch">Same gesture, same destinations. But the visual register shifts: typography-led, monospace metadata, hairlines instead of glows, a coordinate-target instead of a fingerprint sensor, a single drawn line instead of a mood bleed, indexed mode labels as the compass.</p>
+
+  <div class="rauno-layout">
+    <div class="phone" id="phone-rauno">
+      <button class="reset" data-reset>reset</button>
+      <div class="dest" data-dest-bg style="opacity:0;background:#000"></div>
+
+      <div class="lock-rauno" data-lock-rauno>
+        <!-- Standard Android status bar -->
+        <div class="status-bar-full">
+          <div class="left">
+            <span>11:11</span>
+            <span class="notif-icon" style="background:#3b82f6">M</span>
+            <span class="notif-icon" style="background:#8b5cf6">#</span>
+          </div>
+          <div class="right">
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor" aria-hidden="true">
+              <path d="M7 1.6 C 4.3 1.6 1.9 2.7 0.4 3.9 L 1.6 5.4 C 2.8 4.4 4.7 3.6 7 3.6 C 9.3 3.6 11.2 4.4 12.4 5.4 L 13.6 3.9 C 12.1 2.7 9.7 1.6 7 1.6 Z" opacity="0.4"/>
+              <path d="M7 4.4 C 5.1 4.4 3.4 5.2 2.4 6 L 3.7 7.6 C 4.5 6.9 5.7 6.4 7 6.4 C 8.3 6.4 9.5 6.9 10.3 7.6 L 11.6 6 C 10.6 5.2 8.9 4.4 7 4.4 Z"/>
+              <circle cx="7" cy="9" r="1"/>
+            </svg>
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor" aria-hidden="true">
+              <rect x="0" y="7" width="2.4" height="3"/>
+              <rect x="3.4" y="5" width="2.4" height="5"/>
+              <rect x="6.8" y="2.5" width="2.4" height="7.5"/>
+              <rect x="10.2" y="0" width="2.4" height="10" opacity="0.4"/>
+            </svg>
+            <span>87%</span>
+            <svg width="22" height="10" viewBox="0 0 22 10" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <rect x="0.5" y="0.5" width="18" height="9" rx="1.6"/>
+              <rect x="19.5" y="3" width="1.6" height="4" fill="currentColor" stroke="none" rx="0.4"/>
+              <rect x="2" y="2" width="13.5" height="6" fill="currentColor" stroke="none" rx="0.6"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Time block: hairline frame, time with weather icon to its right -->
+        <div class="rauno-time-block">
+          <div class="rauno-rule"></div>
+          <div class="rauno-time-row">
+            <span class="rauno-time">11:11</span>
+            <span class="rauno-weather-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2v2"/>
+                <path d="m4.93 4.93 1.41 1.41"/>
+                <path d="M20 12h2"/>
+                <path d="m19.07 4.93-1.41 1.41"/>
+                <path d="M15.95 12.65a4 4 0 0 0-5.93-4.13"/>
+                <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z"/>
+              </svg>
+            </span>
+          </div>
+          <div class="rauno-rule"></div>
+          <div class="rauno-time-meta">TUE 2026.05.16 — 68°F CLEAR — WAXING GIBBOUS</div>
+          <div class="rauno-rule"></div>
+        </div>
+
+        <!-- Spec-sheet notifications -->
+        <div class="rauno-notifs">
+          <div class="rauno-notif"><span class="idx">INBOX/01</span><span class="nm">SARAH</span> · SMS · 2m</div>
+          <div class="rauno-notif"><span class="idx">INBOX/02</span><span class="nm">SLACK</span> · #GENERAL · 5m</div>
+        </div>
+
+        <!-- Compass: four mode labels around a coordinate-target anchor -->
+        <div class="rauno-compass">
+          <svg class="line-svg" viewBox="0 0 340 220" preserveAspectRatio="none" aria-hidden="true">
+            <line x1="170" y1="110" x2="170" y2="110" stroke="rgba(255,255,255,0.85)" stroke-width="0.6" data-rauno-line/>
+          </svg>
+          <div class="rauno-mode" data-mode-label="up">DISCOVER</div>
+          <div class="rauno-mode" data-mode-label="right">HOME</div>
+          <div class="rauno-mode" data-mode-label="down">ASK</div>
+          <div class="rauno-mode" data-mode-label="left">CONNECT</div>
+
+          <div class="rauno-anchor" data-fp-rauno>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" aria-hidden="true">
+              <!-- Corner brackets -->
+              <path d="M 0 5 L 0 0 L 5 0"/>
+              <path d="M 24 5 L 24 0 L 19 0"/>
+              <path d="M 0 19 L 0 24 L 5 24"/>
+              <path d="M 24 19 L 24 24 L 19 24"/>
+              <!-- Crosshair -->
+              <line x1="12" y1="7" x2="12" y2="10"/>
+              <line x1="12" y1="14" x2="12" y2="17"/>
+              <line x1="7" y1="12" x2="10" y2="12"/>
+              <line x1="14" y1="12" x2="17" y2="12"/>
+              <circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Bottom utility icons: flashlight (left), camera (right) -->
+        <div class="rauno-utility">
+          <span class="util" aria-label="Flashlight">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/>
+              <line x1="6" y1="6" x2="18" y2="6"/>
+            </svg>
+          </span>
+          <span class="util" aria-label="Camera">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+              <circle cx="12" cy="13" r="3"/>
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <div class="dest" data-dest></div>
+    </div>
+
+    <div class="rauno-commentary">
+      <p>The interaction is identical to the Refined version — same fingerprint-anchor metaphor, same four-direction commit at 70px, same destinations behind. What changes is how the screen <em>talks</em>.</p>
+
+      <h4>Moves pulled from the lineage</h4>
+      <p><strong>Standard Android chrome at top.</strong> The status bar stays normal — real time, notification icons, wifi, signal, battery percent, battery icon. The Rauno register is in the body of the screen, not in the OS chrome at the edge. Familiar ground above the typographic monolith.</p>
+
+      <p><strong>Mono as a co-star in the body.</strong> Notifications, mode labels, and the time-meta line are all in <code>JetBrains Mono</code> with tight letter-spacing. The big time is sans (Inter Light, weight 200). The contrast between the two types — sans for the moment, mono for the metadata — <em>is</em> the design language.</p>
+
+      <p><strong>The four modes as a compass.</strong> <code>DISCOVER</code> at the top edge, <code>HOME</code> right, <code>ASK</code> down, <code>CONNECT</code> left — clockwise from the top. The active mode tightens its letter-spacing from <code>0.20em</code> to <code>0.24em</code>, which reads as "selected" without color.</p>
+
+      <p><strong>Hairlines, not glows.</strong> Three thin rules frame the time block (above, mid, below). During drag, a single 0.6px line draws from the anchor toward the active direction — a precise vector, not a mood. The mood-bleed gets dropped entirely.</p>
+
+      <p><strong>Coordinate-target, not sensor indicator.</strong> The fingerprint becomes a tiny crosshair-with-corner-brackets. Reads as instrument framing rather than biometric UI. The biometric still works underneath — the visual is just dressed differently.</p>
+
+      <p><strong>Weather as a glyph.</strong> A small line-art partly-cloudy icon next to the time at ~⅓ its height. Carries the technical/instrument register through to the meteorological detail. The temperature and condition still appear in the meta line below — the icon is glanceable redundancy, like the gauge next to the digit.</p>
+
+      <p><strong>Flashlight and camera as glyphs in the corners.</strong> Same line-art treatment, low opacity at rest, brightening on hover. The standard Pixel utility affordances, drawn in the Rauno hand.</p>
+
+      <p><strong>Subtraction of warmth.</strong> Pure <code>#000</code> background. Pure white type at varying opacity. No amber, no rose, no near-black — Rauno's register is cooler than ours by design. Worth knowing what we'd lose if we shipped this (the calming warmth of PTC) and what we'd gain (the precision-instrument register that signals "this is a different kind of phone").</p>
+
+      <h4>What it's still missing</h4>
+      <p>The four modes don't <em>feel</em> different from each other after commit. The mood lighting was doing real work to give Discover a different atmosphere than Connect. Without it, the four rooms become typographically distinct but tonally identical. If this register ships, we'll want to find Rauno's equivalent of mood — likely a per-mode accent color used very narrowly (a single 1px rule turning a specific hue), or per-mode typographic treatment.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="metanote">
+  <h3>What's in the mock</h3>
+  <ul>
+    <li>Lock-screen content matches Argos 2026 source: time, date, weather (☀ 68°), two seeded notifications (Sarah/Messages, Slack), Android status bar.</li>
+    <li>Destination glimpses pulled from the same source: Discover shows the 5 default scroll apps with their grayscale-mode treatment; Connect shows real contact/platform pairs (Sarah/Marcus/Mom/Dev Group/Jamie); Ask shows the waveform + memory snippet pattern; Home shows the app grid + 4-app dock (Phone/Messages/Chrome/Camera).</li>
+    <li>Thresholds: 60px in A (committed only after the puck crosses the ring's outer edge), 64px in B, 74px in C and D.</li>
+    <li>Mood palette in D — Discover: late-night library blue (top). Ask: candlelit amber (bottom). Connect: golden-hour rose (left). Home: cool midday daylight (right, gentlest of the four because Home is the baseline). All tints sit at 10–18% opacity over near-black — restraint over saturation.</li>
+  </ul>
+  <h3 style="margin-top:24px">Open questions</h3>
+  <ul>
+    <li>Cross-dissolve curve in C is currently linear-ish. Easing it (slow start, faster at threshold) might land more elegantly — let me know which the thumb prefers.</li>
+    <li>The current mock fully commits or fully snaps back. A third state — "you started but stopped halfway" — could either snap back (cheap, decisive) or hold position (information-rich but probably indecisive). Default is snap.</li>
+    <li>Variant B has a quiet "drag in any direction" hint at the bottom. Probably too obvious for production; useful in the mock so you can find the affordance.</li>
+  </ul>
+</footer>
+
+</main>
+
+<!-- Destination markup (cloned into phones by JS) -->
+<template id="dest-discover">
+  <div class="dest-screen dest-discover show">
+    <div class="head"><h3>Discover</h3><div class="clock">11:11</div></div>
+    <div class="apps">
+      <div class="app"><div class="icon" style="background:#E4405F">IG</div><div class="name">Instagram</div><div class="mode">grayscale · 30</div></div>
+      <div class="app"><div class="icon" style="background:#000000">X</div><div class="name">X</div><div class="mode">spacing · 15</div></div>
+      <div class="app"><div class="icon" style="background:#FF0000">YT</div><div class="name">YouTube</div><div class="mode">blur · 20</div></div>
+      <div class="app"><div class="icon" style="background:#FF4500">R</div><div class="name">Reddit</div><div class="mode">grayscale · 25</div></div>
+      <div class="app"><div class="icon" style="background:#FF6719">Su</div><div class="name">Substack</div><div class="mode">passive</div></div>
+      <div class="app"><div class="icon" style="background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);filter:none">+</div><div class="name" style="color:rgba(255,255,255,0.35)">add app</div><div class="mode"></div></div>
+    </div>
+  </div>
+</template>
+
+<template id="dest-ask">
+  <div class="dest-screen dest-ask show">
+    <div class="head" style="width:100%"><h3>Ask</h3><div class="clock">11:11</div></div>
+    <div class="wave">
+      <div class="bar" style="height:30%"></div>
+      <div class="bar" style="height:60%"></div>
+      <div class="bar" style="height:80%"></div>
+      <div class="bar" style="height:50%"></div>
+      <div class="bar" style="height:70%"></div>
+      <div class="bar" style="height:40%"></div>
+      <div class="bar" style="height:90%"></div>
+      <div class="bar" style="height:55%"></div>
+      <div class="bar" style="height:35%"></div>
+      <div class="bar" style="height:65%"></div>
+      <div class="bar" style="height:45%"></div>
+      <div class="bar" style="height:75%"></div>
+    </div>
+    <div class="listening">Listening</div>
+    <div class="snippet">
+      <div class="who">Argos remembers</div>
+      You're working on the Android fork this week. Last asked about the four-direction launcher.
+    </div>
+    <div class="snippet">
+      <div class="who">Argos remembers</div>
+      Marie's birthday is Friday.
+    </div>
+  </div>
+</template>
+
+<template id="dest-connect">
+  <div class="dest-screen dest-connect show">
+    <div class="head"><h3>Connect</h3><div class="clock">11:11</div></div>
+    <div class="conv"><div class="av">S</div><div class="body"><div class="name">Sarah</div><div class="platform">SMS</div><div class="preview">Did you see the photos from last weekend?</div></div><div class="when">2m</div></div>
+    <div class="conv"><div class="av">M</div><div class="body"><div class="name">Marcus</div><div class="platform">Signal</div><div class="preview">Thanks for the recommendation!</div></div><div class="when">1d</div></div>
+    <div class="conv"><div class="av">M</div><div class="body"><div class="name">Mom</div><div class="platform">SMS</div><div class="preview">Call me when you get a chance</div></div><div class="when">3d</div></div>
+    <div class="conv"><div class="av">D</div><div class="body"><div class="name">Dev Group</div><div class="platform">Signal</div><div class="preview">Meeting at 3pm tomorrow</div></div><div class="when">5h</div></div>
+    <div class="conv"><div class="av">J</div><div class="body"><div class="name">Jamie</div><div class="platform">WhatsApp</div><div class="preview">Sent you a reel</div></div><div class="when">2w</div></div>
+    <div class="conv"><div class="av">A</div><div class="body"><div class="name">Alex</div><div class="platform">Instagram DM</div><div class="preview">You: See you then!</div></div><div class="when">4mo</div></div>
+  </div>
+</template>
+
+<template id="dest-home">
+  <div class="dest-screen dest-home show">
+    <div class="head"><h3>Home</h3><div class="clock">11:11</div></div>
+    <div class="grid">
+      <div class="a"><div class="icon" style="background:#EA4335">M</div><div class="name">Gmail</div></div>
+      <div class="a"><div class="icon" style="background:#4285F4">C</div><div class="name">Calendar</div></div>
+      <div class="a"><div class="icon" style="background:#34A853">M</div><div class="name">Maps</div></div>
+      <div class="a"><div class="icon" style="background:#5C9CE6">☀</div><div class="name">Weather</div></div>
+      <div class="a"><div class="icon" style="background:#FBBC05">P</div><div class="name">Photos</div></div>
+      <div class="a"><div class="icon" style="background:#1DB954">S</div><div class="name">Spotify</div></div>
+      <div class="a"><div class="icon" style="background:#FFBB00">K</div><div class="name">Keep</div></div>
+      <div class="a"><div class="icon" style="background:#000000">U</div><div class="name">Uber</div></div>
+      <div class="a"><div class="icon" style="background:#3D95CE">V</div><div class="name">Venmo</div></div>
+      <div class="a"><div class="icon" style="background:#E4405F">I</div><div class="name">Instagram</div></div>
+      <div class="a"><div class="icon" style="background:#FF0000">Y</div><div class="name">YouTube</div></div>
+      <div class="a"><div class="icon" style="background:#25D366">W</div><div class="name">WhatsApp</div></div>
+    </div>
+    <div class="dock">
+      <div class="icon" style="background:#30D158">☎</div>
+      <div class="icon" style="background:#0A84FF">✉</div>
+      <div class="icon" style="background:#4285F4">⌬</div>
+      <div class="icon" style="background:#8E8E93">◉</div>
+    </div>
+  </div>
+</template>
+
+<script>
+const THRESHOLD_B = 64;
+const THRESHOLD_C = 74;
+const MOVE_REVEAL = 6;   // px of movement before A's ring + labels appear
+const SHOW_ORIGIN = 10;  // px of movement before B's origin label appears
+
+const DEST_LABELS = { up: 'Discover', down: 'Ask', left: 'Connect', right: 'Home' };
+const ARROW_GLYPH = { up: '↑', down: '↓', left: '←', right: '→' };
+
+function getDestTemplate(direction) {
+  const map = { up: 'dest-discover', down: 'dest-ask', left: 'dest-connect', right: 'dest-home' };
+  return document.getElementById(map[direction]).content.cloneNode(true);
+}
+
+function classifyDirection(dx, dy) {
+  if (Math.abs(dx) < 4 && Math.abs(dy) < 4) return null;
+  return Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : (dy < 0 ? 'up' : 'down');
+}
+
+function getEventPoint(e) {
+  if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  if (e.changedTouches && e.changedTouches[0]) return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+  return { x: e.clientX, y: e.clientY };
+}
+
+function reveal(dest, dir) {
+  dest.innerHTML = '';
+  dest.appendChild(getDestTemplate(dir));
+  dest.classList.add('revealed');
+}
+function unreveal(dest) {
+  dest.classList.remove('revealed');
+  setTimeout(() => { dest.innerHTML = ''; }, 240);
+}
+
+// VARIANT A — puck in ring; ring + labels appear after movement
+function initVariantA() {
+  const phone = document.getElementById('phone-a');
+  const stage = phone.querySelector('[data-stage]');
+  const ring = phone.querySelector('[data-ring]');
+  const puck = phone.querySelector('[data-puck]');
+  const labels = phone.querySelectorAll('[data-label]');
+  const dest = phone.querySelector('[data-dest]');
+  const RADIUS = 70;
+  const COMMIT = 60;
+  let active = false, origin = null, dir = null, revealed = false;
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    revealed = false;
+    origin = getEventPoint(e);
+    stage.classList.add('dragging');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    let dx = p.x - origin.x;
+    let dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > RADIUS) { dx *= RADIUS / dist; dy *= RADIUS / dist; }
+    puck.style.transform = `translate(${dx}px, ${dy}px)`;
+    if (!revealed && dist > MOVE_REVEAL) {
+      ring.classList.add('revealed');
+      stage.classList.add('revealed');
+      revealed = true;
+    }
+    dir = classifyDirection(dx, dy);
+    labels.forEach(l => l.classList.toggle('active', l.dataset.label === dir));
+  }
+  function onUp() {
+    if (!active) return;
+    active = false;
+    stage.classList.remove('dragging');
+    const m = puck.style.transform.match(/-?\d+\.?\d*/g);
+    const tx = m ? parseFloat(m[0]) : 0;
+    const ty = m ? parseFloat(m[1]) : 0;
+    const dist = Math.hypot(tx, ty);
+    if (dist > COMMIT && dir) {
+      reveal(dest, dir);
+    }
+    puck.style.transform = 'translate(0,0)';
+    labels.forEach(l => l.classList.remove('active'));
+    ring.classList.remove('revealed');
+    stage.classList.remove('revealed');
+    revealed = false;
+  }
+
+  puck.addEventListener('mousedown', onDown);
+  puck.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => unreveal(dest));
+}
+
+// VARIANT B — drag from anywhere; label appears at drag origin
+function initVariantB() {
+  const phone = document.getElementById('phone-b');
+  const lock = phone.querySelector('.lock');
+  const dest = phone.querySelector('[data-dest]');
+  const originLabel = phone.querySelector('[data-origin-label]');
+  const originName = phone.querySelector('[data-origin-name]');
+  const originArrow = originLabel.querySelector('.arrow');
+  let active = false, originScreen = null, originLocal = null, dir = null;
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    originScreen = getEventPoint(e);
+    const rect = phone.getBoundingClientRect();
+    originLocal = { x: originScreen.x - rect.left, y: originScreen.y - rect.top };
+    originLabel.style.left = originLocal.x + 'px';
+    originLabel.style.top  = originLocal.y + 'px';
+    lock.classList.add('dragging');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    const dx = p.x - originScreen.x;
+    const dy = p.y - originScreen.y;
+    const dist = Math.hypot(dx, dy);
+    dir = classifyDirection(dx, dy);
+    if (dir && dist > SHOW_ORIGIN) {
+      originArrow.textContent = ARROW_GLYPH[dir];
+      originName.textContent = DEST_LABELS[dir];
+      originLabel.classList.add('show');
+    } else {
+      originLabel.classList.remove('show');
+    }
+  }
+  function onUp(e) {
+    if (!active) return;
+    active = false;
+    lock.classList.remove('dragging');
+    const p = getEventPoint(e);
+    const dx = p.x - originScreen.x;
+    const dy = p.y - originScreen.y;
+    if (Math.hypot(dx, dy) > THRESHOLD_B && dir) {
+      reveal(dest, dir);
+    }
+    originLabel.classList.remove('show');
+  }
+
+  lock.addEventListener('mousedown', onDown);
+  lock.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => unreveal(dest));
+}
+
+// VARIANT C — cross-dissolve; threshold 74, smoothstep curve
+function initVariantC() {
+  const phone = document.getElementById('phone-c');
+  const lock = phone.querySelector('[data-lock-c]');
+  const dest = phone.querySelector('[data-dest]');
+  const destBg = phone.querySelector('[data-dest-bg]');
+  let active = false, origin = null, dir = null;
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    origin = getEventPoint(e);
+    lock.classList.add('dragging');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    const newDir = classifyDirection(dx, dy);
+
+    if (newDir !== dir) {
+      dir = newDir;
+      dest.innerHTML = '';
+      if (dir) {
+        dest.appendChild(getDestTemplate(dir));
+      }
+    }
+
+    if (dir) {
+      const raw = Math.min(dist / THRESHOLD_C, 1);
+      const eased = raw * raw * (3 - 2 * raw); // smoothstep
+      dest.style.transition = 'none';
+      destBg.style.transition = 'none';
+      dest.style.opacity = eased;
+      destBg.style.opacity = eased;
+      const slide = (1 - eased) * 14;
+      const tx = dir === 'left' ? slide : dir === 'right' ? -slide : 0;
+      const ty = dir === 'up' ? slide : dir === 'down' ? -slide : 0;
+      dest.style.transform = `translate(${tx}px, ${ty}px)`;
+      lock.style.opacity = 1 - eased * 0.5;
+    }
+  }
+  function onUp(e) {
+    if (!active) return;
+    active = false;
+    lock.classList.remove('dragging');
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    dest.style.transition = '';
+    destBg.style.transition = '';
+    if (dist > THRESHOLD_C && dir) {
+      dest.style.opacity = 1;
+      destBg.style.opacity = 1;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 0;
+      dest.classList.add('revealed');
+    } else {
+      dest.style.opacity = 0;
+      destBg.style.opacity = 0;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 1;
+      setTimeout(() => { if (!dest.classList.contains('revealed')) dest.innerHTML = ''; }, 300);
+    }
+  }
+
+  lock.addEventListener('mousedown', onDown);
+  lock.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => {
+    dest.classList.remove('revealed');
+    dest.style.opacity = 0;
+    destBg.style.opacity = 0;
+    dest.innerHTML = '';
+    lock.style.opacity = 1;
+  });
+}
+
+// VARIANT D — mood lighting: cross-dissolve + a colored light-bleed and
+// a destination that retains the mode's lighting after commit.
+function initVariantD() {
+  const phone = document.getElementById('phone-d');
+  const lock = phone.querySelector('[data-lock-d]');
+  const dest = phone.querySelector('[data-dest]');
+  const destBg = phone.querySelector('[data-dest-bg]');
+  const mood = phone.querySelector('[data-mood]');
+  let active = false, origin = null, dir = null;
+
+  // Per-direction mood gradients for the in-transit light-bleed.
+  // These are the SAME hue families as the destination mood-bg classes
+  // but with slightly higher alpha so the bleed reads during motion.
+  const moodGradient = {
+    up:    'radial-gradient(ellipse 110% 60% at top,    rgba(140, 160, 220, 0.42) 0%, transparent 75%)',
+    down:  'radial-gradient(ellipse 110% 60% at bottom, rgba(225, 170, 95,  0.38) 0%, transparent 75%)',
+    left:  'radial-gradient(ellipse 60% 110% at left,   rgba(225, 155, 140, 0.38) 0%, transparent 75%)',
+    right: 'radial-gradient(ellipse 60% 110% at right,  rgba(195, 210, 230, 0.24) 0%, transparent 75%)'
+  };
+  const moodClass = { up: 'mood-discover', down: 'mood-ask', left: 'mood-connect', right: 'mood-home' };
+
+  function applyDestMood(direction) {
+    dest.classList.remove('mood-discover','mood-ask','mood-connect','mood-home');
+    if (direction) dest.classList.add(moodClass[direction]);
+  }
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    origin = getEventPoint(e);
+    lock.classList.add('dragging');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    const newDir = classifyDirection(dx, dy);
+
+    if (newDir !== dir) {
+      dir = newDir;
+      dest.innerHTML = '';
+      if (dir) {
+        dest.appendChild(getDestTemplate(dir));
+        mood.style.background = moodGradient[dir];
+        applyDestMood(dir);
+      } else {
+        mood.style.background = 'transparent';
+        applyDestMood(null);
+      }
+    }
+
+    if (dir) {
+      const raw = Math.min(dist / THRESHOLD_C, 1);
+      const eased = raw * raw * (3 - 2 * raw); // smoothstep
+      dest.style.transition = 'none';
+      destBg.style.transition = 'none';
+      mood.style.transition = 'none';
+
+      // Mood overlay leads slightly — light arrives before the room itself.
+      // We bias the mood to grow ~1.3x faster than the dissolve, capped at 1.
+      const moodEased = Math.min(eased * 1.3, 1);
+      mood.style.opacity = moodEased;
+
+      dest.style.opacity = eased;
+      destBg.style.opacity = eased;
+      const slide = (1 - eased) * 14;
+      const tx = dir === 'left' ? slide : dir === 'right' ? -slide : 0;
+      const ty = dir === 'up' ? slide : dir === 'down' ? -slide : 0;
+      dest.style.transform = `translate(${tx}px, ${ty}px)`;
+      lock.style.opacity = 1 - eased * 0.5;
+    }
+  }
+  function onUp(e) {
+    if (!active) return;
+    active = false;
+    lock.classList.remove('dragging');
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    dest.style.transition = '';
+    destBg.style.transition = '';
+    mood.style.transition = 'opacity 320ms ease';
+    if (dist > THRESHOLD_C && dir) {
+      dest.style.opacity = 1;
+      destBg.style.opacity = 1;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 0;
+      // After commit, the destination's own mood-tinted background carries
+      // the lighting forward. Fade the in-transit overlay out so it doesn't
+      // double-tint.
+      mood.style.opacity = 0;
+      dest.classList.add('revealed');
+    } else {
+      dest.style.opacity = 0;
+      destBg.style.opacity = 0;
+      mood.style.opacity = 0;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 1;
+      setTimeout(() => {
+        if (!dest.classList.contains('revealed')) {
+          dest.innerHTML = '';
+          applyDestMood(null);
+        }
+      }, 320);
+    }
+  }
+
+  lock.addEventListener('mousedown', onDown);
+  lock.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => {
+    dest.classList.remove('revealed');
+    dest.style.opacity = 0;
+    destBg.style.opacity = 0;
+    mood.style.opacity = 0;
+    dest.innerHTML = '';
+    applyDestMood(null);
+    lock.style.opacity = 1;
+  });
+}
+
+// REFINED — fingerprint anchor + cross-dissolve + mood lighting (subtler)
+function initRefined() {
+  const phone = document.getElementById('phone-refined');
+  const lock = phone.querySelector('[data-lock-r]');
+  const fp = phone.querySelector('[data-fp]');
+  const dest = phone.querySelector('[data-dest]');
+  const destBg = phone.querySelector('[data-dest-bg]');
+  const mood = phone.querySelector('[data-mood]');
+  const preview = phone.querySelector('[data-preview]');
+  const previewName = phone.querySelector('[data-preview-name]');
+  const previewArrow = preview.querySelector('.arrow');
+  const THRESHOLD = 70;
+
+  // Slightly softer than D — the in-transit bleed should hint at the room's
+  // light, not announce it. Tints land in the 14–26% range.
+  const moodGradient = {
+    up:    'radial-gradient(ellipse 110% 60% at top,    rgba(140, 160, 220, 0.26) 0%, transparent 75%)',
+    down:  'radial-gradient(ellipse 110% 60% at bottom, rgba(225, 170, 95,  0.24) 0%, transparent 75%)',
+    left:  'radial-gradient(ellipse 60% 110% at left,   rgba(225, 155, 140, 0.24) 0%, transparent 75%)',
+    right: 'radial-gradient(ellipse 60% 110% at right,  rgba(195, 210, 230, 0.14) 0%, transparent 75%)'
+  };
+  const moodClass = { up: 'mood-r-discover', down: 'mood-r-ask', left: 'mood-r-connect', right: 'mood-r-home' };
+
+  let active = false, origin = null, dir = null;
+
+  function applyDestMood(direction) {
+    dest.classList.remove('mood-r-discover','mood-r-ask','mood-r-connect','mood-r-home');
+    if (direction) dest.classList.add(moodClass[direction]);
+  }
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    origin = getEventPoint(e);
+    fp.classList.add('engaged');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    const newDir = classifyDirection(dx, dy);
+
+    if (newDir !== dir) {
+      dir = newDir;
+      dest.innerHTML = '';
+      if (dir) {
+        dest.appendChild(getDestTemplate(dir));
+        mood.style.background = moodGradient[dir];
+        applyDestMood(dir);
+        previewArrow.textContent = ARROW_GLYPH[dir];
+        previewName.textContent = DEST_LABELS[dir];
+      } else {
+        mood.style.background = 'transparent';
+        applyDestMood(null);
+      }
+    }
+
+    if (dir) {
+      const raw = Math.min(dist / THRESHOLD, 1);
+      const eased = raw * raw * (3 - 2 * raw); // smoothstep
+      dest.style.transition = 'none';
+      destBg.style.transition = 'none';
+      mood.style.transition = 'none';
+
+      // Light leads the room: bleed grows ~1.25x as fast as the dissolve.
+      mood.style.opacity = Math.min(eased * 1.25, 1);
+      dest.style.opacity = eased;
+      destBg.style.opacity = eased;
+
+      const slide = (1 - eased) * 12;
+      const tx = dir === 'left' ? slide : dir === 'right' ? -slide : 0;
+      const ty = dir === 'up' ? slide : dir === 'down' ? -slide : 0;
+      dest.style.transform = `translate(${tx}px, ${ty}px)`;
+
+      // Lock dims slightly; preview text fades in starting at ~25% drag
+      lock.style.opacity = 1 - eased * 0.45;
+      const previewOpacity = Math.max(0, (eased - 0.2) / 0.8);
+      preview.style.opacity = previewOpacity;
+      preview.classList.toggle('show', previewOpacity > 0);
+
+      // Fingerprint anchor follows the thumb slightly (max 16px drift, scaled to the smaller anchor)
+      const maxFpDrift = 16;
+      const fpDist = Math.min(dist, maxFpDrift);
+      const angle = Math.atan2(dy, dx);
+      const fpx = Math.cos(angle) * fpDist;
+      const fpy = Math.sin(angle) * fpDist;
+      fp.style.transform = `translateX(-50%) translate(${fpx}px, ${fpy}px)`;
+    } else {
+      fp.style.transform = 'translateX(-50%)';
+    }
+  }
+  function onUp(e) {
+    if (!active) return;
+    active = false;
+    fp.classList.remove('engaged');
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    dest.style.transition = '';
+    destBg.style.transition = '';
+    mood.style.transition = 'opacity 360ms ease';
+    preview.style.transition = 'opacity 220ms ease';
+
+    if (dist > THRESHOLD && dir) {
+      dest.style.opacity = 1;
+      destBg.style.opacity = 1;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 0;
+      mood.style.opacity = 0;
+      preview.classList.remove('show');
+      preview.style.opacity = 0;
+      dest.classList.add('revealed');
+    } else {
+      dest.style.opacity = 0;
+      destBg.style.opacity = 0;
+      mood.style.opacity = 0;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 1;
+      preview.classList.remove('show');
+      preview.style.opacity = 0;
+      fp.style.transform = 'translateX(-50%)';
+      setTimeout(() => {
+        if (!dest.classList.contains('revealed')) {
+          dest.innerHTML = '';
+          applyDestMood(null);
+        }
+      }, 360);
+    }
+  }
+
+  fp.addEventListener('mousedown', onDown);
+  fp.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => {
+    dest.classList.remove('revealed');
+    dest.style.opacity = 0;
+    destBg.style.opacity = 0;
+    mood.style.opacity = 0;
+    dest.innerHTML = '';
+    applyDestMood(null);
+    lock.style.opacity = 1;
+    fp.style.transform = 'translateX(-50%)';
+  });
+}
+
+// RAUNO — alt register. Same gesture mechanics, different visual language.
+function initRauno() {
+  const phone = document.getElementById('phone-rauno');
+  const lock = phone.querySelector('[data-lock-rauno]');
+  const fp = phone.querySelector('[data-fp-rauno]');
+  const dest = phone.querySelector('[data-dest]');
+  const destBg = phone.querySelector('[data-dest-bg]');
+  const lineEl = phone.querySelector('[data-rauno-line]');
+  const modeLabels = phone.querySelectorAll('[data-mode-label]');
+  const THRESHOLD = 70;
+  const ORIGIN_X = 170, ORIGIN_Y = 110;
+
+  let active = false, origin = null, dir = null, lastDist = 0;
+
+  function resetLine() {
+    lineEl.setAttribute('x2', ORIGIN_X);
+    lineEl.setAttribute('y2', ORIGIN_Y);
+  }
+
+  function onDown(e) {
+    if (dest.classList.contains('revealed')) return;
+    active = true;
+    origin = getEventPoint(e);
+    fp.classList.add('engaged');
+    e.preventDefault();
+  }
+  function onMove(e) {
+    if (!active) return;
+    const p = getEventPoint(e);
+    const dx = p.x - origin.x;
+    const dy = p.y - origin.y;
+    const dist = Math.hypot(dx, dy);
+    lastDist = dist;
+    const newDir = classifyDirection(dx, dy);
+
+    if (newDir !== dir) {
+      dir = newDir;
+      dest.innerHTML = '';
+      if (dir) dest.appendChild(getDestTemplate(dir));
+      modeLabels.forEach(l => l.classList.toggle('active', l.dataset.modeLabel === dir));
+    }
+
+    if (dir) {
+      const raw = Math.min(dist / THRESHOLD, 1);
+      const eased = raw * raw * (3 - 2 * raw);
+      dest.style.transition = 'none';
+      destBg.style.transition = 'none';
+      dest.style.opacity = eased;
+      destBg.style.opacity = eased;
+      const slide = (1 - eased) * 12;
+      const tx = dir === 'left' ? slide : dir === 'right' ? -slide : 0;
+      const ty = dir === 'up' ? slide : dir === 'down' ? -slide : 0;
+      dest.style.transform = `translate(${tx}px, ${ty}px)`;
+      lock.style.opacity = 1 - eased * 0.5;
+
+      const lineLen = Math.min(eased * 95, 95);
+      let lx2 = ORIGIN_X, ly2 = ORIGIN_Y;
+      if (dir === 'up')    ly2 = ORIGIN_Y - lineLen;
+      if (dir === 'down')  ly2 = ORIGIN_Y + lineLen;
+      if (dir === 'left')  lx2 = ORIGIN_X - lineLen;
+      if (dir === 'right') lx2 = ORIGIN_X + lineLen;
+      lineEl.setAttribute('x2', lx2);
+      lineEl.setAttribute('y2', ly2);
+    } else {
+      resetLine();
+    }
+  }
+  function onUp() {
+    if (!active) return;
+    active = false;
+    fp.classList.remove('engaged');
+    dest.style.transition = '';
+    destBg.style.transition = '';
+
+    if (lastDist > THRESHOLD && dir) {
+      dest.style.opacity = 1;
+      destBg.style.opacity = 1;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 0;
+      dest.classList.add('revealed');
+    } else {
+      dest.style.opacity = 0;
+      destBg.style.opacity = 0;
+      dest.style.transform = 'translate(0,0)';
+      lock.style.opacity = 1;
+      resetLine();
+      modeLabels.forEach(l => l.classList.remove('active'));
+      setTimeout(() => { if (!dest.classList.contains('revealed')) dest.innerHTML = ''; }, 300);
+    }
+    lastDist = 0;
+  }
+
+  fp.addEventListener('mousedown', onDown);
+  fp.addEventListener('touchstart', onDown, { passive: false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('mouseup', onUp);
+  window.addEventListener('touchend', onUp);
+  phone.querySelector('[data-reset]').addEventListener('click', () => {
+    dest.classList.remove('revealed');
+    dest.style.opacity = 0;
+    destBg.style.opacity = 0;
+    dest.innerHTML = '';
+    lock.style.opacity = 1;
+    resetLine();
+    modeLabels.forEach(l => l.classList.remove('active'));
+  });
+}
+
+initVariantA();
+initVariantB();
+initVariantC();
+initVariantD();
+initRefined();
+initRauno();
+</script>
+</body>
+</html>

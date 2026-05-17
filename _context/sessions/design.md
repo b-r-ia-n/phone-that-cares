@@ -1,0 +1,8 @@
+---design-todo---
+- shipped: Rauno-register lock screen in visuals/launcher-mocks.html — standard Android status bar at top, no indices on mode labels, flashlight + camera bottom corners, partly-cloudy glyph baseline-aligned with time digits
+- shipped: _context/android-build-2026-05-15/launcher-build-brief.md updated — now specs the Rauno register for the engineer instance to build (was previously specifying Refined)
+- build brief points engineer to spawn sub-instance reading phone-os/ArgOS.Mock.Sessions.2026.04.15 for destination contents
+- earlier "Refined" + variants A/B/C/D remain on the launcher-mocks page as superseded explorations; commentary updated
+- 2 memories saved (time-cost, no-negative-framing)
+- awaiting: Brian's read on the weather-icon baseline alignment; final pass on brief before handoff
+- next: any tuning Brian wants on the Rauno version before the engineer instance reads the brief overnight

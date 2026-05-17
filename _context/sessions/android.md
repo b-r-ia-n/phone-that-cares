@@ -1,0 +1,9 @@
+---android-todo---
+- substrate FLIPPED back to stock Pixel firmware (was Graphene); biometric priority + most-trodden-path won
+- Plan A = stock + Magisk + priv-app | Plan B = stock-AOSP source fork | Graphene deferred to v2
+- biometric primary | lockscreen notifications kept | LLM notification filter in v1 (Discover settings)
+- emergency call: lean include; punt only if true blocker
+- autonomy framing softened — wip branch + frequent commits = nothing truly irreversible; swing for the moon
+- Pixel 6 plugged in & empty → T0.5 (Brian 5-min prep tonight) + T6 (overnight hardware path) added
+- overnight plan: 9 task groups (T0, T0.5, T1, T2, T3, T4, T4.5, T5, T6, T7)
+- waiting on Brian: T0.5 hardware prep tonight + final read of build plan

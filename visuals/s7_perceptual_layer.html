@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>§7 — The Perceptual Layer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 { font-size: 1.4rem; font-weight: 400; letter-spacing: 0.05em; color: #8b949e; margin-bottom: 8px; }
+  h2 { font-size: 2rem; font-weight: 600; color: #e6edf3; margin-bottom: 12px; }
+  .subtitle {
+    font-size: 0.9rem;
+    color: #8b949e;
+    margin-bottom: 48px;
+    text-align: center;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+
+  .diagram {
+    position: relative;
+    width: 800px;
+    height: 480px;
+  }
+
+  /* Three vertical zones */
+  .zone {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 20px;
+  }
+  .zone-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  /* Left zone: content pipeline */
+  .zone-pipeline {
+    left: 0;
+    width: 260px;
+    background: rgba(240, 136, 62, 0.04);
+    border: 1px solid rgba(240, 136, 62, 0.15);
+  }
+  .zone-pipeline .zone-label { color: #f0883e; }
+
+  /* Center zone: perceptual layer */
+  .zone-layer {
+    left: 290px;
+    width: 220px;
+    background: rgba(126, 231, 135, 0.06);
+    border: 2px solid rgba(126, 231, 135, 0.3);
+    box-shadow: 0 0 40px rgba(126, 231, 135, 0.08), inset 0 0 40px rgba(126, 231, 135, 0.03);
+  }
+  .zone-layer .zone-label { color: #7ee787; }
+
+  /* Right zone: the eye / user */
+  .zone-eye {
+    left: 540px;
+    width: 260px;
+    background: rgba(163, 113, 247, 0.04);
+    border: 1px solid rgba(163, 113, 247, 0.15);
+  }
+  .zone-eye .zone-label { color: #a371f7; }
+
+  /* Pipeline items */
+  .pipeline-items {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 20px;
+    width: 100%;
+  }
+  .p-item {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.78rem;
+  }
+  .p-item .p-name { font-weight: 600; color: #f0883e; font-size: 0.8rem; }
+  .p-item .p-desc { color: #8b949e; margin-top: 2px; font-size: 0.72rem; }
+
+  /* Layer features */
+  .layer-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 0 16px;
+    width: 100%;
+  }
+  .l-item {
+    background: rgba(126, 231, 135, 0.06);
+    border: 1px solid rgba(126, 231, 135, 0.2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  .l-item .l-name { font-weight: 700; color: #7ee787; font-size: 0.78rem; }
+  .l-item .l-desc { color: #8b949e; margin-top: 3px; font-size: 0.7rem; }
+
+  /* Eye / user items */
+  .eye-items {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    padding: 20px;
+  }
+  .eye-icon {
+    width: 100px;
+    height: 100px;
+  }
+  .eye-text {
+    text-align: center;
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: #c9d1d9;
+  }
+  .eye-text strong { color: #a371f7; }
+
+  /* Arrows between zones */
+  .arrows-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* Before/after labels */
+  .comparison {
+    display: flex;
+    gap: 40px;
+    margin-top: 48px;
+    max-width: 700px;
+  }
+  .comp-box {
+    flex: 1;
+    padding: 20px 24px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    line-height: 1.6;
+  }
+  .comp-before {
+    background: rgba(248, 81, 73, 0.06);
+    border: 1px solid rgba(248, 81, 73, 0.2);
+  }
+  .comp-before .comp-title { color: #f85149; font-weight: 700; margin-bottom: 8px; }
+  .comp-after {
+    background: rgba(126, 231, 135, 0.06);
+    border: 1px solid rgba(126, 231, 135, 0.2);
+  }
+  .comp-after .comp-title { color: #7ee787; font-weight: 700; margin-bottom: 8px; }
+  .comp-box ul { padding-left: 16px; color: #8b949e; }
+  .comp-box li { margin-bottom: 4px; }
+
+  .footnote {
+    margin-top: 40px;
+    font-size: 0.75rem;
+    color: #484f58;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<h1>§7</h1>
+<h2>The Perceptual Layer</h2>
+<p class="subtitle">
+  A new layer that sits between the content pipeline and the user's eye —
+  not blocking content, but changing <em>how</em> and <em>when</em> it's delivered.
+</p>
+
+<div class="diagram">
+
+  <!-- Connector arrows -->
+  <svg class="arrows-svg" viewBox="0 0 800 480">
+    <!-- Pipeline → Layer -->
+    <defs>
+      <marker id="arr-orange" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="rgba(240,136,62,0.5)"/>
+      </marker>
+      <marker id="arr-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <path d="M0,0 L8,3 L0,6" fill="rgba(126,231,135,0.5)"/>
+      </marker>
+    </defs>
+    <!-- Thick flow: pipeline to layer -->
+    <path d="M260 100 Q275 100 290 100" stroke="rgba(240,136,62,0.2)" stroke-width="40" fill="none"/>
+    <path d="M260 200 Q275 200 290 200" stroke="rgba(240,136,62,0.15)" stroke-width="40" fill="none"/>
+    <path d="M260 300 Q275 300 290 300" stroke="rgba(240,136,62,0.1)" stroke-width="40" fill="none"/>
+    <!-- Thin flow: layer to eye (filtered) -->
+    <path d="M510 140 Q525 140 540 140" stroke="rgba(126,231,135,0.25)" stroke-width="16" fill="none"/>
+    <path d="M510 240 Q525 240 540 240" stroke="rgba(126,231,135,0.2)" stroke-width="12" fill="none"/>
+    <path d="M510 340 Q525 340 540 340" stroke="rgba(126,231,135,0.15)" stroke-width="8" fill="none"/>
+    <!-- Labels on arrows -->
+    <text x="275" y="84" fill="#f0883e" font-size="9" text-anchor="middle" font-weight="600">UNFILTERED</text>
+    <text x="525" y="124" fill="#7ee787" font-size="9" text-anchor="middle" font-weight="600">FILTERED</text>
+  </svg>
+
+  <!-- LEFT: Content Pipeline -->
+  <div class="zone zone-pipeline">
+    <span class="zone-label">Content Pipeline</span>
+    <div class="pipeline-items">
+      <div class="p-item">
+        <div class="p-name">Algorithmic Feed</div>
+        <div class="p-desc">Infinite scroll, ranked by engagement metrics</div>
+      </div>
+      <div class="p-item">
+        <div class="p-name">Push Notifications</div>
+        <div class="p-desc">Interrupts optimized for re-engagement</div>
+      </div>
+      <div class="p-item">
+        <div class="p-name">Autoplay & Previews</div>
+        <div class="p-desc">Reduce friction to zero — no decision required</div>
+      </div>
+      <div class="p-item">
+        <div class="p-name">Social Pressure</div>
+        <div class="p-desc">Read receipts, streaks, like counts</div>
+      </div>
+      <div class="p-item">
+        <div class="p-name">Dark Patterns</div>
+        <div class="p-desc">Confirmshaming, hidden settings, defaults</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: Perceptual Layer -->
+  <div class="zone zone-layer">
+    <span class="zone-label">Perceptual Layer</span>
+    <div class="layer-items">
+      <div class="l-item">
+        <div class="l-name">Friction Injection</div>
+        <div class="l-desc">Adds a pause before infinite scroll resumes</div>
+      </div>
+      <div class="l-item">
+        <div class="l-name">Notification Triage</div>
+        <div class="l-desc">Batches, delays, or downgrades non-urgent alerts</div>
+      </div>
+      <div class="l-item">
+        <div class="l-name">Grayscale / Dimming</div>
+        <div class="l-desc">Reduces visual reward signal from content</div>
+      </div>
+      <div class="l-item">
+        <div class="l-name">Time Awareness</div>
+        <div class="l-desc">Shows elapsed time, session count, daily total</div>
+      </div>
+      <div class="l-item">
+        <div class="l-name">Intent Check</div>
+        <div class="l-desc">"What did you open this app to do?"</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: The Eye / User -->
+  <div class="zone zone-eye">
+    <span class="zone-label">The User</span>
+    <div class="eye-items">
+      <svg class="eye-icon" viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="50" rx="42" ry="28" stroke="#a371f7" stroke-width="2.5"/>
+        <circle cx="50" cy="50" r="14" fill="rgba(163,113,247,0.15)" stroke="#a371f7" stroke-width="2"/>
+        <circle cx="50" cy="50" r="6" fill="#a371f7"/>
+        <circle cx="46" cy="46" r="2" fill="#e6edf3" opacity="0.7"/>
+        <!-- Eyelashes / rays of awareness -->
+        <line x1="50" y1="20" x2="50" y2="10" stroke="#a371f7" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="30" y1="28" x2="24" y2="20" stroke="#a371f7" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+        <line x1="70" y1="28" x2="76" y2="20" stroke="#a371f7" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+      </svg>
+      <div class="eye-text">
+        Content still arrives.<br>
+        But it arrives <strong>on the user's terms</strong>.<br><br>
+        The layer doesn't block —<br>
+        it <strong>restores the ability to choose</strong>.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Before / After comparison -->
+<div class="comparison">
+  <div class="comp-box comp-before">
+    <div class="comp-title">Without the Layer</div>
+    <ul>
+      <li>Content flows directly to the eye</li>
+      <li>Phone makers profit from maximum throughput</li>
+      <li>User has no structural defense</li>
+      <li>Willpower is the only filter</li>
+    </ul>
+  </div>
+  <div class="comp-box comp-after">
+    <div class="comp-title">With the Layer</div>
+    <ul>
+      <li>Content is mediated before reaching the eye</li>
+      <li>Friction replaces frictionlessness</li>
+      <li>The phone itself becomes the advocate</li>
+      <li>Architecture replaces willpower</li>
+    </ul>
+  </div>
+</div>
+
+<p class="footnote">
+  The perceptual layer is the core proposal: a phone that cares doesn't remove content — it gives
+  the user back the moment of choice that the pipeline was designed to eliminate.
+</p>
+
+</body>
+</html>

@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PTC Android v1 — synthesis &amp; build plan</title>
+<style>
+:root {
+  --bg: #f6f3ec;
+  --ink: #1a1714;
+  --muted: #6f6a62;
+  --rule: #d9d3c6;
+  --accent: #8a5a2b;
+  --accent-soft: #c4a07b;
+  --possible: #3d6b3a;
+  --impossible: #8a3a2b;
+  --neutral: #2b4a6b;
+  --card: #fffdf7;
+  --card-rule: #e6dfd0;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Helvetica Neue', sans-serif;
+  font-feature-settings: 'ss01', 'cv11', 'tnum';
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 0;
+  padding: 0 24px 120px;
+  max-width: 900px;
+  margin-inline: auto;
+}
+header { padding: 64px 0 28px; }
+.kicker {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+h1 { font-size: 32px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 6px; }
+.date { color: var(--muted); font-size: 13px; }
+h2 {
+  font-size: 22px; font-weight: 600; letter-spacing: -0.005em;
+  margin: 56px 0 14px; padding-top: 16px;
+  border-top: 1px solid var(--rule);
+}
+h3 { font-size: 16px; font-weight: 600; margin: 28px 0 8px; }
+h4 { font-size: 14px; font-weight: 600; margin: 18px 0 6px; color: var(--ink); }
+p, ul, ol { margin: 0 0 12px; }
+ul, ol { padding-left: 20px; }
+li { margin-bottom: 4px; }
+code {
+  font-family: 'Berkeley Mono', 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 13px; background: var(--card); padding: 1px 5px;
+  border: 1px solid var(--card-rule); border-radius: 3px;
+}
+pre {
+  font-family: 'Berkeley Mono', 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12.5px; background: var(--card); padding: 12px 14px;
+  border: 1px solid var(--card-rule); border-radius: 4px;
+  overflow-x: auto; line-height: 1.5;
+}
+a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+
+.tldr {
+  background: var(--card); border: 1px solid var(--card-rule);
+  padding: 20px 24px; border-radius: 6px; margin-top: 28px;
+}
+.tldr h3 { margin-top: 0; }
+
+.feature-list {
+  list-style: none; padding: 0; margin: 14px 0;
+  display: grid; grid-template-columns: 1fr; gap: 0;
+  border-top: 1px solid var(--rule);
+}
+.feature-list li {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 14px; padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+  margin: 0;
+}
+.feature-list .name { font-weight: 500; }
+.feature-list .gloss { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.feature-list .tag {
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap; padding-top: 4px;
+}
+.feature-list .tag.in { color: var(--possible); }
+.feature-list .tag.cut { color: var(--impossible); }
+.feature-list .tag.later { color: var(--neutral); }
+
+.phases {
+  display: grid; gap: 0; margin: 14px 0;
+  border-top: 1px solid var(--rule);
+}
+.phase {
+  display: grid; grid-template-columns: 90px 1fr 130px;
+  gap: 18px; padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+  align-items: baseline;
+}
+.phase .id { font-weight: 600; font-size: 13px; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; }
+.phase .what h4 { margin: 0 0 4px; font-size: 15px; }
+.phase .what p { font-size: 13.5px; color: var(--muted); margin: 0; }
+.phase .when { font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+
+.adv {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+  margin: 18px 0;
+}
+.adv > div {
+  background: var(--card); border: 1px solid var(--card-rule);
+  border-radius: 6px; padding: 18px 20px;
+}
+.adv .label {
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 8px; font-weight: 600;
+}
+.adv .possible .label { color: var(--possible); }
+.adv .impossible .label { color: var(--impossible); }
+.adv h4 { margin-top: 12px; font-size: 13.5px; }
+.adv ul { padding-left: 18px; }
+.adv li { font-size: 13.5px; }
+@media (max-width: 700px) {
+  .adv { grid-template-columns: 1fr; }
+  .phase { grid-template-columns: 1fr; gap: 4px; }
+  .phase .when { text-align: left; }
+}
+
+.callout {
+  background: var(--card); border-left: 3px solid var(--accent);
+  padding: 14px 18px; margin: 18px 0; border-radius: 0 4px 4px 0;
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout strong { color: var(--accent); }
+
+.meta-grid {
+  display: grid; grid-template-columns: auto 1fr;
+  gap: 6px 18px; margin: 12px 0;
+  font-size: 13.5px;
+}
+.meta-grid dt { color: var(--muted); }
+.meta-grid dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 12px 0; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+td.num { font-variant-numeric: tabular-nums; }
+
+.footnote { color: var(--muted); font-size: 12.5px; margin-top: 6px; }
+.gloss-inline { color: var(--muted); font-style: italic; }
+
+nav.toc {
+  position: sticky; top: 0; background: var(--bg);
+  padding: 16px 0 12px; margin-bottom: 24px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 13px;
+  z-index: 10;
+}
+nav.toc a { color: var(--muted); border-bottom: none; margin-right: 18px; }
+nav.toc a:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Phone That Cares — Android</div>
+  <h1>v1 synthesis &amp; build plan</h1>
+  <div class="date">2026-05-15 · written for Brian</div>
+</header>
+
+<nav class="toc">
+  <a href="#summary">Summary</a>
+  <a href="#features">Features</a>
+  <a href="#plan">Plan</a>
+  <a href="#loops">Loops</a>
+  <a href="#adv">Adversarial</a>
+  <a href="#open">Open</a>
+</nav>
+
+<section id="summary">
+<h2>Executive summary</h2>
+
+<div class="tldr">
+<h3>The headline call</h3>
+<p><strong>Path B, scoped sharper than the original brief — with D2-overlay as the explicit v2 destination, not a v2 maybe.</strong></p>
+<p>Both adversarial pairs converged on the same insight from opposite sides: <strong>the four-direction "lock screen" should not be the lock screen.</strong> Treating it as "the first screen you see after unlock" removes the single most fragile piece of the stack (SystemUI hooking) and is honest about what stock Android lets you replace. POSSIBLE-D2 said it explicitly. IMPOSSIBLE-B said it as a cut. They're describing the same move.</p>
+<p>Net effect: v1 ships in <strong>~4 weeks of focused work with parallel Claudes</strong>, not 2 (POSSIBLE-B was optimistic) and not 6–10 (IMPOSSIBLE-B was correctly pricing in the SystemUI hook we're now cutting). The features that matter for the thesis test all survive. The features that mostly buy us "demo-pretty" got cut or deferred.</p>
+</div>
+
+<p>Per-app grayscale stays load-bearing. Passive tracking stays. Argos integration stays. The Compose launcher stays. The four-direction surface stays — just one swipe deeper than the lock screen. Banking is explicitly out-of-scope for v1 (second phone or a card). You're the v1 tester; we're treating that as a known-bias signal, not a license.</p>
+
+<p>The <em>v2 graduation path</em> is the most interesting part: every line of code we write for v1 on Path B can move to D2-overlay (stock GrapheneOS substrate) unchanged, with the addition of a Sandboxed Play setup that restores banking. That graduation is what makes this a product trajectory and not a science experiment.</p>
+</section>
+
+<section id="features">
+<h2>Feature set, v1</h2>
+
+<p>Plain-English list. Everything has a one-line gloss.</p>
+
+<ul class="feature-list">
+
+<li>
+  <div>
+    <div class="name">Compose launcher (home screen)</div>
+    <div class="gloss">Replaces the default home screen. Owns the first-screen-after-unlock surface. Argos lives here.</div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Per-app grayscale, foreground-gated</div>
+    <div class="gloss">When a "scroll" app is foreground, the screen goes to grayscale; otherwise color. <span class="gloss-inline">Load-bearing for the thesis.</span></div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Passive usage tracking</div>
+    <div class="gloss">Reads how long each app is used. Feeds the dashboard and any future ramp logic. Standard Android permission, no root needed.</div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Argos chat surface (Connect)</div>
+    <div class="gloss">Reuses the existing val.town backend. Same Argos brain, new interface. One of the four "directions" from the mock.</div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">First-screen-after-unlock</div>
+    <div class="gloss">Where the four-direction surface lives. You unlock with your normal PIN/biometric; the Argos launcher is what greets you. <span class="gloss-inline">Not a SystemUI lock-screen replacement — that's the v2 fight.</span></div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Sessions screen</div>
+    <div class="gloss">From the mock. Functional but rough Compose surface. Polished in week 3 if there's time.</div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Three of four directions (Discover / Scroll / Do Stuff)</div>
+    <div class="gloss">Static placeholders in v1. One direction working &gt; four directions fake.</div>
+  </div>
+  <span class="tag later">Stub</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Banking, Wallet, tap-to-pay</div>
+    <div class="gloss">Rooted Pixel can't pass Play Integrity reliably in 2026. Second phone for banking, physical card for tap-to-pay.</div>
+  </div>
+  <span class="tag cut">Out</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Feed blur</div>
+    <div class="gloss">Either needs accessibility-tree walking (fragile) or full-screen blur (unusable). Punted, per the original handoff.</div>
+  </div>
+  <span class="tag cut">Out</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Break cards</div>
+    <div class="gloss">Cross-app render injection. Same as above — defer.</div>
+  </div>
+  <span class="tag cut">Out</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">SystemUI lock-screen replacement</div>
+    <div class="gloss">The most fragile piece in the original plan. Defer to v2 (where it lives properly as a SystemUI overlay on D2 or LSPosed module on Path B+).</div>
+  </div>
+  <span class="tag later">v2</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Per-app gradual grayscale ramp</div>
+    <div class="gloss">v1 is binary: app is greyscale-list or not. The interpolation curve is a polish item.</div>
+  </div>
+  <span class="tag later">v1.1</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">Custom notification surface</div>
+    <div class="gloss">Use the system shade in v1. Custom one is a one-week rabbit hole.</div>
+  </div>
+  <span class="tag later">v1.1</span>
+</li>
+
+<li>
+  <div>
+    <div class="name">People / About-Person / Ask / Conversations screens</div>
+    <div class="gloss">Functional Compose surfaces calling Argos. Polish later.</div>
+  </div>
+  <span class="tag in">In</span>
+</li>
+
+</ul>
+
+<p class="footnote">Glossary for the column at right: <strong>In</strong> = built in v1. <strong>Stub</strong> = placeholder UI, no functionality. <strong>Out</strong> = explicitly scoped out, second-phone fallback. <strong>v1.1 / v2</strong> = deferred to a named later round.</p>
+</section>
+
+<section id="plan">
+<h2>Build plan, phase by phase</h2>
+
+<p>Six phases. The first is tooling-only. The last is the live test. The four in the middle are the actual build. Total: ~7 calendar weeks if you're the only operator; ~4 if three Claudes are running parallel worktrees.</p>
+
+<div class="phases">
+
+<div class="phase">
+  <div class="id">P0</div>
+  <div class="what">
+    <h4>Tooling &amp; harness</h4>
+    <p>Root the Pixel 6. Set up <code>adb</code> over Tailscale, watchdog supervisor, snapshot-and-restore script, the four worktrees with shared <code>PROJECT_BRIEF.md</code>. Get one trivial Magisk module flashing end-to-end from a Claude.</p>
+  </div>
+  <div class="when">3–5 days</div>
+</div>
+
+<div class="phase">
+  <div class="id">P1</div>
+  <div class="what">
+    <h4>Compose launcher + Argos backend</h4>
+    <p>Home screen, sessions, ask, conversations, people, notifications shell. Argos calls the val.town endpoints. This is the biggest chunk and the most "normal Android app" of the lot. Sonnet on this worktree.</p>
+  </div>
+  <div class="when">1.5–2 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P2</div>
+  <div class="what">
+    <h4>Per-app grayscale, foreground-gated</h4>
+    <p>Phase A (fast win): AccessibilityService + <code>WRITE_SECURE_SETTINGS</code> route, the Grayscaler pattern. 2-second debounce for the flicker race. Phase B (polish if time): Magisk module that drives SurfaceFlinger color matrix directly, eliminating the flicker. Both worktrees can run in parallel.</p>
+  </div>
+  <div class="when">1–1.5 wks</div>
+</div>
+
+<div class="phase">
+  <div class="id">P3</div>
+  <div class="what">
+    <h4>First-screen-after-unlock surface</h4>
+    <p>The four-direction picker as the launcher's primary screen. Connect direction wired up. The other three are visible-but-static. The launcher claims itself as default home; stock keyguard is untouched.</p>
+  </div>
+  <div class="when">3–5 days</div>
+</div>
+
+<div class="phase">
+  <div class="id">P4</div>
+  <div class="what">
+    <h4>Stabilization</h4>
+    <p>Daily-driver dogfooding. Bug list from your own usage. No new features. Pixel monthly patch handling rehearsed (in case one lands during the live test). Recovery flash script tested end-to-end.</p>
+  </div>
+  <div class="when">5–7 days</div>
+</div>
+
+<div class="phase">
+  <div class="id">P5</div>
+  <div class="what">
+    <h4>Live test</h4>
+    <p>Two weeks. SIM in the Pixel. Second phone for banking. Daily journal of what's working, what's annoying, what surprised you. The thesis test.</p>
+  </div>
+  <div class="when">2 wks</div>
+</div>
+
+</div>
+
+<h3>Parallelization with multi-Claude</h3>
+
+<p>Four worktrees, three with a Claude resident, one passive (the harness):</p>
+
+<dl class="meta-grid">
+<dt><code>launcher-compose/</code></dt><dd>Sonnet. Pure Kotlin/Compose. Owns P1, P3. Mostly device-independent inner loop (uses emulator MCP for fast iteration).</dd>
+<dt><code>magisk-module/</code></dt><dd>Sonnet. Owns the SurfaceFlinger module half of P2. Needs the Pixel for verification.</dd>
+<dt><code>lsposed-hook/</code></dt><dd>Started as P3 worktree but reused for grayscale-via-accessibility-service. Sonnet.</dd>
+<dt><code>device-harness/</code></dt><dd>No resident Claude. Bash + Python + adb. Owns build → push → install → screenshot → logcat. The supervisor that owns cost, time, device safety. Brian touches this directly.</dd>
+</dl>
+
+<p>The "decompose by file ownership not feature" rule (per the loops research) maps naturally here — each worktree owns disjoint files. They integrate at the APK level, not source.</p>
+
+<h3>Cycle times</h3>
+
+<table>
+<thead><tr><th>Loop</th><th>Cycle</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>Launcher Compose change</td><td class="num">&lt;1s preview, ~20s install</td><td>Android Studio hot reload + <code>adb install -r</code></td></tr>
+<tr><td>Accessibility-service change</td><td class="num">~15s</td><td>No reboot; service restarts on reinstall</td></tr>
+<tr><td>Magisk module change</td><td class="num">~2 min</td><td>Module install + reboot</td></tr>
+<tr><td>Boot-image change (rare)</td><td class="num">~5–10 min</td><td>Patched <code>boot.img</code> flash + reboot</td></tr>
+<tr><td>Recovery from bad flash</td><td class="num">~10–30 min</td><td>Fastboot back to known-good factory image</td></tr>
+</tbody>
+</table>
+
+</section>
+
+<section id="loops">
+<h2>The Claude Code loop stack</h2>
+
+<p>You asked specifically about <code>/goal</code> and how to use it. Short version: <code>/goal</code> is real, shipped May 12 (three days ago), and it's exactly the right primitive for an OS-modification project where success is measurable — boots, module loads, launcher renders. Here's the stack the research converged on.</p>
+
+<h3>The four named patterns</h3>
+
+<dl class="meta-grid">
+<dt><strong>Auto Mode</strong></dt>
+<dd>Two-stage classifier that auto-approves routine tool calls within a turn. Removes prompt friction without giving up safety. Usually makes <code>--dangerously-skip-permissions</code> unnecessary.</dd>
+
+<dt><strong><code>/goal</code></strong></dt>
+<dd>Session-scoped completion condition (up to 4K chars). After each turn, a <em>separate</em> Haiku evaluator judges yes/no. "No" → another turn. "Yes" → done. The split between worker and judge is the whole point — LLMs are bad at deciding they're done; this fixes that. Works in headless <code>-p</code> mode for overnight runs.</dd>
+
+<dt><strong>Worktrees</strong></dt>
+<dd>Native since Feb 20. <code>claude --worktree feature-x</code> gives each Claude its own checkout. 4–8 concurrent is the practical ceiling; you bottleneck on review, not on Claude.</dd>
+
+<dt><strong>Ralph Loop</strong></dt>
+<dd>Community bash supervisor pattern (~100 lines). Runs Claude in fresh-context iterations against a <code>progress.txt</code>. Commits per iteration. State lives in git, not in the context window. The recipe for unattended overnight work.</dd>
+</dl>
+
+<h3>What you want for the Android build</h3>
+
+<p>Use <code>/goal</code> for bounded "make this thing work" tasks where the completion condition is mechanically checkable — example:</p>
+
+<pre>/goal launcher renders on Pixel 6 boot, app_drawer.test.sh exits 0,
+and adb logcat shows no FATAL across three consecutive reboots.
+Stop after 40 turns.</pre>
+
+<p>The Haiku judge can verify this because the worker has to surface the test exit codes and logcat output in the transcript. Conditions like "the code is good" or "it feels right" do not work — there's nothing to read.</p>
+
+<p>Use the <strong>Ralph Loop wrapper</strong> for overnight backlog grinding. Fresh context per iteration. Git-as-memory. A simple <code>progress.txt</code> like "fix all 12 launcher screen tests" gets ground through one task at a time, with the supervisor catching infinite loops and rate limits.</p>
+
+<p>Use <strong>worktrees</strong> for the four-track parallelism in the plan above. Each Claude has its own checkout; merges happen at module boundaries.</p>
+
+<h3>Watchdog must-haves</h3>
+
+<p>This part is non-negotiable. The supervisor owns cost, time, and device safety; Claude owns code. Don't blur this.</p>
+
+<ul>
+<li><strong>Token-spend cap.</strong> Kill Claude at $X per worktree per night.</li>
+<li><strong>Wall-clock cap per <code>/goal</code>.</strong> 6 hours, then kill and email you.</li>
+<li><strong>Reboot-loop detector.</strong> If the Pixel has rebooted 5× in 10 minutes and not reached <code>sys.boot_completed=1</code>, halt and stage a fastboot-recovery flash — but <em>do not auto-flash overnight</em>. Require your manual unlock for any flash operation. This is the one place where unattended automation could brick the device while you sleep.</li>
+<li><strong>Command denylist.</strong> <code>fastboot erase</code>, <code>fastboot flash</code>, <code>rm -rf</code>, <code>dd of=/dev/</code>, writes outside the module's path. Only the supervisor flashes.</li>
+<li><strong>Per-iteration autocommit.</strong> Explicit <code>git add</code> allowlist. <code>.gitignore</code> for keys.</li>
+<li><strong>One-page HTML report per overnight run.</strong> Three screenshots (boot, launcher, after-module-load), logcat diff vs golden, the goal verdict and reason from Haiku, the token spend. You wake up to one glanceable artifact instead of a transcript.</li>
+</ul>
+
+<h3>Tether setup</h3>
+
+<p>ADB over Tailscale is the production pattern. USB-bootstrap once per reboot to enable adbd in TCP mode, then ADB-over-Tailscale-IP on port 5555. <strong>Never expose 5555 publicly</strong> — ADB has no authentication. Use Tailscale ACLs.</p>
+
+<h3>Cost realism</h3>
+
+<p>The $200 Max 20× plan is for individual experimentation, not for production orchestration. A four-worktree overnight run will find the bottom of that bucket. Plan on API billing for the overnight Opus passes; keep the daytime worktrees on Sonnet with Auto Mode. Drop <code>MAX_THINKING_TOKENS</code> for supervisor-driven loops where thinking isn't earning anything.</p>
+</section>
+
+<section id="adv">
+<h2>The adversarial collaboration, side-by-side</h2>
+
+<p>Four agents, two pairs. Each pair argued a specific candidate build. Each agent did real web research and cited concrete sources. The full briefs are in this folder; what follows is the boiled-down core of each argument plus my mediated read.</p>
+
+<h3>Pair 1 — Path B (rooted Pixel 6 + Magisk + LSPosed)</h3>
+
+<div class="adv">
+
+<div class="possible">
+  <div class="label">Possible</div>
+  <p>Doable in 2–3 weeks because every load-bearing component exists as a maintained open-source project. Magisk v30.7 ships Feb 2026. <em>Vector</em> (the LSPosed successor, 11.2k stars, v2.0 March 2026) is the live SystemUI-hooking framework. Per-app grayscale via SurfaceFlinger is a documented one-line shell command (<code>service call SurfaceFlinger 1015</code>). Pixel 6 is the most-trodden root target on the planet.</p>
+
+  <h4>Strongest move</h4>
+  <ul>
+  <li>Cut banking from v1 entirely. Second phone for it. Deletes ~40% of engineering risk overnight.</li>
+  <li>Ship one of four lockscreen directions. The other three are static labels.</li>
+  <li>Reuse the Argos telegram backend unchanged.</li>
+  </ul>
+
+  <h4>Risks accepted</h4>
+  <ul>
+  <li>AccessibilityService can get killed by battery optimization. Mitigation: disable opt + foreground service.</li>
+  <li>LSPosed hook breaks a SystemUI subscreen we didn't test. Mitigation: defensive fall-through to original.</li>
+  <li>Two-week scope slips to four. Mitigation: ruthless cut list; week 3 is polish only.</li>
+  </ul>
+</div>
+
+<div class="impossible">
+  <div class="label">Impossible</div>
+  <p>Slips to 6–10 weeks, with ~40% probability of quiet degradation. Four hostile maintenance treadmills — Play Integrity keybox revocations on a weekly cycle, monthly Pixel patches that have repeatedly broken root through 2025, SystemUI ABI churn forcing per-version branches, and the per-app foreground race — each have half-lives shorter than the time to build a feature on top of them.</p>
+
+  <h4>Specifics that break</h4>
+  <ul>
+  <li>Revolut detects LSPosed itself (not just root). The moment you install the SystemUI hook, Revolut is gone.</li>
+  <li>Wells Fargo, Venmo, Chase, Crédit Mutuel, HSBC India, and many others reject Zygisk devices even with Shamiko.</li>
+  <li>Community grayscale tools (Grayscaler, GrayMan) document a flicker race requiring a 2-second debounce. Your "SurfaceFlinger Magisk" approach is novel, not well-trodden.</li>
+  <li>Sept 2025 Pixel patch broke Magisk root outright. People had to switch to KernelSU-Next.</li>
+  <li>Pixel 6 hits security-patch EOL in Oct 2026. ~17 months of life left.</li>
+  </ul>
+
+  <h4>The cut</h4>
+  <ul>
+  <li><strong>Drop the SystemUI lockscreen hook from v1.</strong> Ship per-app grayscale as a normal Accessibility-service app. Argos as Compose launcher. Stock keyguard. 3–4 weeks, actually shippable.</li>
+  </ul>
+</div>
+
+</div>
+
+<h3>Pair 2 — Path D2 (GrapheneOS substrate)</h3>
+
+<div class="adv">
+
+<div class="possible">
+  <div class="label">Possible</div>
+  <p>Build <em>on</em> GrapheneOS, not against it. <strong>Overlay first, fork only if overlay proves insufficient.</strong> Pixel 9 (not the 6), relocked bootloader with GrapheneOS's own AVB key, banking via Sandboxed Play Services. Costs ~2–3 extra weeks vs Path B; in exchange v1 is the same artifact as v2.</p>
+
+  <h4>Strongest move</h4>
+  <ul>
+  <li>D2-overlay, not D2-fork. Forking is a maintenance treadmill <em>and</em> a political minefield.</li>
+  <li>Per-app grayscale via a privileged userspace service driving SurfaceFlinger's existing color-transform matrix.</li>
+  <li>Lock-screen overlay lives as launcher + post-unlock activity — not a SystemUI swap (which requires firmware signing keys you don't have on stock GrapheneOS anyway).</li>
+  <li>Sandboxed Play handles Chase, Amex, Vanguard, Discover, most UK banks per the 12-month report.</li>
+  </ul>
+
+  <h4>Risks accepted</h4>
+  <ul>
+  <li>Sandboxed Play coverage is per-bank. Check Brian's specific stack first.</li>
+  <li>SurfaceFlinger may not accept per-package transforms from userspace. Fallback: ~200-line patch to <code>SurfaceFlinger.cpp</code> — a thin fork, not the OS-fork project.</li>
+  <li>Pixel 6 EOL is Oct 2026. Budget Pixel 8a or 9 (~$500) for the second tester.</li>
+  </ul>
+</div>
+
+<div class="impossible">
+  <div class="label">Impossible</div>
+  <p>Not "Path B plus banking" — a different category of project. You become an Android distribution maintainer. Realistic floor: 2–4 months to first daily-driver, with banking still partially broken, plus a permanent maintenance tax. The trap is that it's <em>plausible enough to start</em> and expensive in a slow-leaking way you don't notice until six months in.</p>
+
+  <h4>Specifics that break</h4>
+  <ul>
+  <li><strong>A forked GrapheneOS with its own AVB key does not pass meaningful Play Integrity.</strong> GrapheneOS itself passes only because Google whitelisted their key. Your fork has a different key, different attestation chain, no whitelist.</li>
+  <li>GrapheneOS's stance toward forkers is explicitly hostile (CalyxOS trademark/vendor-script denial). Don't expect help.</li>
+  <li>LineageOS, CalyxOS, /e/OS, DivestOS all need paid maintainers and still lag security patches. DivestOS shut down in 2025.</li>
+  <li>SystemUI is one of the most-churned AOSP components. Every release breaks your patch.</li>
+  <li>The "AOSP build server" reality: a first-time build is days, not hours. Real costs include OTA generation, signing pipeline, vendor blob extraction.</li>
+  </ul>
+
+  <h4>Honest concession</h4>
+  <ul>
+  <li>D2 <em>is</em> the right v2 if the v1 thesis lands. Don't make it v1.</li>
+  <li>Path B also fails Strong Integrity. The integrity difference is about <em>which apps</em>, not <em>whether</em>.</li>
+  </ul>
+</div>
+
+</div>
+
+<h3>My mediated take</h3>
+
+<div class="callout">
+<p><strong>The convergence the agents didn't notice they made:</strong> POSSIBLE-D2 and IMPOSSIBLE-B independently concluded that the four-direction lockscreen should not literally replace the lock screen. POSSIBLE-D2 reframes it as "the first screen after unlock." IMPOSSIBLE-B says cut the SystemUI hook entirely. They are describing the same thing.</p>
+<p>Once that's cut, Path B's hardest single subtask is gone. The IMPOSSIBLE-B 6–10 week estimate priced that in; without it, 4 weeks is realistic with parallel Claudes.</p>
+</div>
+
+<p>The deepest IMPOSSIBLE-D2 point isn't technical — it's <em>displacement</em>. If you spend 3–5 months on D2-fork, Argos doesn't get its per-app picker, the publishing bottleneck stays the bottleneck, and the thesis test gets delayed in service of also testing "can we relock the bootloader." That second question doesn't need an answer right now.</p>
+
+<p>The deepest POSSIBLE-D2 point isn't technical either — it's the <em>graduation argument</em>. Path B's substrate is non-transferable by construction. A rooted Pixel is, by definition, a device only the developer can use. The DenyList cat-and-mouse is adversarial; social-app vendors and Google's Play Integrity team are actively shipping countermeasures. Any v1 → v2 transition on Path B starts with "throw out the substrate."</p>
+
+<p><strong>The synthesis:</strong> the work that's most transferable v1 → v2 is also the work that's most thesis-relevant. The launcher, the per-app grayscale logic, the foreground-watcher pattern, the Argos integration — all of it ports unchanged from Path B to D2-overlay. The work that doesn't port (LSPosed SystemUI hook, Magisk-specific module plumbing) is the work we're already cutting from v1.</p>
+
+<p>So <strong>Path B-cut is mechanically the right v1, and D2-overlay is the explicit v2 destination</strong> — not a maybe. The graduation gate is "if the 2-week live test moves the needle, port to D2-overlay before adding a second tester."</p>
+
+<h3>Where the IMPOSSIBLE briefs were right and we're listening</h3>
+
+<ul>
+<li><strong>Per-app grayscale needs the Accessibility-service mechanism first, not the SurfaceFlinger Magisk module.</strong> The community tools that already work do it the Accessibility way and document the 2-second debounce race. Build that first; the Magisk approach is a polish pass.</li>
+<li><strong>The four-direction lock screen is a v2 feature, not v1.</strong> Both sides effectively conceded this.</li>
+<li><strong>Banking is genuinely out, not "we'll try Shelter."</strong> Second phone. Honest scope.</li>
+<li><strong>"Developer as tester" hides breakage.</strong> The mitigation: keep a written daily journal during the live test, with a specific question — "what did I open on the second phone today?" If that number is &gt;1 by day 3, the build's thesis is at risk and you should know.</li>
+</ul>
+
+<h3>Where the POSSIBLE briefs gave the actual recipe</h3>
+
+<ul>
+<li><strong>Vector (LSPosed successor) is alive and maintained.</strong> The "LSPosed is archived" thing is misleading — the framework was forked and renamed. If we ever do the SystemUI hook in v2, this is the framework.</li>
+<li><strong>SurfaceFlinger color matrix from a Magisk module</strong> is well-trodden enough to use in P2 phase B, just not as the only mechanism.</li>
+<li><strong>D2-overlay is dramatically cheaper than D2-fork.</strong> The overlay-only D2 cost is "extra week of setup + Sandboxed Play config" — it's not the AOSP-maintainer category at all.</li>
+</ul>
+</section>
+
+<section id="open">
+<h2>Open questions for Brian</h2>
+
+<ol>
+<li><strong>Banking inventory.</strong> Which specific banks/wallet apps do you actually use? POSSIBLE-D2 cites a per-app Sandboxed-Play compatibility check before flashing. Even for the v1 second-phone plan, knowing your stack changes the v2 graduation date.</li>
+<li><strong>The "developer is tester" mitigation.</strong> Are you OK with a daily journal during the live test, with one explicit question logged per day? IMPOSSIBLE-B's strongest non-technical point is that this is how you avoid drift without noticing.</li>
+<li><strong>Build server vs API spend.</strong> Cloud builds aren't actually load-bearing in v1 (overlay Path B doesn't do AOSP rebuilds). The build server pays off when/if we graduate to D2-overlay with the SurfaceFlinger patch. Buy it now or buy it on graduation?</li>
+<li><strong>Multi-Claude budget.</strong> The loops research is concrete: $200/mo Max 20× is for individual experimentation. Four worktrees overnight is API billing territory. Comfortable with that, or do we throttle to fewer concurrent agents?</li>
+<li><strong>Pixel 8a or 9 for second tester.</strong> Pixel 6 EOL is Oct 2026. If v1 succeeds, the second tester needs newer hardware. Worth ordering during P0 so it's on hand?</li>
+</ol>
+
+<p class="footnote">Source briefs: <code>possible-pathB.md</code>, <code>impossible-pathB.md</code>, <code>possible-pathD2.md</code>, <code>impossible-pathD2.md</code>, <code>claude-code-loops-research.md</code> — all in this folder. ~10,000 words of cited research underneath this synthesis. Read any of them if a specific claim above needs more weight.</p>
+</section>
+
+</body>
+</html>

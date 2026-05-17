@@ -1,0 +1,723 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>So you want to do stuff Google doesn't expect with Android — Phone That Cares</title>
+<!-- title below reflects the edit; keep page title matching for clean share previews -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#EDDED0;
+  --accent:#8B4A2B;
+  --accent-muted:rgba(139,74,43,0.45);
+  --border-subtle:rgba(139,74,43,0.18);
+  --border-strong:rgba(139,74,43,0.45);
+  --text-primary:#3B1F12;
+  --text-secondary:rgba(59,31,18,0.72);
+  --chip-good:rgba(63,91,50,0.18);
+  --chip-good-text:#3F5B32;
+  --chip-bad:rgba(139,34,34,0.18);
+  --chip-bad-text:#8B2222;
+  --chip-meh:rgba(123,90,31,0.20);
+  --chip-meh-text:#7B5A1F;
+  --chip-na:rgba(59,31,18,0.08);
+  --chip-na-text:rgba(59,31,18,0.5);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--text-primary)}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  line-height:1.65;
+  font-feature-settings:'cv11','ss01','ss03';
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  padding:32px 20px 80px;
+}
+@media (max-width:760px){body{padding:20px 14px 60px}}
+
+main{
+  max-width:760px;
+  margin:0 auto;
+  min-width:0;
+}
+
+header.intro{margin-bottom:2rem}
+.kicker{font-size:.72rem;text-transform:uppercase;letter-spacing:.18em;color:var(--text-secondary);margin-bottom:.9rem}
+h1{font-size:clamp(1.6rem,3.6vw,2.2rem);font-weight:600;line-height:1.2;letter-spacing:-0.02em;margin-bottom:.6rem}
+.subtitle{font-size:1.02rem;color:var(--text-secondary);font-style:italic;margin-bottom:1.5rem;line-height:1.5}
+.prose p{font-size:.97rem;line-height:1.7;margin-bottom:1rem}
+.prose p:last-child{margin-bottom:0}
+.prose strong{color:var(--accent)}
+.prose code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em;background:var(--border-subtle);padding:1px 5px;border-radius:3px}
+.source-note{border-left:2px solid var(--border-subtle);padding:.3rem 0 .3rem 1rem;font-size:.88rem;color:var(--text-secondary);line-height:1.65;margin-top:1.25rem}
+
+section{margin-bottom:2.5rem}
+section > h2{font-size:1.15rem;font-weight:600;margin:0 0 .4rem;letter-spacing:-0.01em}
+section > .note{font-size:.85rem;color:var(--text-secondary);margin-bottom:.8rem}
+
+.interventions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:.6rem 0 0}
+@media (max-width:540px){.interventions{grid-template-columns:1fr}}
+.iv{background:rgba(255,255,255,0.4);border:1px solid var(--border-subtle);border-radius:6px;padding:.65rem .8rem;cursor:pointer;transition:background 120ms ease,border-color 120ms ease}
+.iv:hover,.iv.hovered,.iv.pinned{background:rgba(139,74,43,0.12)}
+.iv.pinned{border-color:var(--accent)}
+.iv .iv-title{font-weight:600;font-size:.9rem;margin-bottom:.15rem}
+.iv .iv-sub{font-size:.76rem;color:var(--text-secondary)}
+
+table{width:100%;border-collapse:collapse;font-size:.87rem;background:rgba(255,255,255,0.35);border:1px solid var(--border-subtle);border-radius:6px;overflow:hidden}
+th,td{text-align:left;padding:.55rem .65rem;border-bottom:1px solid var(--border-subtle);vertical-align:top}
+tr:last-child td{border-bottom:none}
+th{font-weight:600;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-secondary);background:rgba(139,74,43,0.05);cursor:pointer;transition:background 120ms ease}
+th:hover,th.hovered,th.pinned{background:rgba(139,74,43,0.13)}
+th.pinned{color:var(--accent)}
+
+.moves-table td.num{width:32px;font-weight:600;color:var(--accent);text-align:center}
+.moves-table td.name{font-weight:500;font-size:.88rem}
+.moves-table tr{cursor:pointer;transition:background 120ms ease}
+.moves-table tr:hover td,.moves-table tr.hovered td,.moves-table tr.pinned td{background:rgba(139,74,43,0.10)}
+.moves-table tr.pinned td{background:rgba(139,74,43,0.16)}
+
+/* 4→5 threshold — a subtle background-colored gap, not a loud divider */
+.moves-table tr.threshold td,
+.matrix tr.threshold td,
+.matrix .thresh-col{border-top:3px solid var(--bg) !important}
+
+.matrix{font-size:.82rem}
+.matrix th,.matrix td{padding:.42rem .35rem;text-align:center;font-size:.8rem}
+.matrix th:first-child,.matrix td:first-child{text-align:left;padding-left:.7rem}
+.matrix th.svc,.matrix td.svc{width:auto;min-width:155px;cursor:pointer}
+.matrix th.svc{background:rgba(139,74,43,0.05)}
+.matrix td.svc{background:rgba(139,74,43,0.03);font-weight:500;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--text-primary)}
+.matrix tr:hover td.svc,.matrix tr.hovered td.svc,.matrix tr.pinned td.svc{background:rgba(139,74,43,0.14)}
+.matrix tr.pinned td.svc{color:var(--accent)}
+
+.cell{display:inline-block;min-width:40px;padding:3px 7px;border-radius:10px;font-size:.76rem;font-weight:500;cursor:pointer;transition:transform 90ms ease,box-shadow 90ms ease}
+.cell:hover,.cell.hovered,.cell.pinned{transform:translateY(-1px);box-shadow:0 2px 6px rgba(59,31,18,0.15)}
+.cell.pinned{outline:2px solid var(--accent);outline-offset:1px}
+.cell.good{background:var(--chip-good);color:var(--chip-good-text)}
+.cell.bad{background:var(--chip-bad);color:var(--chip-bad-text)}
+.cell.meh{background:var(--chip-meh);color:var(--chip-meh-text)}
+.cell.na{background:var(--chip-na);color:var(--chip-na-text)}
+
+.legend{display:flex;flex-wrap:wrap;gap:.6rem;font-size:.78rem;color:var(--text-secondary);margin:.4rem 0 1rem;align-items:center}
+.legend .cell{cursor:default}
+
+/* ---- side panel (desktop, wide viewports only) ---- */
+/* The dock occupies the right gutter (between main's right edge and the viewport
+   right edge) and centers the panel horizontally within it. */
+.panel-dock{
+  position:fixed;
+  top:0;bottom:0;
+  /* right gutter starts at the main column's right edge */
+  left:calc(50% + 370px);
+  right:0;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:20px 0;
+  pointer-events:none;
+  z-index:10;
+}
+.panel{
+  position:relative;
+  width:260px;
+  max-width:calc(100% - 16px);
+  max-height:calc(100vh - 40px);
+  overflow-y:auto;
+  background:var(--bg);
+  border:1px solid rgba(255,255,255,0.6);
+  border-radius:8px;
+  padding:16px 18px;
+  font-size:.88rem;
+  line-height:1.55;
+  pointer-events:auto;
+}
+.panel.default-state{
+  /* smaller and quieter when nothing is selected */
+  padding:12px 16px;
+}
+.panel.default-state h3{font-size:.95rem;margin-bottom:0}
+.panel.default-state .pin-hint{margin-top:.55rem;padding-top:0;border-top:none}
+.panel .p-kicker{font-size:.66rem;text-transform:uppercase;letter-spacing:.14em;color:var(--text-secondary);margin-bottom:.3rem}
+.panel h3{font-size:1rem;font-weight:600;margin-bottom:.55rem;line-height:1.3;color:var(--text-primary)}
+.panel p{margin-bottom:.6rem;color:var(--text-primary)}
+.panel .dim{color:var(--text-secondary);font-size:.83rem}
+.panel .tag{display:inline-block;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;padding:2px 8px;border-radius:10px;background:var(--chip-meh);color:var(--chip-meh-text);margin-right:.4rem;vertical-align:middle}
+.panel .pin-hint{margin-top:.85rem;padding-top:.65rem;border-top:1px dashed var(--border-subtle);font-size:.74rem;color:var(--text-secondary)}
+.panel .crumb{font-size:.74rem;color:var(--text-secondary);margin-bottom:.4rem}
+.panel .crumb strong{color:var(--accent);font-weight:500}
+.panel .break-box{margin-top:.85rem;padding:.55rem .7rem;background:rgba(139,74,43,0.06);border-radius:5px;font-size:.82rem}
+.panel .break-box .bb-title{font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-secondary);margin-bottom:.22rem}
+.panel .close-btn{display:none}
+
+/* On narrower desktops or tablets where the fixed right panel would overlap the
+   centered main column, fall back to the mobile bottom-sheet overlay. */
+@media (max-width:1319px){
+  .panel-dock{
+    position:static;
+    padding:0;
+    display:block;
+    pointer-events:auto;
+  }
+  .panel{
+    position:fixed;
+    inset:0;
+    top:auto;
+    bottom:0;
+    left:0;right:0;
+    width:auto;
+    margin:0;
+    background:var(--bg);
+    border-radius:16px 16px 0 0;
+    border:1px solid var(--border-subtle);
+    border-bottom:none;
+    max-height:78vh;
+    padding:20px 18px 24px;
+    transform:translateY(105%);
+    transition:transform 280ms cubic-bezier(0.2,0.9,0.3,1);
+    box-shadow:0 -12px 40px rgba(59,31,18,0.2);
+    z-index:50;
+    min-height:0;
+  }
+  .panel.open{transform:translateY(0)}
+  .panel .close-btn{
+    display:inline-flex;
+    position:absolute;top:12px;right:14px;
+    width:32px;height:32px;
+    align-items:center;justify-content:center;
+    background:var(--border-subtle);
+    border:none;color:var(--text-primary);
+    border-radius:16px;font-size:1.1rem;cursor:pointer;
+    line-height:1;
+  }
+  .backdrop{
+    position:fixed;inset:0;
+    background:rgba(59,31,18,0.35);
+    opacity:0;pointer-events:none;
+    transition:opacity 240ms ease;
+    z-index:40;
+  }
+  .backdrop.open{opacity:1;pointer-events:auto}
+}
+
+.footer-note{font-size:.82rem;color:var(--text-secondary);border-top:1px solid var(--border-subtle);padding-top:1.2rem;margin-top:3rem;line-height:1.65}
+.footer-note p{margin-bottom:.6rem}
+
+.table-wrap{overflow-x:auto;border-radius:6px}
+</style>
+</head>
+<body>
+
+<main>
+
+<header class="intro">
+  <p class="kicker">Notes from Phone That Cares</p>
+  <h1>So you want to do stuff Google doesn't expect with Android</h1>
+  <p class="subtitle">A map of what you give up to Google as you climb toward a more opinionated phone.</p>
+
+  <div class="prose">
+    <p>These are the <strong>moves</strong> a developer can make to build an <em>intention-management layer</em> on Android — a phone, a launcher, or an app that actively tries to help you use it less. Each row below is a move you (or your user) takes. Each column in the second table is a piece of Google's ecosystem that might stop cooperating in response.</p>
+    <p>If you want to ship a Play Store app that vibrates once an hour as a check-in, Google doesn't stand in your way — <strong>Move 1</strong> is unrestricted. But if you want to lay a color-drain overlay on top of Instagram that ramps to grayscale over twenty minutes, you need an API Google classifies as "accessibility" and polices heavily (<strong>Move 2</strong>). If you want to modify how Instagram actually renders its feed, no sanctioned path exists — the only way is to climb higher, and the higher you climb, the more Google services stop working on the device.</p>
+    <p class="source-note">These notes are the residue of an adversarial collaboration between two <a href="https://www.anthropic.com/claude">Claude Opus</a> instances — one arguing each intervention was impossible on stock Android, one arguing it was possible — plus a round of web research into Android developer docs, Play policy, and the custom-ROM communities. Published here in case they help anyone else working in this space. Current as of April 2026; Google's posture keeps shifting, so treat each cell as a snapshot.</p>
+  </div>
+</header>
+
+<section>
+<h2>The three example interventions</h2>
+<p class="note">The Phone That Cares app ships all three, per-app. Each has a different cost as you go up the moves. Tap one to see how it maps to the rest of this page.</p>
+<div class="interventions" id="interventions"></div>
+</section>
+
+<section>
+<h2>Moves the developer (or user) can make</h2>
+<p class="note">Least departure from Google's defaults at top; most at bottom. The thicker line between Move 4 and Move 5 is the big threshold — everything above 4 is still an app. Move 5 requires unlocking the phone's bootloader.</p>
+<div class="table-wrap">
+<table class="moves-table" id="movesTable">
+  <thead>
+    <tr><th>#</th><th>Move</th><th>User setup</th><th>Distribution</th></tr>
+  </thead>
+  <tbody id="movesBody"></tbody>
+</table>
+</div>
+</section>
+
+<section>
+<h2>What breaks at each move</h2>
+<p class="note">Hover any cell (desktop) or tap it (mobile) to see the specific story. Cells marked Y tend to "just work" — the ones marked ~ and N have caveats.</p>
+<div class="legend">
+  <span class="cell good">Y</span> works
+  <span class="cell meh">~</span> partial / flaky
+  <span class="cell bad">N</span> broken
+  <span class="cell na">n/a</span> not applicable
+</div>
+<div class="table-wrap">
+<table class="matrix" id="matrix">
+  <colgroup id="matrixCols"></colgroup>
+  <thead><tr id="matrixHead"></tr></thead>
+  <tbody id="matrixBody"></tbody>
+</table>
+</div>
+</section>
+
+<div class="footer-note">
+<p><strong>Categories of apps that break, in order:</strong> banking and payment apps first (they're the most Play-Integrity-paranoid). Then government ID apps (driver's licenses, tax auth). Then DRM-gated streaming like Netflix HDR (via Widevine L1). Then Android Auto. Then Google-owned apps like Wallet. The long tail of general-purpose apps — social, messaging, utilities, most games — works at every move up to 7 with some breakage; past 8 the long tail collapses too.</p>
+<p>Rough quantification: on <strong>Moves 1–4</strong> all apps work (your risk is to your OWN app's Play listing, not the device). On <strong>Move 5</strong> (root), maybe 70–85% of Play Store apps still work cleanly — banking, Wallet, and most DRM fail. On <strong>Move 6</strong> (GrapheneOS, relocked Pixel) over 90% of apps work via sandboxed Play Services; Wallet and Android Auto are the main casualties. On <strong>Move 7</strong> (LineageOS + MicroG) closer to 60–70%, heavy losses in banking/DRM. <strong>Move 8</strong> (fully de-Googled) drops to the F-Droid subset, roughly 5–10% of what a typical user expects to be available.</p>
+</div>
+
+</main>
+
+<div class="panel-dock">
+<aside class="panel default-state" id="panel">
+  <button class="close-btn" id="closeBtn" aria-label="Close">×</button>
+  <div class="p-kicker">Detail</div>
+  <h3 id="pTitle">Hover or tap anything to explore</h3>
+  <div id="pBody"></div>
+  <div class="pin-hint" id="pinHint">On mobile: tap any cell, then × to close.</div>
+</aside>
+</div>
+
+<div class="backdrop" id="backdrop"></div>
+
+<script>
+const moves = [
+  {
+    n:1, name:"Plain Play Store app", setup:"Tap Install", dist:"Play",
+    detail:`A normal Android app installed from the Play Store with no special permissions. This is the baseline — what every "regular" app looks like.
+    <br><br><strong>What it allows:</strong> app UI, its own notifications, running in the background with standard limits, collecting standard analytics — anything that stays inside its own sandbox.
+    <br><br><strong>Why it's the floor:</strong> an ordinary app can't observe what other apps are doing, can't draw over them, and can't change system settings. None of the three example interventions work here.
+    <br><br>Useful only as the reference point. Nothing Google offers breaks because you haven't asked the OS for any elevated trust.`,
+    breakage:`No collateral breakage. Your app, your rules — just a narrow surface area.`
+  },
+  {
+    n:2, name:'Play Store app + AccessibilityService ("digital wellbeing")', setup:"Accept the scary \"Allow full control\" prompt in Settings → Accessibility", dist:"Play",
+    detail:`<strong>AccessibilityService</strong> is Android's API designed for screen readers, switch-access devices, and other assistive tech for users with disabilities. It's very powerful: an app that holds it can detect which app is foregrounded, watch scroll events, and draw trusted overlays on top of any app.
+    <br><br>Google's policy permits non-accessibility uses like digital wellbeing <em>if</em> you declare them properly. In practice, apps like <strong>ScreenZen, one sec, Opal, Jomo, ActionDash, Minimalist Phone</strong> ship on Play today using this approach.
+    <br><br><strong>The intervention capabilities this unlocks:</strong> per-app foreground detection; full-screen overlay "break cards"; blur overlays on Android 12+ flagships (Pixel 6+, Samsung S22+); grayscale as a perceptual overlay tint (not mathematically true desaturation — you can't touch the real system grayscale without more permission).
+    <br><br><strong>The risk:</strong> Google periodically purges apps it judges are abusing the API. "Digital wellbeing" is named as an allowed category in practice but is not textually protected in policy. One policy sweep could delist you.`,
+    breakage:`No breakage to Google services on the user's device. The risk is only to YOUR app's Play listing.`
+  },
+  {
+    n:3, name:"Sideloaded APK + AccessibilityService", setup:"Sideload APK + unlock Android 13 \"Restricted settings\" per app", dist:"APK",
+    detail:`Same API capabilities as Move 2, but you distribute the APK from your own website, F-Droid, or similar. Users install it manually rather than through the Play Store.
+    <br><br><strong>The pain point:</strong> since Android 13, sideloaded apps hit a "Restricted settings" gate. The Accessibility toggle for your app is grayed out. The user has to open Settings → Apps → [your app] → tap the three-dot menu at the top-right → "Allow restricted settings." Only then can they enable the Accessibility permission.
+    <br><br>It's only ~4 extra taps, but they're in a deliberately hard-to-find place. Onboarding completion drops substantially. You also lose Play auto-updates, search, and telemetry.`,
+    breakage:`No device-level breakage. Your app-install funnel narrows substantially.`
+  },
+  {
+    n:4, name:"App + Shizuku → WRITE_SECURE_SETTINGS", setup:"One-time ~90-second wireless ADB pairing (on-device, Android 11+)", dist:"Play or APK",
+    detail:`<strong>Shizuku</strong> is a clever open-source helper app. Once activated, it runs a privileged background process that can grant "signature-level" permissions to other apps — including <code>WRITE_SECURE_SETTINGS</code>, which is what Android requires to flip its own system-wide grayscale toggle (the "accessibility daltonizer").
+    <br><br><strong>Setup:</strong> install Shizuku → enable Developer Options → enable Wireless Debugging → pair → tap "Start." Takes about 90 seconds, no laptop needed on Android 11+. Must be restarted after each reboot (again, ~20 seconds).
+    <br><br><strong>What this unlocks over Move 2/3:</strong> true system-wide grayscale via the real daltonizer. But the daltonizer is a binary switch (on/off) — there's no smooth-saturation slider in public Android. A truly "gradual" effect still requires a hybrid: overlay-tint ramp for the first ~18 minutes, then flip daltonizer on for the final state.
+    <br><br><strong>Crucially: no ecosystem breakage.</strong> Shizuku doesn't root the phone or unlock the bootloader. Play Integrity still passes at every level. Google Wallet, banking, Widevine L1 all intact. <strong>This is the ceiling for "still just an app."</strong>`,
+    breakage:`No breakage. Shizuku is a user-space trick; the OS remains fully certified.`
+  },
+  {
+    n:5, name:"Rooted stock ROM (Magisk / KernelSU)", setup:"Unlock bootloader (wipes data) + flash Magisk", dist:"APK",
+    detail:`The user has unlocked their phone's bootloader (a factory reset) and flashed <strong>Magisk</strong> or <strong>KernelSU</strong> to gain root access. With root, you can modify anything — including hooking <strong>SurfaceFlinger</strong> (Android's display compositor, the thing that actually draws the screen) to implement a genuinely smooth color-saturation ramp over 20 minutes.
+    <br><br><strong>What it unlocks:</strong> all three example interventions at true fidelity. The smooth mathematical saturation ramp that's impossible below this move becomes possible because you can reach framework-level color transforms.
+    <br><br><strong>What it costs:</strong> bootloader-unlocked devices fail Play Integrity's DEVICE and STRONG verdicts. Google Wallet refuses. Most banking apps refuse. Widevine L1 often downgrades to L3 (no Netflix HDR). Android Auto refuses.
+    <br><br>The community tools (Play Integrity Fix, TrickyStore) spoof BASIC verdicts using leaked keyboxes, but Google revokes them periodically — "all rooted users break at once" is a known event type. Enthusiast territory.`,
+    breakage:`First move where Google services start refusing on the device itself. Wallet ✗, Android Auto ✗, most banking apps ✗, Widevine L1 often ✗. ~70–85% of Play Store apps still work cleanly.`
+  },
+  {
+    n:6, name:"GrapheneOS on Pixel, bootloader relocked", setup:"Flash GrapheneOS via browser installer, relock bootloader", dist:"Pre-flashed device or self-flash",
+    detail:`<strong>GrapheneOS</strong> is a privacy-focused, security-hardened Android fork. It only runs on Pixel phones because <strong>Pixels are the only Android devices that let you re-lock the bootloader</strong> after flashing a custom OS using your new OS's own signing keys.
+    <br><br>This is the critical distinction from Move 5: because verified boot still works, Play Integrity can actually hardware-attest your device. GrapheneOS is a rare custom ROM that passes <strong>MEETS_DEVICE_INTEGRITY</strong> and often <strong>MEETS_STRONG_INTEGRITY</strong>. Widevine L1 is preserved (a Pixel-specific perk).
+    <br><br><strong>"Sandboxed Play Services"</strong> means Play Services is installed as a regular app with no system privileges, instead of as a system component. Most Play Store apps work. FCM works. Assistant works.
+    <br><br><strong>What still breaks:</strong> Google Wallet refuses (hardcoded OS allow-list, not an integrity failure). Android Auto refuses. Some banks refuse (compatibility varies; Revolut is historically hostile). Your audience narrows to people willing to flash their phone.`,
+    breakage:`Wallet ✗, Android Auto ✗, some banks ✗. Over 90% of Play Store apps work via sandboxed Play Services. The most user-friendly of the "fully custom OS" moves.`
+  },
+  {
+    n:7, name:"LineageOS / CalyxOS + MicroG", setup:"Flash custom ROM, install MicroG", dist:"APK / F-Droid / Aurora Store",
+    detail:`<strong>LineageOS</strong> is the venerable community Android fork. <strong>MicroG</strong> is an open-source reimplementation of the Google Play Services APIs — apps that require "Play Services" often work without Google's code actually being on the device.
+    <br><br>Broader device support than GrapheneOS (not Pixel-only), but weaker integrity story. MicroG can't produce hardware-backed attestation chained to a Google-certified signer, so Play Integrity fails at every level.
+    <br><br><strong>What breaks:</strong> Google Wallet, Widevine L1 (downgrades on unlock), Android Auto, Find My Device (unreliable), Assistant, RCS, and most banking apps. FCM has a MicroG shim but is flaky — some apps check for Google's real signature.`,
+    breakage:`Wallet ✗, Android Auto ✗, most banking ✗, Widevine L1 ✗ (non-Pixel), Assistant ✗. ~60–70% of Play Store apps work, weighted away from Google-certified-OS-demanding categories.`
+  },
+  {
+    n:8, name:"Fully de-Googled ROM", setup:"Flash", dist:"F-Droid only",
+    detail:`An Android build with no Google code at all — no Play Services, no MicroG, no spoofing. Distributions like /e/OS in its purest configuration, or bare LineageOS without any gapps package.
+    <br><br><strong>What works:</strong> F-Droid apps. Apps that explicitly support no-Google-services operation. That's it.
+    <br><br><strong>What breaks:</strong> Everything Google. No push notifications (you'd need apps that implement UnifiedPush or their own server-sent events). No Widevine L1, no Wallet, no RCS, no Find My Device, no Assistant, no auto-backup. Users with Nest / Chromecast / Pixel Watch / Google Home lose control of their other gear.
+    <br><br>Commercial audience: near zero for most target users. Philosophical purity: maximum.`,
+    breakage:`Everything Google ✗. Roughly 5–10% of what a typical user expects to be available — the F-Droid subset plus whatever self-hosted tooling you bring.`
+  },
+  {
+    n:9, name:"Your own AOSP + GMS license (Play-certified OEM)", setup:"None (turn-key for end user)", dist:"Play (your hardware)",
+    detail:`You are now a phone manufacturer. You've signed the <strong>Mobile Application Distribution Agreement (MADA)</strong> with Google, your device passes the <strong>Compatibility Test Suite (CTS)</strong>, and Google has licensed you the full Google Mobile Services stack.
+    <br><br>You can ship any modifications to Android you want — as long as they don't break CTS compliance — and all Google apps and certified-OS-dependent apps work on your hardware. This is what Samsung, Motorola, and Nothing Phone are.
+    <br><br><strong>What it costs:</strong> 12–24 months. Real hardware manufacturing partnerships. Google must accept you (they can refuse). Volume commitments that justify Google's attention. Not a solo-founder play, not a Kickstarter, not a software-only path.
+    <br><br>Included here as the upper bound: "what would a properly resourced Phone That Cares device look like?"`,
+    breakage:`No breakage. You're inside the tent.`
+  },
+];
+
+const services = [
+  {key:"play_store", name:"Play Store distribution", detail:`Whether you can list your app in the Google Play Store. If not, users must download an APK from your website and allow "install from unknown sources." Play Store access matters for discovery, auto-updates, and most users' trust.`},
+  {key:"play_services", name:"Play Services / Firebase SDKs", detail:`The huge collection of Google libraries most Android apps depend on: Google Sign-In, Google Maps, auth, Firebase analytics, ML Kit, Crashlytics, location APIs. If broken or partial, many third-party apps fail to run or lose features.`},
+  {key:"fcm", name:"FCM push notifications", detail:`Firebase Cloud Messaging — the standard way almost every Android app (WhatsApp, Uber, banks, Slack, Instagram) delivers push notifications. If broken, notifications silently stop arriving. Users usually notice within a day and blame the phone.`},
+  {key:"pi_basic", name:"Play Integrity — BASIC", detail:`Google's baseline "is this a reasonably real Android device?" verdict. Almost any real Android hardware passes this. Used by apps to weed out emulators and obviously compromised environments.`},
+  {key:"pi_device", name:"Play Integrity — DEVICE", detail:`Middle verdict: "Android device that booted with verified boot from a locked bootloader." Required by many banking apps and some government ID apps as a minimum trust bar.`},
+  {key:"pi_strong", name:"Play Integrity — STRONG", detail:`Top verdict: hardware-attested from a Google-certified OS. Required by Google Wallet, some banks, mobile driver's licenses, and the highest-DRM streaming. Passes on stock Pixel/Samsung — and, uniquely among custom ROMs, on GrapheneOS with a relocked Pixel.`},
+  {key:"wallet", name:"Google Pay / Wallet", detail:`Contactless tap-to-pay, boarding passes, transit cards, mobile driver's licenses. Requires Play Integrity STRONG <em>and</em> Google keeps an allow-list of OS vendors it accepts — so Wallet refuses GrapheneOS even though its integrity verdict passes.`},
+  {key:"banks", name:"Most banking apps", detail:`Chase, Bank of America, Revolut, Barclays, Nubank, Santander, etc. Each sets its own Play Integrity threshold — most require DEVICE, many require STRONG. When an app "detects root" or "refuses custom ROMs," this is the actual mechanism.`},
+  {key:"widevine", name:"Widevine L1 (Netflix/Disney+ HDR)", detail:`Google's DRM scheme. L1 = decryption keys stay inside the phone's hardware TEE (Trusted Execution Environment). L3 = software only. Netflix, Disney+, HBO Max require L1 for HD and HDR. Unlocking the bootloader usually permanently downgrades to L3 on non-Pixel devices; Pixel-specifically it can be preserved if you relock with a new signer (GrapheneOS does).`},
+  {key:"rcs", name:"Google Messages / RCS", detail:`Rich Communication Services — Google's successor to SMS, with read receipts, typing indicators, hi-res images, and group chat. Officially a GSMA carrier standard; in practice gated by Google's Jibe cloud backend, which you can only reach via Google Messages on a certified OS.`},
+  {key:"auto", name:"Android Auto", detail:`Projects Android onto a car dashboard for navigation, messages, music. Requires a Google-certified OS; refuses every major custom ROM (including GrapheneOS). Community workarounds break with Google updates.`},
+  {key:"fmd", name:"Find My Device", detail:`Google's phone-find service: locate on a map, ring, lock, wipe. Part of Play Services. Partial reimplementations exist in MicroG but reliability varies.`},
+  {key:"assistant", name:"Assistant / Gemini", detail:`Google's voice assistant. Requires Play Services and usually a signed-in Google account. Works via sandboxed Play Services on GrapheneOS; doesn't work at all without GMS.`},
+  {key:"backup", name:"Auto-backup", detail:`Automatic backup of app data, photos, contacts, system settings to Google Drive. Makes phone-to-phone migration work. Disabled at every move without real Play Services.`},
+  {key:"a13_gate", name:"Android 13 a11y sideload gate", detail:`Since Android 13, apps installed from outside the Play Store cannot be granted "sensitive" permissions (including Accessibility) via the normal Settings toggle. The user must go to Settings → Apps → [your app] → three-dot menu → "Allow restricted settings" before the toggle becomes available. Not a technical block — a friction point that kills sideload onboarding conversion.`}
+];
+
+const interventions = [
+  {key:"grayscale", title:"Grayscale", sub:"Primary focus",
+    detail:`Gradual color drain on a per-app basis — the social-media feed progressively desaturates toward monochrome over a user-configured ramp (e.g., 20 minutes). Resets when you switch apps.
+    <br><br><strong>At Move 2:</strong> overlay-tint approximation only — perceptually "colors fading" but not mathematically zero chroma.
+    <br><br><strong>At Move 4 (Shizuku):</strong> real system daltonizer — but it's binary, so the "ramp" is a hybrid: tint early, hard flip late.
+    <br><br><strong>At Move 5+:</strong> hook SurfaceFlinger directly for a truly smooth mathematical saturation ramp.`},
+  {key:"blur", title:"Feed blur", sub:"Android 12+ flagships",
+    detail:`Feed content progressively blurs over the ramp duration.
+    <br><br><strong>Move 2+ mechanism:</strong> a full-screen trusted accessibility overlay with <code>setBlurBehindRadius</code> — SurfaceFlinger blurs the framebuffer behind the overlay. Real cross-window blur, public API since Android 12.
+    <br><br><strong>Caveats:</strong> gated by <code>isCrossWindowBlurEnabled()</code> — works on Pixel 6+, Samsung S22+, silently no-ops on many mid-range devices. Disabled under battery saver and "Remove animations." Gracefully degrades to overlay tint.
+    <br><br>Not universal, but doesn't need root or custom ROM on supported hardware.`},
+  {key:"breaks", title:"Break cards", sub:"Inline vs. interstitial",
+    detail:`Soft pauses inserted between posts in the feed.
+    <br><br><strong>Full-screen interstitial version</strong> (Move 2+): triggered by scroll-velocity or post-count signals from the accessibility service, you take over the screen with a "breathe" card. Robust.
+    <br><br><strong>Inline-card version</strong> (what the Phone That Cares mockup shows): requires reaching into Instagram's own view hierarchy to splice a card between feed items. Accessibility can read the tree; modifying it is fragile (Instagram restructures frequently) and policy-risky.
+    <br><br><strong>Durable inline at Move 6+:</strong> a system-level scroll-event content filter that Instagram can't A/B-test away, but only reachable when you ship your own OS.`}
+];
+
+// ---- cell matrix (reuses prior mapping) ----
+const M = {};
+function set(svc, move, v, note){ (M[svc] = M[svc] || {})[move] = {v, note}; }
+for (const s of services) for (const t of moves) set(s.key, t.n, 'Y', null);
+
+set('play_store',3,'N','You voluntarily sideload at this move — Play Store distribution is not in play. You gain freedom from Play review; you lose auto-updates, search discovery, and the implicit trust Play conveys.');
+set('play_store',4,'Y / ★','Most Shizuku-aware apps are Play-distributed: the app detects Shizuku at runtime and uses the daltonizer only when present. Play listing stays clean.');
+set('play_store',5,'N','Rooted-aware apps are almost always distributed outside Play (Magisk modules site, GitHub releases). Play policy effectively excludes them.');
+set('play_store',6,'N','GrapheneOS doesn\'t ship Play Store by default. Users install via Aurora Store, F-Droid, or sideload. Sandboxed Play Store can be installed but your app more likely reaches users via direct APK.');
+set('play_store',7,'N','LineageOS + MicroG users install via F-Droid or Aurora Store.');
+set('play_store',8,'N','Fully de-Googled ROM means F-Droid only.');
+
+set('play_services',6,'Y (sandbox)','Runs as a regular sandboxed app instead of a system component. Most third-party apps work; a few detect the sandbox and complain.');
+set('play_services',7,'~','MicroG reimplements most Play Services APIs but signature checks, newer APIs, and hardware attestation all fail. Some apps work; many fail in subtle ways.');
+set('play_services',8,'N','No Play Services at all. Any app that depends on GMS fails to launch or crashes on first use.');
+
+set('fcm',7,'~','MicroG provides a cloud-messaging shim that works for many apps but is flaky. Apps that check for Google\'s real signature fail to register for push.');
+set('fcm',8,'N','No FCM means your WhatsApp, Uber, bank, Slack all silently stop receiving notifications.');
+
+set('pi_basic',5,'~ spoof','Magisk + "Play Integrity Fix" module spoofs device identity using leaked keyboxes. Works until Google revokes the keybox — then every user on that keybox fails simultaneously until the community patches it.');
+set('pi_basic',7,'N','MicroG cannot produce a valid attestation chain. Google sees through the signature spoofing at the integrity layer.');
+set('pi_basic',8,'N','No Play Services at all — no integrity verdict possible.');
+
+set('pi_device',5,'N','DEVICE requires locked bootloader + verified boot. Unlocking to root breaks this and it cannot be spoofed.');
+set('pi_device',7,'N','MicroG can\'t clear hardware attestation.');
+set('pi_device',8,'N','No Play Services.');
+
+set('pi_strong',5,'N','STRONG requires hardware attestation chained to a Google-certified OS. Root breaks it permanently.');
+set('pi_strong',6,'mostly Y','GrapheneOS on a relocked Pixel with sandboxed Play can pass STRONG in many configurations because the Pixel\'s TEE attests the relocked verified-boot signer. This is a GrapheneOS selling point and a rarity among custom ROMs. Note that Google Wallet refuses GrapheneOS even when STRONG passes — Wallet uses an OS allow-list on top of integrity.');
+set('pi_strong',7,'N','MicroG can\'t produce hardware attestation.');
+set('pi_strong',8,'N','No Play Services.');
+
+set('wallet',5,'N','Google Wallet hard-refuses rooted devices regardless of integrity spoofing.');
+set('wallet',6,'N','Google maintains a hardcoded OS allow-list on top of integrity. GrapheneOS is excluded. Long-running grievance in the GrapheneOS community.');
+set('wallet',7,'N','Same allow-list plus failed integrity.');
+set('wallet',8,'N','No Play Services at all.');
+
+set('banks',5,'many N','Banks detect root via the Play Integrity API and also via direct checks for Magisk / KernelSU fingerprints. DenyList hides some but it\'s cat-and-mouse.');
+set('banks',6,'many ~','Integrity passes but many banks additionally check the OS vendor. Compatibility varies widely — some banks work (Chase, many US regional banks); some refuse (historically Revolut, some EU/UK banks). Community maintains a running list.');
+set('banks',7,'many N','Failed Play Integrity plus unlocked bootloader trips most banks.');
+set('banks',8,'N','Most banking apps refuse to even install without Play Services.');
+
+set('widevine',5,'often N','Unlocking the bootloader usually downgrades hardware DRM on most non-Pixel devices permanently. Netflix/Disney+ drop to 480p.');
+set('widevine',6,'Y (Pixel)','Pixel-specific: the Titan M security chip trusts GrapheneOS\'s relocked verified-boot signer and preserves L1 keys. A unique GrapheneOS/Pixel combination.');
+set('widevine',7,'N','Non-Pixel custom ROMs lose L1 on bootloader unlock universally.');
+set('widevine',8,'N','Same.');
+
+set('rcs',5,'~','Can work on rooted stock if Play Integrity BASIC spoofing holds — unreliable.');
+set('rcs',6,'~','Google has tightened Jibe-cloud access for non-certified OSes. Works for some users, not others.');
+set('rcs',7,'N','RCS requires Google Messages on a certified OS.');
+set('rcs',8,'N','No Google Messages available.');
+
+set('auto',5,'N','Requires a Google-certified OS. Refuses every major custom configuration.');
+set('auto',6,'N','Google explicitly refuses GrapheneOS; community workarounds repeatedly broken.');
+set('auto',7,'N','Same.');
+set('auto',8,'N','Same.');
+
+set('fmd',5,'~','Works if Play Integrity BASIC passes.');
+set('fmd',6,'~','GrapheneOS supports sandboxed Find My Device with privacy caveats.');
+set('fmd',7,'~','MicroG provides partial Find My Device; works for location but not all remote-action features.');
+set('fmd',8,'N','No Google services.');
+
+set('assistant',5,'~','Requires Play Services and sign-in; works with caveats on rooted.');
+set('assistant',6,'Y (sandbox)','Works via sandboxed Play Services and the Google app.');
+set('assistant',7,'N','Requires real Play Services.');
+set('assistant',8,'N','Same.');
+
+set('backup',5,'~','Works with caveats; some backup fails on rooted devices.');
+set('backup',6,'Y','GrapheneOS sandboxed Play supports auto-backup normally.');
+set('backup',7,'~','MicroG has partial backup support.');
+set('backup',8,'N','No Google Drive integration.');
+
+set('a13_gate',1,'n/a','Play Store installs aren\'t sideloads — gate doesn\'t apply.');
+set('a13_gate',2,'n/a','Same.');
+set('a13_gate',3,'hits','User must tap through Settings → Apps → [app] → three-dot menu → "Allow restricted settings" before Accessibility becomes togglable. Kills onboarding completion.');
+set('a13_gate',4,'hits','Same as Move 3, plus the Shizuku setup dance on top.');
+set('a13_gate',5,'hits','Rooted sideload still hits this UI gate unless the user disables it systemically.');
+set('a13_gate',6,'bypassable','On your own OS you can remove the restricted-settings gate system-wide or ship your app as a pre-installed system app.');
+set('a13_gate',7,'bypassable','Same.');
+set('a13_gate',8,'bypassable','Same.');
+set('a13_gate',9,'n/a','You\'re the OS vendor.');
+
+// ---------- rendering ----------
+
+const panelEl = document.getElementById('panel');
+const backdrop = document.getElementById('backdrop');
+const closeBtn = document.getElementById('closeBtn');
+const pTitle = document.getElementById('pTitle');
+const pBody = document.getElementById('pBody');
+const pinHint = document.getElementById('pinHint');
+
+const isMobile = () => window.matchMedia('(max-width:1319px)').matches;
+
+let pinned = null;
+let hovered = null;
+
+function classFor(v){
+  if (v==='Y') return 'cell good';
+  if (v==='N') return 'cell bad';
+  if (v==='n/a') return 'cell na';
+  if (v.startsWith('Y')) return 'cell good';
+  if (v.startsWith('mostly')) return 'cell good';
+  return 'cell meh';
+}
+
+function render(kind, data){
+  // Track default vs active state so we can style the quiet default differently
+  if (kind === 'default'){
+    panelEl.classList.add('default-state');
+    pTitle.innerHTML = 'Hover or tap anything to explore';
+    pBody.innerHTML = '';
+    return;
+  }
+  panelEl.classList.remove('default-state');
+  if (kind === 'move'){
+    const t = moves.find(x=>x.n===data);
+    pTitle.innerHTML = `<span class="tag">Move ${t.n}</span> ${t.name}`;
+    pBody.innerHTML = `<div class="crumb">Setup: ${t.setup} · Distribution: ${t.dist}</div><p>${t.detail}</p>${t.breakage ? `<div class="break-box"><div class="bb-title">Apps that break at this move</div>${t.breakage}</div>` : ''}`;
+    return;
+  }
+  if (kind === 'service'){
+    const s = services.find(x=>x.key===data);
+    pTitle.innerHTML = `<span class="tag">Service</span> ${s.name}`;
+    pBody.innerHTML = `<p>${s.detail}</p>`;
+    return;
+  }
+  if (kind === 'intervention'){
+    const i = interventions.find(x=>x.key===data);
+    pTitle.innerHTML = `<span class="tag">Intervention</span> ${i.title}`;
+    pBody.innerHTML = `<p>${i.detail}</p>`;
+    return;
+  }
+  if (kind === 'cell'){
+    const {svc, move} = data;
+    const s = services.find(x=>x.key===svc);
+    const t = moves.find(x=>x.n===move);
+    const cell = (M[svc] && M[svc][move]) || {v:'Y', note:null};
+    const vLabel = cell.v==='Y' ? 'Works fully' : cell.v==='N' ? 'Broken' : cell.v==='n/a' ? 'Not applicable' : 'Partial / qualified';
+    pTitle.innerHTML = `<span class="tag">${cell.v}</span> ${s.name}`;
+    pBody.innerHTML = `
+      <div class="crumb">On <strong>Move ${t.n}: ${t.name}</strong></div>
+      <p class="dim">${vLabel}.</p>
+      <p>${cell.note || '<em class="dim">No caveats at this move — this service works normally.</em>'}</p>
+      <p class="dim" style="border-top:1px dashed var(--border-subtle);margin-top:.9rem;padding-top:.65rem"><strong>What the service is:</strong> ${s.detail}</p>
+    `;
+    return;
+  }
+}
+
+function clearHoverClasses(){
+  document.querySelectorAll('.hovered').forEach(el=>el.classList.remove('hovered'));
+}
+function clearPinClasses(){
+  document.querySelectorAll('.pinned').forEach(el=>el.classList.remove('pinned'));
+}
+
+function applyHoverClasses(kind, data){
+  clearHoverClasses();
+  if (kind==='move'){
+    document.querySelectorAll(`[data-move="${data}"]`).forEach(el=>el.classList.add('hovered'));
+  } else if (kind==='service'){
+    document.querySelectorAll(`[data-svc="${data}"]`).forEach(el=>el.classList.add('hovered'));
+  } else if (kind==='intervention'){
+    document.querySelectorAll(`[data-iv="${data}"]`).forEach(el=>el.classList.add('hovered'));
+  } else if (kind==='cell'){
+    document.querySelectorAll(`[data-cell="${data.svc}|${data.move}"]`).forEach(el=>el.classList.add('hovered'));
+  }
+}
+function applyPinClasses(kind, data){
+  clearPinClasses();
+  if (!kind) return;
+  if (kind==='move'){
+    document.querySelectorAll(`[data-move="${data}"]`).forEach(el=>el.classList.add('pinned'));
+  } else if (kind==='service'){
+    document.querySelectorAll(`[data-svc="${data}"]`).forEach(el=>el.classList.add('pinned'));
+  } else if (kind==='intervention'){
+    document.querySelectorAll(`[data-iv="${data}"]`).forEach(el=>el.classList.add('pinned'));
+  } else if (kind==='cell'){
+    document.querySelectorAll(`[data-cell="${data.svc}|${data.move}"]`).forEach(el=>el.classList.add('pinned'));
+  }
+}
+
+function openMobilePanel(){
+  if (!isMobile()) return;
+  panelEl.classList.add('open');
+  backdrop.classList.add('open');
+}
+function closeMobilePanel(){
+  panelEl.classList.remove('open');
+  backdrop.classList.remove('open');
+}
+
+function hoverOn(kind, data){
+  if (isMobile()) return; // hover ignored on touch
+  hovered = {kind, data};
+  applyHoverClasses(kind, data);
+  render(kind, data);
+}
+function hoverOff(){
+  if (isMobile()) return;
+  hovered = null;
+  clearHoverClasses();
+  if (pinned) render(pinned.kind, pinned.data);
+  else render('default');
+}
+function pin(kind, data){
+  if (pinned && pinned.kind===kind && JSON.stringify(pinned.data)===JSON.stringify(data)){
+    pinned = null;
+    clearPinClasses();
+    render(hovered ? hovered.kind : 'default', hovered ? hovered.data : null);
+    pinHint.textContent = 'On mobile: tap any cell to open. Tap the × or outside to close.';
+    if (isMobile()) closeMobilePanel();
+    return;
+  }
+  pinned = {kind, data};
+  applyPinClasses(kind, data);
+  render(kind, data);
+  pinHint.textContent = isMobile() ? 'Tap × or outside the panel to close.' : 'Pinned — click again or click elsewhere to change.';
+  if (isMobile()) openMobilePanel();
+}
+
+// --- build DOM ---
+
+const ivWrap = document.getElementById('interventions');
+for (const iv of interventions){
+  const el = document.createElement('div');
+  el.className = 'iv';
+  el.dataset.iv = iv.key;
+  el.innerHTML = `<div class="iv-title">${iv.title}</div><div class="iv-sub">${iv.sub}</div>`;
+  el.addEventListener('mouseenter', ()=>hoverOn('intervention', iv.key));
+  el.addEventListener('mouseleave', hoverOff);
+  el.addEventListener('click', (e)=>{e.stopPropagation();pin('intervention', iv.key)});
+  ivWrap.appendChild(el);
+}
+
+const tBody = document.getElementById('movesBody');
+for (const t of moves){
+  const tr = document.createElement('tr');
+  tr.dataset.move = t.n;
+  if (t.n === 5) tr.classList.add('threshold');
+  tr.innerHTML = `<td class="num">${t.n}</td><td class="name">${t.name}</td><td>${t.setup}</td><td>${t.dist}</td>`;
+  tr.addEventListener('mouseenter', ()=>hoverOn('move', t.n));
+  tr.addEventListener('mouseleave', hoverOff);
+  tr.addEventListener('click', (e)=>{e.stopPropagation();pin('move', t.n)});
+  tBody.appendChild(tr);
+}
+
+const cols = document.getElementById('matrixCols');
+const mHead = document.getElementById('matrixHead');
+const svcTh = document.createElement('th');
+svcTh.className = 'svc';
+svcTh.style.cursor = 'default';
+svcTh.textContent = 'Service';
+mHead.appendChild(svcTh);
+cols.appendChild(document.createElement('col'));
+for (const t of moves){
+  const col = document.createElement('col');
+  col.id = 'col-' + t.n;
+  cols.appendChild(col);
+
+  const th = document.createElement('th');
+  th.dataset.move = t.n;
+  th.textContent = t.n;
+  th.title = t.name;
+  th.addEventListener('mouseenter', ()=>hoverOn('move', t.n));
+  th.addEventListener('mouseleave', hoverOff);
+  th.addEventListener('click', (e)=>{e.stopPropagation();pin('move', t.n)});
+  mHead.appendChild(th);
+}
+
+const mBody = document.getElementById('matrixBody');
+for (const s of services){
+  const tr = document.createElement('tr');
+  tr.dataset.svc = s.key;
+
+  const svcCell = document.createElement('td');
+  svcCell.className = 'svc';
+  svcCell.textContent = s.name;
+  svcCell.dataset.svc = s.key;
+  svcCell.addEventListener('mouseenter', ()=>hoverOn('service', s.key));
+  svcCell.addEventListener('mouseleave', hoverOff);
+  svcCell.addEventListener('click', (e)=>{e.stopPropagation();pin('service', s.key)});
+  tr.appendChild(svcCell);
+
+  for (const t of moves){
+    const cell = (M[s.key] && M[s.key][t.n]) || {v:'Y', note:null};
+    const td = document.createElement('td');
+    if (t.n === 5) td.classList.add('thresh-col');
+    const span = document.createElement('span');
+    span.className = classFor(cell.v);
+    span.textContent = cell.v;
+    span.dataset.cell = `${s.key}|${t.n}`;
+    span.dataset.svc = s.key;
+    span.dataset.move = t.n;
+    span.addEventListener('mouseenter', ()=>hoverOn('cell', {svc:s.key, move:t.n}));
+    span.addEventListener('mouseleave', hoverOff);
+    span.addEventListener('click', (e)=>{e.stopPropagation();pin('cell', {svc:s.key, move:t.n})});
+    td.appendChild(span);
+    tr.appendChild(td);
+  }
+  mBody.appendChild(tr);
+}
+
+// Close handlers
+backdrop.addEventListener('click', ()=>{
+  if (pinned){ pinned = null; clearPinClasses(); }
+  closeMobilePanel();
+  render('default');
+});
+closeBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  if (pinned){ pinned = null; clearPinClasses(); }
+  closeMobilePanel();
+  render('default');
+});
+document.body.addEventListener('click', (e)=>{
+  if (e.target.closest('#panel')) return;
+  if (e.target.closest('#backdrop')) return;
+  if (pinned){
+    pinned = null;
+    clearPinClasses();
+    render('default');
+    pinHint.textContent = isMobile() ? 'On mobile: tap any cell to open. Tap the × or outside to close.' : 'Click any row, column, or cell to pin.';
+  }
+});
+
+render('default');
+</script>
+</body>
+</html>

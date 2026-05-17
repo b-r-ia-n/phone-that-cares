@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phone That Cares — Browser</title>
+<style>
+  :root {
+    --bg: #faf7f0;
+    --panel: #f2ede0;
+    --border: #e2dbc9;
+    --ink: #2a2419;
+    --muted: #7a7260;
+    --accent: #3f3a2d;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    height: 100vh;
+  }
+  aside {
+    background: var(--panel);
+    padding: 28px 22px;
+    overflow-y: auto;
+    border-right: 1px solid var(--border);
+  }
+  main {
+    overflow-y: auto;
+    padding: 40px 56px 80px;
+  }
+  .inner { max-width: 780px; }
+  h1 {
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    color: var(--muted);
+    margin: 0 0 22px;
+    letter-spacing: 0.02em;
+  }
+  #search {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    background: white;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+  #search:focus { outline: none; border-color: var(--accent); }
+  .section-label {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 18px 0 8px;
+  }
+  #categories { display: flex; flex-direction: column; gap: 2px; }
+  .cat-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13.5px;
+    transition: background 0.12s;
+    user-select: none;
+  }
+  .cat-toggle:hover { background: rgba(0,0,0,0.04); }
+  .cat-toggle.inactive { opacity: 0.35; }
+  .cat-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .cat-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .sort-toggle {
+    display: flex;
+    gap: 4px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+  }
+  .sort-toggle button {
+    background: none;
+    border: 1px solid var(--border);
+    padding: 5px 9px;
+    border-radius: 4px;
+    cursor: pointer;
+    color: var(--muted);
+    font: inherit;
+  }
+  .sort-toggle button.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+  .entry {
+    padding: 18px 0 18px 22px;
+    margin: 0 0 8px;
+    border-left: 3px solid var(--cat-color, #ccc);
+  }
+  .entry-meta {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .entry-meta .cat-pill {
+    color: var(--cat-color);
+    font-weight: 600;
+  }
+  .entry-title {
+    font-size: 19px;
+    font-weight: 600;
+    margin: 0 0 10px;
+    letter-spacing: -0.005em;
+  }
+  .entry-body { font-size: 16.5px; }
+  .entry-body p { margin: 0.7em 0; }
+  .entry-body p:first-child { margin-top: 0; }
+  .entry-body p:last-child { margin-bottom: 0; }
+  .entry-body ul, .entry-body ol { padding-left: 22px; }
+  .entry-body li { margin: 4px 0; }
+  .entry-body strong { color: var(--accent); }
+  .entry-body blockquote {
+    border-left: 2px solid var(--border);
+    padding-left: 14px;
+    margin: 10px 0;
+    color: var(--muted);
+  }
+  .entry-body code {
+    background: var(--panel);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 14px;
+  }
+  .hidden { display: none !important; }
+  .empty-state {
+    color: var(--muted);
+    font-style: italic;
+    padding: 40px 0;
+    text-align: center;
+  }
+  .loader, .picker {
+    padding: 60px;
+    text-align: center;
+    color: var(--muted);
+    font-family: system-ui, sans-serif;
+  }
+  .picker input { font: inherit; margin-top: 10px; }
+  mark {
+    background: #fce9a0;
+    color: inherit;
+    padding: 0 1px;
+    border-radius: 2px;
+  }
+  @media (max-width: 780px) {
+    #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); max-height: 40vh; }
+    main { padding: 24px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside>
+    <h1>Phone That Cares</h1>
+    <p class="subtitle">data lake browser</p>
+    <input type="search" id="search" placeholder="Search all entries…" autocomplete="off">
+    <div class="section-label">Categories</div>
+    <div id="categories"></div>
+    <div class="section-label">Sort</div>
+    <div class="sort-toggle" id="sort">
+      <button data-sort="category" class="active">By category</button>
+      <button data-sort="date">By date</button>
+      <button data-sort="title">A–Z</button>
+    </div>
+  </aside>
+  <main>
+    <div class="inner" id="content">
+      <div class="loader">Loading…</div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+const CATEGORIES = [
+  { num: 1, name: 'Project Descriptions & Pitches', color: '#c89a3f' },
+  { num: 2, name: 'Hypotheses',                      color: '#7a9b3f' },
+  { num: 3, name: 'Phone / Project Names',           color: '#3f9b92' },
+  { num: 4, name: 'Quotable One-Liners',             color: '#c4633f' },
+  { num: 5, name: 'UI & Interaction Concepts',       color: '#8b5fa6' },
+  { num: 6, name: 'What This Is NOT / Rejected',     color: '#5f7a8b' },
+  { num: 7, name: 'Open Questions & Unresolved',     color: '#a6895f' },
+  { num: 8, name: 'People & Collaborators',          color: '#5f82a6' },
+];
+const catByNum = Object.fromEntries(CATEGORIES.map(c => [c.num, c]));
+
+const state = {
+  entries: [],
+  query: '',
+  activeCats: new Set(CATEGORIES.map(c => c.num)),
+  sort: 'category',
+};
+
+function parseMarkdown(md) {
+  const sections = md.split(/\n## /);
+  const entries = [];
+  sections.forEach((section, sIdx) => {
+    if (sIdx === 0) return;
+    const nl = section.indexOf('\n');
+    const titleLine = (nl === -1 ? section : section.slice(0, nl)).trim();
+    const rest = (nl === -1 ? '' : section.slice(nl + 1));
+    const catMatch = titleLine.match(/^(\d+)\.\s*(.+)/);
+    if (!catMatch) return;
+    const catNum = parseInt(catMatch[1]);
+    const subs = rest.split(/\n### /);
+    const preamble = subs[0].trim();
+    if (subs.length === 1) {
+      if (preamble) entries.push({ catNum, title: catMatch[2], body: preamble });
+    } else {
+      if (preamble) entries.push({ catNum, title: '(overview)', body: preamble });
+      subs.slice(1).forEach(sub => {
+        const nl2 = sub.indexOf('\n');
+        const subTitle = (nl2 === -1 ? sub : sub.slice(0, nl2)).trim();
+        const subBody = (nl2 === -1 ? '' : sub.slice(nl2 + 1)).trim();
+        entries.push({ catNum, title: subTitle, body: subBody });
+      });
+    }
+  });
+  entries.forEach((e, i) => {
+    e.id = i;
+    const m = e.title.match(/(\d{4}-\d{2}-\d{2})/);
+    e.date = m ? m[1] : null;
+    e.searchBlob = (e.title + ' ' + e.body).toLowerCase();
+  });
+  return entries;
+}
+
+function buildSidebar() {
+  const cats = document.getElementById('categories');
+  cats.innerHTML = '';
+  CATEGORIES.forEach(c => {
+    const count = state.entries.filter(e => e.catNum === c.num).length;
+    const el = document.createElement('div');
+    el.className = 'cat-toggle';
+    el.dataset.cat = c.num;
+    el.innerHTML = `
+      <span class="cat-dot" style="background:${c.color}"></span>
+      <span>${c.name}</span>
+      <span class="cat-count">${count}</span>`;
+    el.addEventListener('click', () => {
+      if (state.activeCats.has(c.num)) state.activeCats.delete(c.num);
+      else state.activeCats.add(c.num);
+      el.classList.toggle('inactive');
+      renderContent();
+    });
+    cats.appendChild(el);
+  });
+  document.querySelectorAll('#sort button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#sort button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.sort = btn.dataset.sort;
+      renderContent();
+    });
+  });
+  document.getElementById('search').addEventListener('input', e => {
+    state.query = e.target.value.toLowerCase().trim();
+    renderContent();
+  });
+}
+
+function highlight(text, q) {
+  if (!q) return text;
+  const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+  return text.replace(re, '<mark>$1</mark>');
+}
+
+function renderContent() {
+  const container = document.getElementById('content');
+  let list = state.entries.filter(e => state.activeCats.has(e.catNum));
+  if (state.query) list = list.filter(e => e.searchBlob.includes(state.query));
+  if (state.sort === 'category') {
+    list.sort((a, b) => a.catNum - b.catNum || a.id - b.id);
+  } else if (state.sort === 'date') {
+    list.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } else if (state.sort === 'title') {
+    list.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  if (list.length === 0) {
+    container.innerHTML = '<div class="empty-state">No entries match.</div>';
+    return;
+  }
+  const html = list.map(e => {
+    const cat = catByNum[e.catNum];
+    const bodyHtml = marked.parse(e.body);
+    const titleHtml = highlight(escapeHtml(e.title), state.query);
+    const bodyFinal = state.query ? highlight(bodyHtml, state.query) : bodyHtml;
+    return `
+      <div class="entry" style="--cat-color:${cat.color}">
+        <div class="entry-meta">
+          <span class="cat-pill">${cat.name}</span>
+          ${e.date ? `<span>${e.date}</span>` : ''}
+        </div>
+        <div class="entry-title">${titleHtml}</div>
+        <div class="entry-body">${bodyFinal}</div>
+      </div>`;
+  }).join('');
+  container.innerHTML = html;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showPicker() {
+  document.getElementById('content').innerHTML = `
+    <div class="picker">
+      <p>Couldn't auto-load <code>phone-that-cares-organized.md</code>.<br>
+      Either pick the file below, or run <code>python3 -m http.server</code> in this folder and reload.</p>
+      <input type="file" id="filepicker" accept=".md,text/markdown,text/plain">
+    </div>`;
+  document.getElementById('filepicker').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => init(reader.result);
+    reader.readAsText(file);
+  });
+}
+
+function init(md) {
+  state.entries = parseMarkdown(md);
+  buildSidebar();
+  renderContent();
+}
+
+fetch('./phone-that-cares-organized.md')
+  .then(r => { if (!r.ok) throw 0; return r.text(); })
+  .then(init)
+  .catch(showPicker);
+</script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>argos / settings — proposed v2</title>
+<link rel="preconnect" href="https://rsms.me/" />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f3ec;
+  --surface: #fbf9f3;
+  --surface-2: #f1ede3;
+  --text: #1f1c17;
+  --text-soft: #57514a;
+  --text-muted: #8a8378;
+  --rule: #e6dfd1;
+  --rule-strong: #d8d1bf;
+  --accent: #8a5a2b;
+  --accent-soft: #c4a47a;
+  --shadow: 0 1px 2px rgba(31,28,23,0.04);
+  --shadow-hover: 0 6px 24px -10px rgba(31,28,23,0.18);
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-feature-settings: "ss01", "cv11", "tnum";
+  font-size: 14.5px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+@supports (font-variation-settings: normal) {
+  body { font-family: "Inter var", -apple-system, sans-serif; }
+}
+*::selection { background: var(--accent-soft); color: var(--text); }
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: clamp(28px, 4vw, 56px) clamp(20px, 4vw, 32px) 120px;
+}
+
+nav.top {
+  display: flex; gap: 14px; flex-wrap: wrap;
+  font-size: 12.5px; color: var(--text-muted);
+  margin-bottom: 32px;
+}
+nav.top a, nav.top span { color: var(--text-muted); text-decoration: none; }
+nav.top a:hover { color: var(--text); }
+nav.top span.active { color: var(--text); }
+
+header.page {
+  margin-bottom: 36px; padding-bottom: 22px;
+  border-bottom: 1px solid var(--rule);
+}
+h1 {
+  font-size: 22px; font-weight: 600; letter-spacing: -0.015em;
+  margin: 0 0 10px;
+}
+.lede {
+  color: var(--text-soft); font-size: 14.5px; line-height: 1.55;
+  margin: 0; max-width: 56ch;
+}
+
+section {
+  margin-top: 44px;
+}
+section:first-of-type { margin-top: 36px; }
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 0 0 14px;
+}
+.section-head h2 {
+  font-size: 12.5px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text);
+  margin: 0;
+}
+.section-help { font-size: 12.5px; color: var(--text-muted); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 18px 20px;
+  box-shadow: var(--shadow);
+}
+.card + .card { margin-top: 12px; }
+
+.field-label {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin: 0 0 4px; display: block;
+}
+.field-help {
+  font-size: 12.5px; color: var(--text-muted);
+  margin: 0 0 10px; line-height: 1.5;
+}
+textarea, input[type="text"] {
+  width: 100%; resize: vertical; min-height: 96px;
+  font: 14px/1.55 "Inter", sans-serif;
+  font-feature-settings: "ss01";
+  color: var(--text); background: var(--bg);
+  border: 1px solid var(--rule-strong); border-radius: 6px;
+  padding: 10px 12px; outline: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+input[type="text"] { min-height: 0; }
+textarea:focus-visible, input:focus-visible {
+  border-color: var(--accent-soft);
+  box-shadow: 0 0 0 3px rgba(196,164,122,0.28);
+}
+
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-info { flex: 1; padding-right: 16px; }
+.toggle-name { font-weight: 600; font-size: 14px; color: var(--text); }
+.toggle-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; line-height: 1.5; }
+.toggle {
+  appearance: none; -webkit-appearance: none;
+  width: 38px; height: 22px;
+  background: var(--surface-2); border: 1px solid var(--rule-strong);
+  border-radius: 99px; position: relative; cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+.toggle::after {
+  content: ""; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: left 140ms ease, background 140ms ease;
+}
+.toggle:checked { background: var(--accent-soft); border-color: var(--accent); }
+.toggle:checked::after { left: 18px; background: var(--accent); }
+
+.morning-summary {
+  font-size: 12.5px; color: var(--text-muted);
+  margin-top: 6px;
+  border-top: 1px dashed var(--rule); padding-top: 10px;
+}
+.morning-summary a { color: var(--accent); text-decoration: none; }
+.morning-summary a:hover { text-decoration: underline; }
+
+.modes-frame {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 10px; padding: 20px 20px 14px;
+  box-shadow: var(--shadow);
+}
+.modes-current {
+  font-size: 13px; color: var(--text-soft); margin: 0 0 14px;
+}
+.modes-current strong { color: var(--text); }
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+.mode-card {
+  border: 1px solid var(--rule); border-radius: 8px;
+  padding: 12px 12px 14px; cursor: pointer;
+  background: var(--bg);
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+.mode-card:hover { border-color: var(--accent-soft); }
+.mode-card.active { border-color: var(--accent); background: var(--surface); }
+.mode-thumb {
+  aspect-ratio: 1; width: 100%; border-radius: 6px;
+  background: var(--surface-2); margin-bottom: 8px;
+  background-image: linear-gradient(135deg, #e9dcc5 0%, #d4c2a6 100%);
+}
+.mode-name { font-size: 13px; font-weight: 600; }
+.mode-tag { font-size: 11.5px; color: var(--text-muted); margin-top: 1px; }
+.mode-add {
+  display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--rule-strong);
+  background: transparent; color: var(--text-muted);
+  font-size: 13px; aspect-ratio: 1.6; padding: 0;
+}
+.mode-add:hover { color: var(--text); border-color: var(--accent-soft); }
+
+.minor-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.minor-row:last-child { border-bottom: none; }
+.minor-name { font-weight: 600; font-size: 13.5px; }
+.minor-desc { font-size: 12.5px; color: var(--text-muted); margin-top: 1px; }
+
+.shelves-link {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 8px; color: var(--text); text-decoration: none;
+  transition: border-color 140ms ease;
+}
+.shelves-link:hover { border-color: var(--accent-soft); }
+.shelves-link .arrow { color: var(--text-muted); }
+
+.danger-row { color: #8a3c2b; }
+.danger-row .minor-name { color: #8a3c2b; }
+
+.footer {
+  margin-top: 60px; padding-top: 24px;
+  border-top: 1px solid var(--rule);
+  font-size: 12px; color: var(--text-muted);
+  display: flex; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+
+.proposed-banner {
+  background: rgba(196,164,122,0.14);
+  border: 1px solid var(--accent-soft);
+  border-radius: 6px; padding: 10px 14px;
+  font-size: 12.5px; color: var(--text-soft);
+  margin-bottom: 28px;
+}
+.proposed-banner strong { color: var(--accent); }
+
+ul.tiers { list-style: none; padding: 0; margin: 18px 0 0; }
+ul.tiers li {
+  font-size: 13.5px; color: var(--text-soft); line-height: 1.55;
+  padding: 10px 0; border-top: 1px dashed var(--rule);
+  max-width: 60ch;
+}
+ul.tiers li:first-child { border-top: none; padding-top: 0; }
+ul.tiers li strong { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<nav class="top">
+  <a href="#">/ argos</a>
+  <a href="#">/ library</a>
+  <a href="#">/ reading</a>
+  <a href="#">/ argos log</a>
+  <span class="active">/ settings</span>
+</nav>
+
+<div class="proposed-banner">
+  <strong>proposed layout v2</strong> — Brian's reorder + three-tier blurb + "settings" rename. Mockup only; not wired up.
+</div>
+
+<header class="page">
+  <h1>settings</h1>
+  <p class="lede">argos is designed to be something like a minimum viable personal assistant, adding capabilities as it knows more about you. with just your name, your timezone, and a few things you love, argos sends you a small offering of art it thinks you'd like each morning. if you turn on the morning check-in, it becomes a journal that talks back, and starts learning about you naturally. if you want to paste in old journals, export your bookmarks, or tell it about your people, it'll build these things out into a whole /library of you, sorted into UIs you might find useful.</p>
+</header>
+
+<!-- 1 · DAILY RITUALS -->
+<section>
+  <div class="section-head">
+    <h2>daily rituals</h2>
+    <span class="section-help">what argos does for you, on a schedule</span>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">morning offering</div>
+        <div class="toggle-desc">a small piece of writing, art, film, or fact tailored to you, sent each morning at 7am local. <a href="#" style="color:var(--accent);text-decoration:none">tune what kinds, edit per-shape SOPs, point at your taste →</a></div>
+      </div>
+      <input type="checkbox" class="toggle" checked>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">morning check-in</div>
+        <div class="toggle-desc">three short questions in the morning — how you're feeling, what you're curious about, what your day looks like. answer in chat or by voice.</div>
+      </div>
+      <input type="checkbox" class="toggle" checked>
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">evening checkout</div>
+        <div class="toggle-desc">three at the end of the day — what you played, what you learned, who you served. tasshin's three questions.</div>
+      </div>
+      <input type="checkbox" class="toggle">
+    </div>
+
+    <div class="toggle-row">
+      <div class="toggle-info">
+        <div class="toggle-name">weekly summary</div>
+        <div class="toggle-desc">sunday evenings — a quiet recap of your week, drawn from the conversation log + active shelves.</div>
+      </div>
+      <input type="checkbox" class="toggle" checked>
+    </div>
+  </div>
+</section>
+
+<!-- 2 · ARGOS'S CHARACTER (mode picker) -->
+<section>
+  <div class="section-head">
+    <h2>argos's character</h2>
+    <span class="section-help">optional — play around if you want</span>
+  </div>
+
+  <div class="modes-frame">
+    <p class="modes-current">currently <strong>argos</strong>. the default voice — quiet, attentive, slightly weird.</p>
+    <div class="mode-grid">
+      <div class="mode-card active">
+        <div class="mode-thumb"></div>
+        <div class="mode-name">argos</div>
+        <div class="mode-tag">default</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-thumb" style="background-image:linear-gradient(135deg,#d8c8b0 0%,#a8957a 100%)"></div>
+        <div class="mode-name">caro</div>
+        <div class="mode-tag">your partner's voice</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-thumb" style="background-image:linear-gradient(135deg,#3a3530 0%,#5a4a3a 100%)"></div>
+        <div class="mode-name">mccarthy</div>
+        <div class="mode-tag">cormac, sparse</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-thumb" style="background-image:linear-gradient(135deg,#a8a4a0 0%,#7a7670 100%)"></div>
+        <div class="mode-name">shinzen</div>
+        <div class="mode-tag">contemplative</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-thumb" style="background-image:linear-gradient(135deg,#c8a474 0%,#8a5a2b 100%)"></div>
+        <div class="mode-name">odysseus</div>
+        <div class="mode-tag">homeric</div>
+      </div>
+      <div class="mode-card">
+        <div class="mode-thumb" style="background-image:linear-gradient(135deg,#d4b894 0%,#a87838 100%)"></div>
+        <div class="mode-name">hanuman</div>
+        <div class="mode-tag">devotional</div>
+      </div>
+      <button class="mode-card mode-add">+ make your own</button>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · MANAGE SHELVES -->
+<section>
+  <div class="section-head">
+    <h2>your library</h2>
+    <span class="section-help">what argos collects</span>
+  </div>
+  <a href="#" class="shelves-link">
+    <div>
+      <div class="minor-name">manage shelves</div>
+      <div class="minor-desc">12 active shelves · journal, reading, taste profile, meditation, +8 more</div>
+    </div>
+    <span class="arrow">→</span>
+  </a>
+</section>
+
+<!-- 4 · SMALLER STUFF -->
+<section>
+  <div class="section-head">
+    <h2>other</h2>
+  </div>
+
+  <div class="card" style="padding: 6px 18px">
+    <div class="minor-row">
+      <div>
+        <div class="minor-name">capitalization</div>
+        <div class="minor-desc">match what you write · default ios cap · always lowercase</div>
+      </div>
+      <input type="text" value="match" style="width: 140px">
+    </div>
+    <div class="minor-row">
+      <div>
+        <div class="minor-name">timezone</div>
+        <div class="minor-desc">used for morning fire times, reminders, check-ins.</div>
+      </div>
+      <input type="text" value="America/Los_Angeles" style="width: 200px">
+    </div>
+    <div class="minor-row">
+      <div>
+        <div class="minor-name">morning reaction emoji</div>
+        <div class="minor-desc">argos reacts with this when it logs to the journal shelf.</div>
+      </div>
+      <input type="text" value="📌" style="width: 60px; text-align: center">
+    </div>
+    <div class="minor-row">
+      <div>
+        <div class="minor-name">art feedback mode</div>
+        <div class="minor-desc">argos asks "rate 1-10 or skip" after sending art. helps tune your taste profile.</div>
+      </div>
+      <input type="checkbox" class="toggle">
+    </div>
+  </div>
+</section>
+
+<!-- 5 · YOUR PROFILE — placed near the bottom so the page reads as features → adjustments → "and here's what argos knows about me" → data ops -->
+<section>
+  <div class="section-head">
+    <h2>your profile</h2>
+    <span class="section-help">what argos knows about you</span>
+  </div>
+
+  <div class="card">
+    <label class="field-label" for="ctx">about you</label>
+    <p class="field-help">who you are, what you spend your days on, what you're working through. argos reads this every turn. paste freely — old journals, a long voice note transcript, whatever helps.</p>
+    <textarea id="ctx" placeholder="e.g. brian, based between san diego and mexico, on a sabbatical thinking about the display layer of phones. partner is caroline. weekly brainstorm calls on sundays. into rock climbing, occasional ferments, slow art.">brian, on a sabbatical thinking about phones and what they do to people. based between san diego and mexico. partner is caroline. weekly sunday brainstorm calls. into climbing, slow art, anything that values attention. trying to figure out what an "ok phone" would actually look like.</textarea>
+  </div>
+
+  <div class="card">
+    <label class="field-label" for="persona">how argos sees you</label>
+    <p class="field-help">a synthesis argos writes itself based on your conversations. you can edit this freely or let it evolve. <a href="#" style="color:var(--accent);text-decoration:none">refresh →</a></p>
+    <textarea id="persona" placeholder="(empty — argos will start writing this once you've had a few conversations)">curious, careful, slightly contrarian. dislikes performance and stacked warnings. iterative — doesn't wrap things up at end-of-message. prefers terse over thorough; will tell you when something's off. lowercase by default. attentive to felt sense in design and writing.</textarea>
+  </div>
+
+  <div class="card">
+    <label class="field-label" for="ci">how to talk to you</label>
+    <p class="field-help">explicit rules — always honored over everything else. pronouns, things to never do, tone defaults.</p>
+    <textarea id="ci" rows="3" style="min-height:72px" placeholder="e.g. lowercase by default. don't end every reply with a question. avoid 'absolutely' and 'great question'. always-pacific-time.">lowercase by default. terse over thorough. don't end every reply with a question. don't praise me.</textarea>
+  </div>
+</section>
+
+<!-- 6 · DESTRUCTIVE / FOOT-OF-PAGE -->
+<section>
+  <div class="section-head">
+    <h2>data</h2>
+  </div>
+
+  <div class="card" style="padding: 6px 18px">
+    <div class="minor-row">
+      <div>
+        <div class="minor-name">export everything</div>
+        <div class="minor-desc">json archive of all conversations, shelves, and settings.</div>
+      </div>
+      <a href="#" style="color:var(--accent);text-decoration:none;font-size:13px">export →</a>
+    </div>
+    <div class="minor-row danger-row">
+      <div>
+        <div class="minor-name">/forget &lt;n&gt;</div>
+        <div class="minor-desc">remove the last n turns from history. doesn't touch shelves.</div>
+      </div>
+      <span style="font-size: 12.5px; color: var(--text-muted)">type in chat</span>
+    </div>
+    <div class="minor-row danger-row">
+      <div>
+        <div class="minor-name">/reset</div>
+        <div class="minor-desc">wipe everything except settings. keeps you, removes the past.</div>
+      </div>
+      <span style="font-size: 12.5px; color: var(--text-muted)">type in chat</span>
+    </div>
+  </div>
+</section>
+
+<div class="footer">
+  <span>argos · settings · bri@nvaughn.info</span>
+  <span>v. proposed 2026-05-04</span>
+</div>
+
+</div>
+
+</body>
+</html>

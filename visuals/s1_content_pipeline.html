@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>§1 — The Content Pipeline</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0d1117;
+    color: #c9d1d9;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  h1 {
+    font-size: 1.4rem;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+    color: #8b949e;
+    margin-bottom: 8px;
+  }
+  h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #e6edf3;
+    margin-bottom: 48px;
+  }
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 24px 20px;
+    border-radius: 12px;
+    min-width: 130px;
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .stage:hover { transform: translateY(-4px); }
+  .stage .icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    background: #161b22;
+    border: 1px solid #30363d;
+  }
+  .stage .label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    color: #e6edf3;
+  }
+  .stage .sublabel {
+    font-size: 0.7rem;
+    color: #8b949e;
+    text-align: center;
+    max-width: 120px;
+    line-height: 1.4;
+  }
+  .arrow {
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+  }
+  .arrow svg { opacity: 0.4; }
+
+  /* THE PHONE — highlighted */
+  .stage.phone-highlight .icon {
+    background: rgba(136, 46, 224, 0.15);
+    border: 2px solid #a371f7;
+    box-shadow: 0 0 24px rgba(136, 46, 224, 0.3), 0 0 48px rgba(136, 46, 224, 0.1);
+  }
+  .stage.phone-highlight .label {
+    color: #a371f7;
+    font-size: 0.95rem;
+  }
+  .stage.phone-highlight::after {
+    content: "THE CHOKEPOINT";
+    position: absolute;
+    bottom: -28px;
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    color: #a371f7;
+    font-weight: 700;
+    background: rgba(136, 46, 224, 0.12);
+    padding: 4px 12px;
+    border-radius: 4px;
+  }
+
+  .footnote {
+    margin-top: 64px;
+    font-size: 0.75rem;
+    color: #484f58;
+    max-width: 600px;
+    text-align: center;
+    line-height: 1.6;
+  }
+</style>
+</head>
+<body>
+
+<h1>§1</h1>
+<h2>The Content Pipeline</h2>
+
+<div class="pipeline">
+
+  <div class="stage">
+    <div class="icon">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <circle cx="18" cy="12" r="6" stroke="#58a6ff" stroke-width="2"/>
+        <path d="M6 30c0-6.627 5.373-12 12-12s12 5.373 12 12" stroke="#58a6ff" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="label">Creators</span>
+    <span class="sublabel">People, studios, influencers making content</span>
+  </div>
+
+  <div class="arrow">
+    <svg width="40" height="24" viewBox="0 0 40 24"><path d="M4 12h28m0 0l-6-5m6 5l-6 5" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="stage">
+    <div class="icon">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="6" y="6" width="24" height="24" rx="4" stroke="#f0883e" stroke-width="2"/>
+        <path d="M14 16l4 4 4-4" stroke="#f0883e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="18" y1="12" x2="18" y2="20" stroke="#f0883e" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="label">Platforms</span>
+    <span class="sublabel">TikTok, Instagram, YouTube, X</span>
+  </div>
+
+  <div class="arrow">
+    <svg width="40" height="24" viewBox="0 0 40 24"><path d="M4 12h28m0 0l-6-5m6 5l-6 5" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="stage">
+    <div class="icon">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <path d="M18 6l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z" stroke="#f778ba" stroke-width="2" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <span class="label">Algorithm</span>
+    <span class="sublabel">Ranks by engagement, not well-being</span>
+  </div>
+
+  <div class="arrow">
+    <svg width="40" height="24" viewBox="0 0 40 24"><path d="M4 12h28m0 0l-6-5m6 5l-6 5" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="stage phone-highlight">
+    <div class="icon">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <rect x="10" y="4" width="16" height="28" rx="3" stroke="#a371f7" stroke-width="2"/>
+        <line x1="16" y1="28" x2="20" y2="28" stroke="#a371f7" stroke-width="2" stroke-linecap="round"/>
+        <rect x="13" y="8" width="10" height="16" rx="1" fill="rgba(163,113,247,0.1)" stroke="#a371f7" stroke-width="1"/>
+      </svg>
+    </div>
+    <span class="label">THE PHONE</span>
+    <span class="sublabel">Made by companies who profit from your attention</span>
+  </div>
+
+  <div class="arrow">
+    <svg width="40" height="24" viewBox="0 0 40 24"><path d="M4 12h28m0 0l-6-5m6 5l-6 5" stroke="#30363d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+
+  <div class="stage">
+    <div class="icon">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+        <ellipse cx="18" cy="18" rx="10" ry="7" stroke="#7ee787" stroke-width="2"/>
+        <circle cx="18" cy="18" r="3" fill="#7ee787"/>
+      </svg>
+    </div>
+    <span class="label">Your Eyes</span>
+    <span class="sublabel">The final destination</span>
+  </div>
+
+</div>
+
+<p class="footnote">
+  Every stage is optimized for throughput. The phone — built by Apple, Google, or Samsung — is the
+  bottleneck they control. They have no incentive to restrict the flow.
+</p>
+
+</body>
+</html>

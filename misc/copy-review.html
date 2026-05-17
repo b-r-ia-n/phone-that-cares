@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Copy Review — Phone That Cares</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #f4efe6;
+    --panel: #faf6ed;
+    --ink: #1f2117;
+    --ink-soft: #55574a;
+    --rule: #d8d1c1;
+    --accent: #3f5b32;
+    --current: #8a6b3a;
+    --arguing: #873c2b;
+    --inviting: #2f5d6a;
+    --pick: #3f5b32;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: 'Iowan Old Style','Charter',Georgia, serif;
+    font-size: 16px; line-height: 1.55; }
+  header.top {
+    position: sticky; top: 0; z-index: 5;
+    background: rgba(244,239,230,0.96);
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 22px;
+    backdrop-filter: blur(4px);
+  }
+  header.top h1 { margin: 0 0 8px; font-size: 14px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+  .page-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .page-tabs button {
+    font: inherit; font-size: 13px;
+    padding: 6px 12px; border: 1px solid var(--rule);
+    background: transparent; color: var(--ink); border-radius: 4px;
+    cursor: pointer; transition: all .12s ease;
+  }
+  .page-tabs button:hover { border-color: var(--accent); color: var(--accent); }
+  .page-tabs button.active {
+    background: var(--accent); color: #faf6ed; border-color: var(--accent);
+  }
+  main.grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 1px;
+    background: var(--rule);
+    min-height: calc(100vh - 70px);
+  }
+  @media (max-width: 1100px) {
+    main.grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+  @media (max-width: 640px) {
+    main.grid { grid-template-columns: 1fr; }
+  }
+  .col { background: var(--panel); padding: 28px 26px 80px; overflow: hidden; }
+  .col .label {
+    font-size: 11px; letter-spacing: .18em; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 18px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .col .tag { font-weight: 500; font-style: italic; text-transform: none; letter-spacing: normal;
+    font-size: 12px; color: var(--ink-soft); }
+  .col.current .label { color: var(--current); }
+  .col.arguing .label { color: var(--arguing); }
+  .col.inviting .label { color: var(--inviting); }
+  .col.pick .label { color: var(--pick); }
+
+  .col h1 { font-size: 26px; line-height: 1.15; margin: 0 0 18px;
+    font-family: 'Iowan Old Style','Charter',Georgia,serif; font-weight: 600; }
+  .col h2 { font-size: 18px; line-height: 1.25; margin: 28px 0 8px; font-weight: 600; }
+  .col h3 { font-size: 14px; margin: 18px 0 4px; font-weight: 600; }
+  .col p { margin: 0 0 14px; }
+  .col ul { margin: 0 0 14px; padding-left: 18px; }
+  .col li { margin-bottom: 5px; }
+  .col a { color: var(--accent); border-bottom: 1px solid var(--rule); text-decoration: none; }
+  .col em { color: var(--ink-soft); }
+  .col .kicker {
+    font-size: 11px; letter-spacing: .15em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .col .lede { font-size: 17px; line-height: 1.6; }
+  .col .small { font-size: 13px; color: var(--ink-soft); }
+  .col .timeline-point {
+    border-left: 2px solid var(--rule); padding: 2px 0 14px 14px;
+    margin-left: 4px;
+  }
+  .col .timeline-point .date { font-size: 11px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-soft); }
+  .col .timeline-point h3 { margin-top: 2px; margin-bottom: 4px; }
+  .col .timeline-point p { font-size: 14px; line-height: 1.55; }
+
+  .page { display: none; }
+  .page.active { display: contents; }
+
+  .contact { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--rule);
+    font-size: 13px; color: var(--ink-soft); }
+
+  .note {
+    font-size: 12px; color: var(--ink-soft);
+    background: rgba(63,91,50,0.05); border-left: 2px solid var(--accent);
+    padding: 10px 12px; margin-bottom: 18px; font-style: italic;
+  }
+
+  /* custom scrollbar inside columns for long content */
+  .col { scrollbar-width: thin; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1>Copy Review — Phone That Cares</h1>
+  <div class="page-tabs" id="tabs">
+    <button data-page="welcome" class="active">Welcome</button>
+    <button data-page="vision">Vision</button>
+    <button data-page="thinking">Thinking</button>
+    <button data-page="writing">Writing</button>
+    <button data-page="experiments">Experiments</button>
+    <button data-page="collaborate">Collaborate</button>
+  </div>
+</header>
+
+<main class="grid" id="grid">
+
+<!-- =================================================================== -->
+<!-- WELCOME -->
+<!-- =================================================================== -->
+<div class="page active" data-page="welcome">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Welcome</h1>
+    <p>Hey there, my name is Brian, and this website is the home of a project I've been working on called A Phone That Cares About You.</p>
+    <p>In brief: I think the first person who makes a phone you can buy that actively helps you navigate addictive information streams skillfully will probably shift the default for mobile devices and the way the internet works in general.</p>
+    <p>My aim with this website is to push this transition to happen a little faster.</p>
+    <p>On this website you'll find:</p>
+    <ul>
+      <li><a>Next steps</a> for what a business built around better phones could look like</li>
+      <li>Particular UI concepts and <a>experiments</a></li>
+      <li><a>Visuals</a>, doodles, and infographics explaining my thinking</li>
+      <li><a>Essays</a> on the economic and business models behind phone manufacturers</li>
+      <li>Opportunities to <a>collaborate</a>, reach out, and give feedback</li>
+    </ul>
+    <div class="contact">Interested? Get in touch: <a>anothernotherbrian@gmail.com</a></div>
+  </section>
+
+  <section class="col arguing">
+    <div class="label">Arguing <span class="tag">stake a claim</span></div>
+    <h1>Welcome</h1>
+    <p>Hi — I'm Brian.</p>
+    <p>A few hundred million people spend two, three, four hours a day on their phones and don't enjoy most of it. That's not a personal failing. It's the predictable result of an ecosystem where every link in the chain between content and your eyeballs — creators, platforms, ad networks, recommendation engines — has teams of smart people paid to keep you scrolling, and the one link you actually pay for, the phone in your pocket, is phoning it in.</p>
+    <p>This is a technology problem, not a willpower problem. Dumb phones don't work. Screen-time dashboards don't work. App blockers don't work. They all treat the user as the problem.</p>
+    <p>My claim is simpler: <em>build a phone whose job is to be on your side.</em> One that filters what reaches you, surfaces what actually matters, and makes putting the thing down feel natural. I think that project costs a few million dollars of experiments and one manufacturer willing to ship — and the reason no one has done it is that Google and Apple make more money when you scroll. A phone that gave people their evenings back would take real bites out of the ad markets funding iOS and Android. Which is a good thing.</p>
+    <p>I think someone builds this in the next five years. I'd rather it be us than them. This site is an argument aimed at the people who might help.</p>
+    <ul>
+      <li><a>Vision</a> — what the path from here to there looks like</li>
+      <li><a>Experiments</a> — prototypes already in the world</li>
+      <li><a>Thinking</a> — the mental models behind the pitch</li>
+      <li><a>Writing</a> — longer-form essays</li>
+      <li><a>Collaborate</a> — what I'm asking for</li>
+    </ul>
+    <div class="contact">If this lights something up — agreement or disagreement, either one is useful — write to me: <a>anothernotherbrian@gmail.com</a></div>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">open the door</span></div>
+    <h1>Welcome</h1>
+    <p>Hey. I'm Brian.</p>
+    <p>This is the home of a project I've been calling <em>A Phone That Cares About You</em>. It started as an intuition — that phones could be doing so much more for the people who own them, and that the gap between what a phone is and what it could be is weirdly huge — and has slowly turned into designs, prototypes, and a plan.</p>
+    <p>The quick version: your phone is the only link in the social-media pipeline where you're the customer instead of the product. It's the one thing in that whole chain you actually bought. So it's also the most promising place to intervene — not by taking things away, but by quietly helping. A device that filters what reaches you, helps you reach the people you want to reach, and makes putting the thing down a little easier than it is today.</p>
+    <p>I don't know exactly what the final thing looks like. I know enough to keep pulling on the thread. What I'm mostly doing here is trying to paint the picture clearly enough that you can see what I'm seeing — and either push back, help build it, or tell me who else is thinking about this.</p>
+    <ul>
+      <li><a>Vision</a> — where this could go</li>
+      <li><a>Experiments</a> — what exists so far</li>
+      <li><a>Thinking</a> — diagrams and models</li>
+      <li><a>Writing</a> — essays</li>
+      <li><a>Collaborate</a> — open questions + how to get in touch</li>
+    </ul>
+    <div class="contact">I read everything. <a>anothernotherbrian@gmail.com</a></div>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Brian's version <span class="tag">— your preferred copy</span></div>
+    <h1>Welcome</h1>
+    <p>Hey there, my name is Brian, and this website is the home of a project I've been working on called A Phone That Cares About You.</p>
+    <p>In brief, I think the first person who makes a phone you can buy that actively helps you navigate addictive apps skillfully will probably shift the default for all mobile devices and the way the internet works in general.</p>
+    <p>My aim with this website is to push this transition to happen a little faster.</p>
+    <p>On this website you'll find:</p>
+    <ul>
+      <li><a>Vision</a> — the path from here to a phone you can buy</li>
+      <li><a>Experiments</a> — what's been built so far</li>
+      <li><a>Thinking</a> — diagrams, mental models</li>
+      <li><a>Writing</a> — essays on attention, incentives, and what phones could be</li>
+      <li><a>Collaborate</a> — open questions, people I'm thinking with, and how to reach me</li>
+    </ul>
+    <div class="contact">Interested? Get in touch: <a>anothernotherbrian@gmail.com</a></div>
+    <ul>
+      <li><a>Vision</a> — the path from here to a phone you can buy</li>
+      <li><a>Experiments</a> — what's been built so far</li>
+      <li><a>Thinking</a> — diagrams, mental models</li>
+      <li><a>Writing</a> — essays on attention, incentives, and what phones could be</li>
+      <li><a>Collaborate</a> — open questions, people I'm thinking with, and how to reach me</li>
+    </ul>
+    <div class="contact">Agreement, disagreement, leads, half-formed thoughts — all welcome. <a>anothernotherbrian@gmail.com</a></div>
+  </section>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- VISION -->
+<!-- =================================================================== -->
+<div class="page" data-page="vision">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Vision</h1>
+    <p class="lede">I think the current OS ecosystem will look unstable in retrospect. It would only take one manufacturer really going all in on reducing addiction for the equilibrium of the whole industry to shift. Right now we have a Yellowstone without wolves — no one in the pipeline between the feed and the user is primarily on the user's side. What follows is one plausible path from that intuition to a world where someone is.</p>
+    <div class="timeline-point"><span class="date">Spring 2024</span><h3>First UI Idea</h3><p>Grayscale screens are ugly, but they also make the internet feel less beautiful. I try to build a mode that slowly desaturates the phone the longer you use it. Android won't let me.</p></div>
+    <div class="timeline-point"><span class="date">Spring 2026</span><h3>Android OS Experiments <em>(in progress)</em></h3><p>How far can you go with Android-approved interventions, and how much further if you change the OS itself?</p></div>
+    <div class="timeline-point"><span class="date">Future</span><h3>The Cascade</h3><p>One manufacturer ships with care built in structurally. The others follow or explain why they won't.</p></div>
+    <p class="small"><em>(Full timeline has 9 points — shown abbreviated here.)</em></p>
+  </section>
+
+  <section class="col arguing">
+    <div class="label">Arguing <span class="tag">stake a claim</span></div>
+    <h1>Vision</h1>
+    <p class="lede">Hundreds of millions of people spending thirty hours a week on apps they don't especially enjoy is an unstable equilibrium. It doesn't last a hundred years. It probably doesn't last ten. One manufacturer will ship a phone that takes users' side structurally — not as a wellness opt-in but the way encryption became default — and the rest will follow or go obsolete.</p>
+    <p class="lede">I'd like that to happen in this decade. What follows is the plan.</p>
+    <div class="timeline-point"><span class="date">Spring 2024 · done</span><h3>The first wall</h3><p>I try to build a launcher that slowly desaturates your phone the more you scroll. Android blocks it. Matthew and I shrug and move on. A year later it starts to look less like an accident and more like the shape of the market.</p></div>
+    <div class="timeline-point"><span class="date">Fall 2024 · done</span><h3>Ruling out everything already on the shelf</h3><p>Freedom, Opal, Forest, the Light Phone, the Boring Phone, every screen-time dashboard on the market. All of them tell the user they're the problem. None of them works. If any of them worked we'd all be using it.</p></div>
+    <div class="timeline-point"><span class="date">Feb 2026 · done</span><h3>Quit the day job</h3><p>Twenty hours a week on this since.</p></div>
+    <div class="timeline-point"><span class="date">Now · in progress</span><h3>Ship friction-as-a-product</h3><p>The Scroll Lab (a Chrome extension) and ArgOS Sessions (a mobile overlay) both test a narrow, testable claim: if you insert deliberate friction into the feed, does behavior change? The data should start to answer this in months, not years.</p></div>
+    <div class="timeline-point"><span class="date">Late 2026</span><h3>A device you can hold</h3><p>Not a mass-market product. A small fleet, flashed with a fork of LineageOS, given to people who have agreed to be measured. A phone that costs more than an iPhone, justified by giving people hours of their life back.</p></div>
+    <div class="timeline-point"><span class="date">2027–28</span><h3>Evidence that moves people who aren't already convinced</h3><p>A/B data, retention curves, subjective reports. The thing that turns this from a designer's conviction into a fundable argument.</p></div>
+    <div class="timeline-point"><span class="date">2028+</span><h3>The Cascade</h3><p>One manufacturer ships a phone that respects its users structurally. The rest scramble. Google and Apple take a real hit to the ad markets that underwrite their OS work. That hit is, incidentally, the size of the gift we hand back to users. Good.</p></div>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">open the door</span></div>
+    <h1>Vision</h1>
+    <p class="lede">This page is the story so far, and one version of where it could go. I don't think it's the only version. It's what feels most plausible from here.</p>
+    <p class="lede">The core belief I'm working from: your phone could be on your side in ways it currently isn't, and the gap between what phones are and what they could be is big enough that even small wins matter. If enough of those wins accumulate, a different kind of phone starts to make commercial sense — and once one exists, the others have to reckon with it.</p>
+    <div class="timeline-point"><span class="date">Spring 2024</span><h3>A hunch that wouldn't let go</h3><p>I wanted to build a mode that slowly desaturated my phone the longer I scrolled. Android wouldn't let me. That friction is where the project really starts.</p></div>
+    <div class="timeline-point"><span class="date">2024–25</span><h3>Learning the landscape</h3><p>Trying every self-control app. Reading about slot machines. Running small brainstorms with friends. Slowly, the shape of what's missing gets clearer.</p></div>
+    <div class="timeline-point"><span class="date">Now</span><h3>Making things real</h3><p>The Scroll Lab, ArgOS, a heavy phone case, mockups, essays. Each one small, each one answering a specific question about what could work.</p></div>
+    <div class="timeline-point"><span class="date">Near future</span><h3>A phone you could actually hold</h3><p>Not shipping to the public yet. A small handful of real devices in the hands of people willing to be measured.</p></div>
+    <div class="timeline-point"><span class="date">Further out</span><h3>The cascade</h3><p>The thing I'm betting on: once one good phone exists, the others can't help but follow.</p></div>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Claude's Pick <span class="tag">v2 — with your notes</span></div>
+    <h1>Vision</h1>
+    <p class="lede">The current arrangement — hundreds of millions of people spending thirty hours a week on apps they don't especially enjoy, with no one in the content pipeline primarily on their side — seems unstable to me. I don't think it lasts a century. Not even a decade.</p>
+    <p class="lede">This timeline is one plausible route from <em>here</em> to <em>there</em>. Past milestones are things that have actually happened. Future ones are what I'm currently betting on.</p>
+    <div class="timeline-point"><span class="date">Spring 2024</span><h3>First UI idea hits a wall</h3><p>I try to build a mode that slowly desaturates the phone the longer you scroll, and notice Android won't allow it. At the time I chalk it up to a quirk of the platform.</p></div>
+    <div class="timeline-point"><span class="date">Fall 2024</span><h3>Survey of existing tools</h3><p>Freedom, Opal, Forest, Light Phone, every screen-time dashboard. None of them work, in the sense that if any of them did we'd all be using it.</p></div>
+    <div class="timeline-point"><span class="date">November 2024</span><h3>Public brainstorms begin</h3><p>The idea stops being a private intuition. A handful of Google Meets with friends (@zencephalon, @Samswoora, @Tautologer, @arcove, @charmcgi) — trading UI ideas, pressure-testing the framing, getting the first real sense of which parts of the thesis survive contact with other people's intuitions.</p></div>
+    <div class="timeline-point"><span class="date">Late 2025 – Winter 2026</span><h3>Early mockups</h3><p>Two attempts at giving the idea something physical to argue with: a 3D-printed phone case weighted with steel (does a heavier phone get put down sooner?), and an iMovie mockup of a phone gradually desaturating as you scroll (the original Spring 2024 idea, back as video since Android wouldn't let me ship it as software).</p></div>
+    <div class="timeline-point"><span class="date">Spring 2026 · in progress</span><h3>Data collection &amp; experiments</h3><p>De-risking the core hypotheses by making them testable. This is the step where collaboration would most help — arguments, data, people who want to run experiments alongside me.</p><ul>
+      <li><a href="/os-mock-sessions/">ArgOS 2026</a> — a clickable mobile mockup, presence-style visual treatments layered on top of the apps you already use.</li>
+      <li><a href="/experiments">The Scroll Lab</a> — a Chrome extension applying live visual transformations to X, now logging anonymous scroll and session data so "does this actually change behavior" can start to have numbers attached to it.</li>
+      <li><a href="/os-mock/">ArgOS 2028</a> — the more ambitious version, same phone one step further, with an AI-assembled Discover feed.</li>
+    </ul></div>
+    <div class="timeline-point"><span class="date">Spring–Summer 2026</span><h3>Forking Android</h3><p>The next step feels like building ArgOS on a LineageOS fork. The experiment that answers how much further you can get if you're not bound by Android's restrictions on what a phone is allowed to do for you.</p></div>
+    <div class="timeline-point"><span class="date">Summer 2026 · optimistically</span><h3>A phone someone could buy</h3><p>Priced above an iPhone, justified not by specs but by the hours of life it returns. Two things it does well: filter what reaches you (a bouncer), and surface what actually matters (an assistant who pays attention).</p></div>
+    <div class="timeline-point"><span class="date">Future</span><h3>Evidence, not just conviction</h3><p>A small fleet in the wild. Real usage data. A/B results that move people who aren't already convinced.</p></div>
+    <div class="timeline-point"><span class="date">Future</span><h3>More time, and collaborators</h3><p>Dedicating more of my own time to this, and finding the people aligned enough to work on it alongside me.</p></div>
+    <div class="timeline-point"><span class="date">Future</span><h3>The cascade</h3><p>One manufacturer ships care structurally — not as a wellness toggle, the way encryption is now. The others follow or explain why they won't. Google and Apple's ad revenue takes a real hit, roughly equal to the gift users get back. Good trade.</p></div>
+  </section>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- THINKING -->
+<!-- =================================================================== -->
+<div class="page" data-page="thinking">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Thinking</h1>
+    <p class="lede">Mental models, diagrams, and the conceptual scaffolding behind the project.</p>
+    <p class="small"><em>[figure: three-panel illustration — compulsive use → stepping back → integration]</em></p>
+    <p class="small"><em>Caption: The arc this project is trying to support — from compulsive use, through reflection, to integration.</em></p>
+    <div class="note">This page is currently almost empty. The three variants below propose what it could <em>be</em>, not just reworded copy.</div>
+  </section>
+
+  <section class="col arguing">
+    <div class="label">Arguing <span class="tag">the page as an argument</span></div>
+    <h1>Thinking</h1>
+    <p class="lede">Four claims the rest of this project is built on. If any of them is wrong, the whole thing is probably wrong.</p>
+
+    <h2>1. The pipeline has one paid link, and it's the phone.</h2>
+    <p>Content → platforms → ad networks → algorithms → display → you. Every link in that chain is either paid by advertisers or paid by attention. The one exception is the device in your hand. You bought it. That makes it the natural intervention point, and the only one where "work for the user" is compatible with the business model.</p>
+
+    <h2>2. Restriction-based tools don't work because they recreate internal conflict.</h2>
+    <p>Light Phone, Freedom, Forest, Screen Time — they all pit the part of the user that wants to scroll against the part that wants to stop. The user flip-flops. Restrict, resist, break down, binge. A phone that actually helps has to integrate those parts, not referee them.</p>
+
+    <h2>3. Phone addiction is a closed-attention loop.</h2>
+    <p>Not superstimulus. Not bright colors. A person scrolling for eight hours is physically uncomfortable. The nervous system is asking for water, a walk, a call with a friend. Being able to ignore those signals for that long is the mechanism. Anything that reopens attention — including, interestingly, attention to the body — breaks the loop.</p>
+
+    <h2>4. The market is held in place by a tacit agreement.</h2>
+    <p>Google, Apple, Samsung all make more when you scroll. None of them has a strong incentive to defect first. But the equilibrium is fragile: the moment one manufacturer ships a phone that respects its users, the others have to follow or look bad. Someone is going to defect. I'd rather it be someone whose first principle is users.</p>
+
+    <h2>Diagrams</h2>
+    <p class="small"><em>[content pipeline, showing the one paid link]</em></p>
+    <p class="small"><em>[exploded-view of a phone OS: what's on top, what's behind, who controls what]</em></p>
+    <p class="small"><em>[five levels of caring, from active harm to superhuman guardian]</em></p>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">a working notebook</span></div>
+    <h1>Thinking</h1>
+    <p class="lede">This page is the scratchpad. Diagrams, mental models, half-formed intuitions — the stuff I use to think with, more than the stuff I use to persuade. If you want the clean argument, try <a>Vision</a>. If you want to see how the sausage is made, you're in the right place.</p>
+
+    <h2>The content pipeline</h2>
+    <p class="small"><em>[diagram: Creation → algorithmic distribution → delivery → display → consumption — with the phone highlighted as the one link where you're the customer]</em></p>
+    <p>The claim this diagram makes, once you sit with it, is almost embarrassing in how obvious it is. You are paying for exactly one thing in the whole chain that ends with content in front of your eyes. That thing is supposed to be working for you. Why isn't it?</p>
+
+    <h2>Parts of a user</h2>
+    <p class="small"><em>[cartoon: the part that loves scrolling, the part that loves being in touch with people, the part that feels the ache of too many hours]</em></p>
+    <p>Current tools treat the scrolling part as the villain. I don't think that holds. The part of you that loves TikTok is a real part of you, with real reasons. The work isn't to suppress it — it's to help all the parts talk to each other.</p>
+
+    <h2>Five levels of caring</h2>
+    <p>Active harm → indifferent → helpful on request → skilled friend → angelic. Most phones sit at level two, pretending it's level three. There's a lot of room above that.</p>
+
+    <h2>Layers between you and the content</h2>
+    <p class="small"><em>[sketch: a mutable perceptual layer sitting between pipeline and eye]</em></p>
+    <p>Not changing what's delivered — changing how it arrives. Picture frames. Parallax. Slowly draining color. A thumb-sized pause between posts. Modes, not restrictions.</p>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Claude's Pick <span class="tag">v3 — four hypotheses, restructured per your notes</span></div>
+    <h1>Thinking</h1>
+    <p class="lede">The conceptual scaffolding underneath the project. Nine hypotheses the rest of the work sits on top of — some of them old and settled in my head, some still fresh. If you disagree with any of them, the rest of what I'm doing may not hold, so I'd genuinely like to hear about it.</p>
+
+    <h2>1. The pipeline has one paid link, and it's the phone.</h2>
+    <p class="small"><em>[diagram: the content pipeline, with the phone highlighted]</em></p>
+    <p>Content → platforms → ad networks → algorithms → display → you. Every link in that chain is either paid by advertisers or paid by attention. The one exception is the device in your hand. You bought it. That makes it the natural intervention point, and the only one where "work for the user" is compatible with the business model.</p>
+
+    <h2>2. Restriction-based tools don't work because they recreate internal conflict.</h2>
+    <p>Light Phone, Freedom, Forest, Screen Time — they all pit the part of the user that wants to scroll against the part that wants to stop. The user flip-flops. Restrict, resist, break down, binge. A phone that actually helps has to integrate those parts, not referee them.</p>
+
+    <h2>3. Phone addiction is a closed-attention loop.</h2>
+    <p class="small"><em>[illustration: the body while scrolling — parts asking for things]</em></p>
+    <p>Not superstimulus. Not bright colors. A person scrolling for eight hours is physically uncomfortable. The nervous system is asking for water, a walk, a call with a friend. Being able to ignore those signals for that long is the mechanism. Anything that reopens attention — including, interestingly, attention to the body — breaks the loop.</p>
+
+    <h2>4. The market is held in place by a tacit agreement.</h2>
+    <p>Google, Apple, Samsung all make more when you scroll. None of them has a strong incentive to defect first. But the equilibrium is fragile: the moment one manufacturer ships a phone that respects its users, the others have to follow or look bad. Someone is going to defect. I'd rather it be someone whose first principle is users.</p>
+
+    <h2>5. Integration over division.</h2>
+    <p>The opportunity is in interfaces that foster integration rather than division. The part of you that likes scrolling TikTok is fine — it doesn't need to be overruled by the part that wants to stop, it needs the parts to live together.</p>
+
+    <h2>6. The bouncer and the assistant.</h2>
+    <p>A lot of the intelligence we project onto a phone is in another layer, and the phone is simply doing what it's told. What people need is a savvier, sneakier, craftier bouncer phone — and also an assistant, something surfacing the three friends you've been meaning to text, the call you could make right now.</p>
+
+    <h2>7. Layers, not locks.</h2>
+    <p class="small"><em>[diagram: a perceptual layer sitting between the content pipeline and the eye]</em></p>
+    <p>The interventions I'm interested in aren't blocks, they're layers between you and the content. A picture frame around the feed, the way a painting in a museum has one. Parallax depth, so the screen feels a foot inside the device. Saturation that drains as the session goes on. The room behind the phone showing faintly through the camera. None of it asks you to choose between scrolling and not scrolling. It just makes a phone a little more like a window and a little less like a portal you fall into.</p>
+
+    <h2>8. These are obvious opportunities, not shameful failures of self-control.</h2>
+    <p>In retrospect, the current system is fairly unstable. Hundreds of millions of people spending thirty hours a week on stuff they don't especially enjoy was never going to last a hundred years — like the opium dens era, it'll be a sort of embarrassing thing that happened. Reading about the Wright Brothers, I keep thinking: heavier-than-air flight wasn't a secret, it was widely discussed, just stuck on the wrong models. The fact that no one has done this is nuts.</p>
+
+    <h2>9. Beauty, not harshness.</h2>
+    <p>You solve phone addiction with beauty rather than harshness. Most tools in this space tell the part of you that likes scrolling TikTok that it's bad and wrong and a child, and that part is fine — it just needs reminders that you have hands and agency and that there are sunsets. You don't have to solve anyone's emotional problems to build a less addictive phone. You just have to close the interestingness gap a little between the phone and everything else.</p>
+
+    <p class="small" style="margin-top:2rem"><em>[Diagrams, comics, and illustrations in development. This page will fill out as they're made.]</em></p>
+  </section>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- WRITING -->
+<!-- =================================================================== -->
+<div class="page" data-page="writing">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Writing</h1>
+    <p class="lede">Essays on attention, integration, and what phones could become. Published on <a>Safety First</a> on Substack.</p>
+    <h3>Why Don't Google, Apple, Samsung Want to Build Features That Help Reduce Scrolling Time?</h3>
+    <h3>What would it mean for a phone to care about you?</h3>
+    <h3>Project Brief: A Phone That Cares About You</h3>
+    <p class="small"><em>(Essay cards unchanged — current site shows metadata, subtitle, excerpt, read link.)</em></p>
+  </section>
+
+  <section class="col arguing">
+    <div class="label">Arguing <span class="tag">stake a claim</span></div>
+    <h1>Writing</h1>
+    <p class="lede">Long-form arguments for people who want the full case. Each essay picks one claim from the project and tries to make it indefensible.</p>
+    <p class="lede">Published on <a>Safety First</a>.</p>
+    <p class="small"><em>(Then the essay cards.)</em></p>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">open the door</span></div>
+    <h1>Writing</h1>
+    <p class="lede">Essays on attention, phones, and the gap between what technology is and what it could be. Some are finished arguments. Some are still working things out in public.</p>
+    <p class="lede">All live on <a>Safety First</a> — the Substack where I'm slowly publishing this project in long form.</p>
+    <p class="small"><em>(Then the essay cards.)</em></p>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Claude's Pick <span class="tag">minimal, confident</span></div>
+    <h1>Writing</h1>
+    <p class="lede">Longer-form essays on the claims this project rests on — why current tools fail, what a phone on your side would feel like, and why the companies that could ship it won't.</p>
+    <p class="lede">All on <a>Safety First</a>. New things show up there first.</p>
+    <p class="small"><em>(Then the essay cards.)</em></p>
+  </section>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- EXPERIMENTS -->
+<!-- =================================================================== -->
+<div class="page" data-page="experiments">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Experiments</h1>
+    <p class="lede">Prototypes for changing how content reaches you. Small interventions that test the question: what would it feel like if the feed pushed back, even a little?</p>
+
+    <div class="kicker">Experiment 01</div>
+    <h2>The Scroll Lab</h2>
+    <p><em>A Chrome extension that applies live visual transformations to your social feed.</em></p>
+    <p>The Scroll Lab is a small Chrome extension that lets you toggle experimental visual treatments on top of X / Twitter in real time. Padding, fragmenting, blurring, desaturating, distorting — each mode is a deliberate piece of friction, dropped between you and the feed to see what changes.</p>
+
+    <div class="kicker">Experiment 02</div>
+    <h2>ArgOS Sessions</h2>
+    <p><em>A lighter-weight version of ArgOS that doesn't try to replace your apps — it just draws friction on top of them.</em></p>
+
+    <div class="kicker">Experiment 03</div>
+    <h2>ArgOS</h2>
+    <p><em>A speculative phone OS with an AI-driven Discover feed assembled from your other apps.</em></p>
+  </section>
+
+  <section class="col arguing" style="opacity:.45">
+    <div class="label">Arguing <span class="tag">skipped — you only wanted Inviting + Pick</span></div>
+    <p class="small"><em>Per your note, only Inviting and Claude's Pick below.</em></p>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">v2 — with your notes</span></div>
+    <h1>Experiments</h1>
+    <p class="lede">Three things I've built that you can actually touch. Some are clickable sketches. One is usable today. All of them exist because arguments on websites are cheap, and a thing someone can poke at is worth more.</p>
+
+    <div class="kicker">Experiment 01</div>
+    <h2>ArgOS 2026</h2>
+    <p><em>A clickable phone mockup — a layer of friction on top of the apps you already use.</em></p>
+    <p>Blur, grayscale, font cycling, tweet padding, a heartbeat of pause between posts. None of it blocks anything. All of it transforms what reaches you. No AI, no custom feed — just the friction.</p>
+    <p>This is the simplest version of what I think a phone on your side would feel like, and it's the one I'd point new people at first.</p>
+    <p class="small">[walkthrough video] · <a>open the live mockup →</a></p>
+
+    <div class="kicker">Experiment 02</div>
+    <h2>ArgOS 2028</h2>
+    <p><em>Same phone, one step further — Discover stops layering on feeds and starts building its own.</em></p>
+    <p>Nearly identical to ArgOS 2026. The difference is the Discover page: instead of transforming the feeds you already have, it assembles a new one from across your apps — Substack, YouTube, Instagram, X, blogs, whatever you care about, mixed into a single intentional stream. Connect, Think Out Loud, The Book, and Ask live here too.</p>
+    <p>Same caveat: not a real OS. A clickable sketch, built so the ideas can be argued with.</p>
+    <p class="small"><a>open the live mockup →</a></p>
+
+    <div class="kicker">Experiment 03</div>
+    <h2>The Scroll Lab</h2>
+    <p><em>A Chrome extension. You can install it right now.</em></p>
+    <p>Open X, toggle a mode, see what happens. Blur, grayscale, tweet padding, font cycling, break cards. Most took ten minutes to write. A few of them will change how you scroll for an afternoon.</p>
+    <p>I'd really like you to try it. Every mode is a specific guess about what breaks the trance, and those guesses get less imaginary the more people push on them.</p>
+    <p class="small"><strong>A note on data:</strong> the extension records a bit of anonymous usage info — how long the panel is open, how far you scroll, which mode is active. That's it. No content of posts, no account info, nothing identifying. It's how I learn whether any of this actually moves behavior.</p>
+    <p class="small"><a>download the extension ↓</a></p>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Claude's Pick <span class="tag">v3 — "presence" keyword, reordered, longer sentences</span></div>
+    <h1>Experiments</h1>
+    <p class="lede">Three things I've put in the world — because a good argument on a page is easy to file away, whereas a thing you can install, click through, or hold in your hand is harder to forget. I wanted the ideas on this site to point at an actual implementation, even a rough one, so there'd be something concrete to react to rather than just another page of words.</p>
+
+    <div class="kicker">Experiment 01</div>
+    <h2>ArgOS 2026</h2>
+    <p><em>A clickable phone mockup — a layer of presence draped over the apps you already open a hundred times a day.</em></p>
+    <p>Blur, grayscale, font cycling, tweet padding, a heartbeat of pause between posts, a slow drain of color as the session goes on. None of it is a block, all of it is transform, and the unifying word across the whole project (in contrast to the dissociation that phones tend to produce by default) is <em>presence</em> — modes that bring you a little more back into the room you're actually in, rather than locks that yank you out of what you were doing.</p>
+    <p>This is the version I'd show someone first, because it's the simplest shape of the bigger bet: if a little reopening of attention in the right places changes how a phone feels to use, then a lot of what the more ambitious version further down is trying to do can be recovered without rebuilding the OS from scratch.</p>
+    <p class="small">[walkthrough video] · <a>open the live mockup →</a></p>
+
+    <div class="kicker">Experiment 02</div>
+    <h2>The Scroll Lab</h2>
+    <p><em>A Chrome extension — the one piece of this you can install today and try in five minutes.</em></p>
+    <p>Download it, open X, and start toggling between modes — blur, grayscale, tweet padding, font cycling, break cards — each one a specific small guess about what reopens attention and what doesn't. Most of them took ten minutes to write, a few of them changed how I scrolled for the rest of the day, and all of them are there partly to be tested on someone who isn't me.</p>
+    <p>Please actually use it, and actually tell me what you notice, because every mode is a tiny hypothesis about which interventions do something real and which ones I just convinced myself of, and those hypotheses get a lot less imaginary the more people push on them.</p>
+    <p class="small"><strong>On data:</strong> the extension does collect a small amount of anonymous usage information — how long the panel is open, how far you scroll, which mode is active — and that's the whole list. No post content, no account information, nothing identifying. It's just how I'll eventually know whether any of this actually moves the needle.</p>
+    <p class="small"><a>download the extension ↓</a></p>
+
+    <div class="kicker">Experiment 03</div>
+    <h2>ArgOS 2028</h2>
+    <p><em>The same phone as ArgOS 2026, one piece further along — a sketch of where this is going once the hard parts are solved.</em></p>
+    <p>Almost everything is identical to 2026 (same modes, same aesthetic, same idea of presence as the central move), with one significant addition: Discover stops layering on top of your existing feeds and starts assembling its own, pulling across Substack, YouTube, Instagram, X, blog posts, whatever you've told it you care about, into a single intentional stream. The rest of the OS comes along for the ride.</p>
+    <p>Still not a real OS, just a clickable mockup built to be argued with rather than shipped, but the screens are wired up and the shape of it is mostly there.</p>
+    <p class="small"><a>open the live mockup →</a></p>
+  </section>
+
+</div>
+
+<!-- =================================================================== -->
+<!-- COLLABORATE -->
+<!-- =================================================================== -->
+<div class="page" data-page="collaborate">
+
+  <section class="col current">
+    <div class="label">Current <span class="tag">what's live now</span></div>
+    <h1>Collaborate</h1>
+    <p class="lede">This is an open project. Below are the questions I'm sitting with, the people I've been thinking with, and the reading that shaped the work. Click a sticker, finish the sentence, hit send.</p>
+    <h2>Open questions</h2>
+    <p class="small"><em>[sticker wall]</em></p>
+    <h2>People I've been thinking with</h2>
+    <p class="small"><em>A small thank-you to the people who've been generous with their attention while I've been figuring this out — arguing with the idea, sharpening it, and keeping me company in the questions.</em></p>
+    <h2>Intellectual lineage</h2>
+    <p class="small"><em>Addiction by Design, E Unibus Pluram, QRI, Angels on the Shoulder, Calm Technology, Marie Kondo.</em></p>
+    <h2>Related hardware</h2>
+    <p class="small"><em>GoDumb, Fairphone.</em></p>
+  </section>
+
+  <section class="col arguing">
+    <div class="label">Arguing <span class="tag">a specific ask</span></div>
+    <h1>Collaborate</h1>
+    <p class="lede">This project needs other people. Specifically: I need people who will push back on the weak points, help build the next round of prototypes, or connect me to the person who can.</p>
+    <p>If you're any of the following, write to me:</p>
+    <ul>
+      <li>An Android / LineageOS engineer who'd be willing to look at the ArgOS build plan</li>
+      <li>Someone who has opinions about how to measure "does this actually help" without making it worse</li>
+      <li>A designer who has thought seriously about calm interfaces and is willing to argue</li>
+      <li>Anyone who has tried to start a phone company and will tell me what I'm underestimating</li>
+      <li>Anyone with a strong reaction — agreement or disagreement — to any specific claim on this site</li>
+    </ul>
+    <h2>Open questions</h2>
+    <p>The things I'm most uncertain about, in public, in case someone has a clearer view than I do.</p>
+    <p class="small"><em>[sticker wall]</em></p>
+    <h2>People I've been thinking with</h2>
+    <p class="small"><em>(unchanged)</em></p>
+    <h2>Intellectual lineage</h2>
+    <p class="small"><em>(unchanged)</em></p>
+  </section>
+
+  <section class="col inviting">
+    <div class="label">Inviting <span class="tag">open the door</span></div>
+    <h1>Collaborate</h1>
+    <p class="lede">This is an open project. Below are the questions I'm sitting with, the people who've kept me company in them, and the reading that's shaped how I think about this stuff. Pull a thread, push back on a claim, or just say hi — all of it helps.</p>
+    <h2>Open questions</h2>
+    <p class="small"><em>[sticker wall]</em></p>
+    <h2>People I've been thinking with</h2>
+    <p class="small"><em>(unchanged)</em></p>
+    <h2>Intellectual lineage</h2>
+    <p class="small"><em>(unchanged)</em></p>
+    <h2>Related hardware</h2>
+    <p class="small"><em>(unchanged)</em></p>
+  </section>
+
+  <section class="col pick">
+    <div class="label">Claude's Pick <span class="tag">v3 — with your notes</span></div>
+    <h1>Collaborate</h1>
+    <p class="lede">The short version: I want to hear from you.</p>
+    <p class="lede">Especially from anyone with a strong reaction — agreement, disagreement, a thing I'm obviously missing, a person I should talk to, a prototype you want to see exist. This project doesn't work as a solo effort and isn't trying to be one for long.</p>
+
+    <h2>Open questions</h2>
+    <p>The things I'm still sitting with, in public, in case you have a clearer view. Click a sticker to finish the sentence and send a response — or add your own sticker (a question, a hypothesis, an unfinished thought) for other people to respond to.</p>
+    <p class="small"><em>[sticker wall — now with "propose a question" affordance]</em></p>
+
+    <h2>People I've been thinking with</h2>
+    <p class="small"><em>(unchanged — the paragraph of handles)</em></p>
+
+    <h2>Intellectual lineage</h2>
+    <p>Forethought.org's <a>Design Sketches: Angels on the Shoulder</a> is the closest existing statement I've found of what an AI-aware supportive layer on a phone could actually feel like. David McCullough's <em>The Wright Brothers</em> handed me the metaphor I use for this whole moment — an obviously-solvable problem, widely discussed, stuck on the wrong models, waiting for someone to find the right one. Randall Munroe's xkcd <em>Day Counter</em> reading modes sit behind most of the perceptual-layer thinking: same content, different filter, completely different felt experience.</p>
+    <p>A few I keep meaning to read properly. Natasha Dow Schüll's <em>Addiction by Design</em> looks like the most direct predecessor for how feeds were engineered — I'm trusting that on reputation for now and haven't done the reading.</p>
+    <p>Mostly, though, more of the thinking has come from conversations with the people listed above than from any book.</p>
+
+    <h2>Related hardware</h2>
+    <p class="small"><em>(unchanged — GoDumb, Fairphone)</em></p>
+  </section>
+
+</div>
+
+</main>
+
+<script>
+  const tabs = document.querySelectorAll('#tabs button');
+  const pages = document.querySelectorAll('.page');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.page;
+      tabs.forEach(b => b.classList.toggle('active', b === btn));
+      pages.forEach(p => p.classList.toggle('active', p.dataset.page === target));
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    });
+  });
+</script>
+
+</body>
+</html>

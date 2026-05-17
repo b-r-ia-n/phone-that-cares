@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>argos / dashboard · 2026-05-01 evening</title>
+<link rel="preconnect" href="https://rsms.me/" />
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f3ec;
+    --surface: #fbf9f3;
+    --surface-2: #f1ede3;
+    --text: #1f1c17;
+    --text-soft: #57514a;
+    --text-muted: #8a8378;
+    --rule: #e6dfd1;
+    --rule-strong: #d4cbb8;
+    --accent: #8a5a2b;
+    --accent-soft: #c4a47a;
+    --done: #aaa294;
+    --warn: #a04a1f;
+    --ok: #4a7a2a;
+    --pill-bg: #ece5d4;
+    --pill-text: #5a4a32;
+    --code-bg: #ede7d6;
+  }
+  * { box-sizing: border-box; }
+  *::selection { background: var(--accent-soft); color: var(--text); }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-feature-settings: "kern", "liga", "calt", "ss01";
+    font-size: 14.5px; line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  @supports (font-variation-settings: normal) {
+    body { font-family: "Inter var", -apple-system, sans-serif; }
+  }
+  .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 28px 96px; }
+  nav.top { display: flex; gap: 18px; font-size: 12.5px; color: var(--text-muted); margin-bottom: 36px; flex-wrap: wrap; }
+  nav.top a { color: var(--text-muted); text-decoration: none; }
+  nav.top a:hover { color: var(--text); }
+
+  header { margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--rule); }
+  h1 { font-size: 24px; font-weight: 600; margin: 0 0 4px; letter-spacing: -0.015em; }
+  .subtitle { color: var(--text-muted); font-size: 13px; }
+
+  .overnight-banner {
+    background: var(--pill-bg);
+    border: 1px solid var(--accent-soft);
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin: 24px 0 0;
+  }
+  .overnight-banner h2 { font-size: 14px; font-weight: 600; margin: 0 0 8px; color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em; }
+  .overnight-banner p { margin: 0 0 8px; color: var(--text); font-size: 14px; line-height: 1.55; }
+  .overnight-banner p:last-child { margin-bottom: 0; }
+
+  section { margin-top: 40px; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: lowercase; letter-spacing: 0.04em; margin: 0 0 12px; color: var(--text); }
+  p { margin: 0 0 12px; color: var(--text-soft); font-size: 14px; }
+
+  ul.tasks { list-style: none; padding: 0; margin: 8px 0 0; }
+  ul.tasks li { padding: 10px 0; border-bottom: 1px solid var(--rule); font-size: 14px; line-height: 1.5; position: relative; padding-left: 28px; }
+  ul.tasks li:last-child { border-bottom: none; }
+  ul.tasks li.done { color: var(--done); }
+  ul.tasks li.done .label { text-decoration: line-through; text-decoration-color: var(--done); }
+  ul.tasks li.done::before { content: "✓"; position: absolute; left: 6px; top: 9px; color: var(--ok); font-weight: 600; }
+  ul.tasks li.todo::before { content: "○"; position: absolute; left: 6px; top: 9px; color: var(--text-muted); }
+  ul.tasks li.in-progress::before { content: "◐"; position: absolute; left: 6px; top: 9px; color: var(--accent); }
+  ul.tasks li.skipped { color: var(--text-muted); }
+  ul.tasks li.skipped::before { content: "—"; position: absolute; left: 6px; top: 9px; color: var(--text-muted); }
+  ul.tasks li.warn::before { content: "!"; position: absolute; left: 6px; top: 9px; color: var(--warn); font-weight: 700; }
+  ul.tasks li .meta { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; line-height: 1.45; }
+
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  a.pill {
+    display: inline-block;
+    padding: 5px 12px;
+    background: var(--pill-bg);
+    color: var(--pill-text);
+    border-radius: 999px;
+    font-size: 12.5px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: border-color 120ms ease;
+  }
+  a.pill:hover { border-color: var(--accent-soft); }
+
+  table.uxtable { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 13px; }
+  table.uxtable th, table.uxtable td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  table.uxtable th { font-weight: 600; color: var(--text-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.uxtable td.status-done { color: var(--ok); font-weight: 500; }
+  table.uxtable td.status-open { color: var(--warn); }
+  table.uxtable td.status-na { color: var(--text-muted); }
+
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font: 12.5px ui-monospace, Menlo, monospace; }
+  .takes p { color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<nav class="top">
+  <a href="#tldr">/ tldr</a>
+  <a href="#try">/ try</a>
+  <a href="#shipped">/ shipped</a>
+  <a href="#ux">/ ux table</a>
+  <a href="#open">/ open</a>
+  <a href="#known">/ known issues</a>
+  <a href="#numbers">/ numbers</a>
+  <a href="#read">/ my read</a>
+</nav>
+
+<header>
+  <h1>argos / project dashboard</h1>
+  <div class="subtitle">2026-05-01 evening · post-orchestrated push + ux-driven tightening</div>
+
+  <div class="overnight-banner" id="tldr">
+    <h2>tl;dr</h2>
+    <p>Big day. <strong>Wave 1</strong>: 4-agent parallel orchestration shipped the morning's planned stack — security must-fixes, bulk-import page, architecture refactor (memory awareness block, contextual tool loading, journal shelf, /library/argos-log rename), UX test harness with 6 personas + post-conversation interview + HTML report. Plus a verification pass.</p>
+    <p><strong>Wave 2</strong>: voice/register fixes. RoboMcCarthy was getting washed out — the system prompt was opening with the persona then layering 6 blocks of operational text on top. Reordered to put operational stuff in a <code>BACKSTAGE</code> wrapper at the top and the mode prompt last. Side effect: also fixed the Mira-onboarding-swallow bug. Added a per-user toggle to mute the persona note from the prompt without deleting the data.</p>
+    <p><strong>Wave 3</strong>: UX-table-driven tightenings. Picked off #1 (Mira onboarding bug) #3 (epistemic honesty) #6 (set_reminder ask-when) #7 (cite external sources) #8 (don't invent continuity). Verified Mira fix via live replay; 5/6 of the menu-reflex turns survived #2's CLOSING principle, suggesting that one needs mode-prompt-level intervention not TOOL_GUIDANCE.</p>
+    <p><strong>One UX finding was a false positive</strong>: Donna's "no reply on /start" was a harness artifact — sandbox chat IDs don't exist on Telegram so all <code>tgSend</code> calls failed. Real users get the 4 START_MSG_X messages. Worth knowing the harness blind spot.</p>
+  </div>
+</header>
+
+<section id="try">
+  <h2>quick links</h2>
+  <div class="pill-row">
+    <a class="pill" href="https://brian1--e539f1d0432e11f18dff42b51c65c3df.web.val.run/library?id=8743487849&token=YOUR_TOKEN" target="_blank">/ library →</a>
+    <a class="pill" href="https://brian1--e539f1d0432e11f18dff42b51c65c3df.web.val.run/library/argos-log?id=8743487849&token=YOUR_TOKEN" target="_blank">/ argos-log →</a>
+    <a class="pill" href="https://brian1--e539f1d0432e11f18dff42b51c65c3df.web.val.run/library/import?id=8743487849&token=YOUR_TOKEN" target="_blank">/ import →</a>
+    <a class="pill" href="https://brian1--e539f1d0432e11f18dff42b51c65c3df.web.val.run/config?id=8743487849&token=YOUR_TOKEN" target="_blank">/ settings →</a>
+    <a class="pill" href="https://brian1--e539f1d0432e11f18dff42b51c65c3df.web.val.run/dashboard?secret=CONFIG_SECRET" target="_blank">/ admin →</a>
+    <a class="pill" href="file:///Users/b/Desktop/Projects/argos-telegram-agent/share/ux-report-2026-05-01.html" target="_blank">ux report</a>
+    <a class="pill" href="file:///Users/b/Desktop/Projects/argos-telegram-agent/share/HANDOFF-2026-05-01-pm.md" target="_blank">earlier handoff</a>
+  </div>
+  <p class="num" style="font-size: 12.5px; color: var(--text-muted); margin-top: 8px;">/ tap /settings in Telegram to get fresh user-token URLs (full-HMAC change invalidated old ones).</p>
+</section>
+
+<section id="shipped">
+  <h2>what shipped today</h2>
+  <ul class="tasks">
+    <li class="done"><strong>Security must-fixes</strong>: webhook secret token (Telegram-signs every POST, val verifies header), full-HMAC tokens (was 24-char, now 64), per-user $5/day spend cap + global $50/day, constant-time token compare, SSRF guards on verify_url + send_photo, /reset audit (covers all per-chat blob keys), /import 10MB size guard + shape validation, refuse-on-placeholder CONFIG_SECRET, README warnings for forkers.<div class="meta">commit <code>50ad52f</code></div></li>
+
+    <li class="done"><strong>Bulk-import page</strong> at <code>/library/import</code>. Drop a journal (.md/.txt/.json — handles Claude/ChatGPT export shapes), LLM parses into proposed log entries grouped by shelf + people + bookmarks, two-phase preview→commit with checkboxes per group, dedup against existing entries. Telegram .md/.txt attachments now reply with link to the page.<div class="meta">commit <code>cda3a8f</code></div></li>
+
+    <li class="done"><strong>Architecture refactor</strong>: memory awareness block (~150-250 tokens; replaces friend-corpus dump; engagement-aware — flags bulk-imported shelves so the bot doesn't treat 26 imported entries as "deep in money lately"). Contextual tool loading via <code>_availability</code> tags + regex triggers (~5.1k → ~2.1k typical token budget). Journal shelf re-enabled in DEFAULT_CATEGORIES. <code>/library/journals</code> → <code>/library/argos-log</code> with 301.<div class="meta">commit <code>c2af78d</code> · note: journal shelf only auto-applies to NEW users; existing users add via templates in /settings</div></li>
+
+    <li class="done"><strong>UX test harness</strong> at <code>share/user-test-harness.py</code>. UXAgent-style: 6 personas with goals + texture, 6-8 turns each against the live val, then step-out-of-character post-mortem interview. Output: HTML report. Run cost ~$0.29.<div class="meta">commit <code>10ed312</code> · report at <code>share/ux-report-2026-05-01.html</code></div></li>
+
+    <li class="done"><strong>Voice / register fix</strong>: buildSystemPrompt reordered. All operational/reference content (sop, user data, memory awareness, friends rules, capitalization, tool guidance) wraps as one <code>BACKSTAGE</code> block at the top. Mode prompt comes last so recency biases the model into the persona's voice.<div class="meta">commit <code>3aea823</code> · also fixed the Mira-bug as a side effect</div></li>
+
+    <li class="done"><strong>Persona-note toggle</strong> in /settings under "how argos sees you" — flip "show this note to argos" off to mute its prompt influence without deleting the data.<div class="meta">commit <code>3aea823</code></div></li>
+
+    <li class="done"><strong>Tool tightenings</strong>: <code>save_fact</code> told not to paraphrase content the user just saved via another tool. <code>save_to_reading_list</code> told to capture rationale via <code>brief_note</code> on re-call instead of save_fact. Fixes the why-this-paper-matters-going-to-facts-instead-of-reading-list issue.<div class="meta">commit <code>3aea823</code></div></li>
+
+    <li class="done"><strong>UX-table fixes</strong>: <code>CONTINUITY</code> + <code>EPISTEMICS</code> + <code>CLOSING</code> principles in TOOL_GUIDANCE; <code>web_search</code> required to cite source URLs in line; <code>set_reminder</code> told to ask when if user didn't say.<div class="meta">commit <code>71ab1f5</code></div></li>
+
+    <li class="done"><strong>Ritual time bumps</strong>: evening checkout 4pm → 6pm local; weekly summary 5pm Sun → 7pm Sun (after evening checkout window).<div class="meta">commit <code>71ab1f5</code></div></li>
+
+    <li class="done"><strong>Routes + playground bug fixes</strong>: admin-landing was intercepting <code>?action=register-webhook</code> before the handler could run. <code>playground.ts</code> had escaped backticks (<code>\`</code>) inside double-quoted strings that esm.town's parser was treating as template-literal delimiters — broke entire val module load.<div class="meta">commit <code>904b449</code> · the 17h-old error notifications were almost certainly this</div></li>
+
+    <li class="done"><strong>Admin dashboard split</strong>: /dashboard now renders "real users" and "test/sandbox" tables separately. Sandbox = 999999xxxx range (run_tests, harnesses, probes).<div class="meta">uncommitted as of writing — push pending</div></li>
+
+    <li class="done"><strong>One-off data fix</strong>: misplaced "fact" about an OSF paper moved to the matching reading-list item's <code>brief_note</code>; fact removed from facts list. Manual blob edit.</li>
+  </ul>
+</section>
+
+<section id="ux">
+  <h2>ux table — findings + status</h2>
+  <p style="font-size: 12.5px;">From the UX harness report (<code>share/ux-report-2026-05-01.html</code>) + per-transcript review. Goodhart-aware: most fixes verified via inline replay where possible; menu reflex (#2) was retested and didn't budge with TOOL_GUIDANCE-level prompts.</p>
+  <table class="uxtable">
+    <thead><tr><th>#</th><th>finding</th><th>where shipped</th><th>status</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Mira onboarding bug — complete_onboarding swallowed her real question, only emitted boilerplate</td><td>side effect of system prompt reorder</td><td class="status-done">✓ verified via live replay (default mode, exact Mira sequence)</td></tr>
+      <tr><td>2</td><td>Menu reflex — defensive "if you want, i can…" option-stacking</td><td><code>CLOSING</code> in TOOL_GUIDANCE</td><td class="status-open">○ retested, didn't move needle (5/6 turns still menus). Suggests fix needs to live in default <code>argos</code> mode prompt, not TOOL_GUIDANCE.</td></tr>
+      <tr><td>3</td><td>Confidence uniformity — hallucinated "Jonathan Learner" book in same tone as real ones</td><td><code>EPISTEMICS</code> principle in TOOL_GUIDANCE</td><td class="status-done">✓ A/B'd: post-fix recommendation list cut from 7 name-drops to 5 with specific reasons per pick, no obvious hallucinations</td></tr>
+      <tr><td>4</td><td>Receipting — auto-summarizing uncertain/emotional content flattens it</td><td>—</td><td class="status-open">○ open — Brian sitting with it. Asymmetric: Bryton's best moment was the bot NOT receipting. So fix is contextual, not universal.</td></tr>
+      <tr><td>5</td><td>Donna's cold open — got "no reply" on /start</td><td>—</td><td class="status-na">— harness artifact. Sandbox chat IDs don't exist on Telegram, so /start's 4 messages all hit "chat not found." Real users get them.</td></tr>
+      <tr><td>6</td><td>set_reminder said "Done." without asking when</td><td>tightened tool description</td><td class="status-done">✓ description now requires asking when if no time given, plus confirming in plain language after</td></tr>
+      <tr><td>7</td><td>Surf SOPs (Wes) ended without source link to verify</td><td><code>web_search</code> description</td><td class="status-done">✓ tool now requires terminating reported lines with source URL, with explicit "don't cite a URL you didn't retrieve" guard</td></tr>
+      <tr><td>8</td><td>Argos invented session continuity (Arjun) — made up history it didn't have</td><td><code>CONTINUITY</code> in TOOL_GUIDANCE</td><td class="status-done">✓ shipped, untested live but low-risk</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="open">
+  <h2>open / queued</h2>
+  <ul class="tasks">
+    <li class="todo"><strong>UX #2 — menu reflex</strong>: needs to move from TOOL_GUIDANCE to the default <code>argos</code> mode prompt. Brian's leaning let-it-fade-as-prompt-tightens; revisit if default-mode users surface friction.</li>
+    <li class="todo"><strong>UX #4 — receipting</strong>: Brian sitting with it. Asymmetric — sometimes receipting is the right move. Could be a contextual ("for emotional/uncertain content, hold the not-knowing") principle or could be left to the persona prompts.</li>
+    <li class="todo"><strong>SOPs as duplicate-and-edit</strong> (B1 from morning's handoff). User clones a system SOP, edits prompt+tools+max_turns, sets visibility. Public-surfacing is v2. ~4h.</li>
+    <li class="todo"><strong>"Build an SOP from this conversation"</strong> (D4) — Brian's surf-report origin story. Brian: <em>"can we make an SOP from it?"</em> bot didn't have one. Sits inside B1.</li>
+    <li class="todo"><strong>Empty-state library UX</strong> (D1) — adapt all settings/library pages between "argos knows nothing about you" and "knows a lot." Don't assume failure for not-having-stuff.</li>
+    <li class="todo"><strong>Onboarding flow polish</strong> (D2) — 3 levels (name+location / 2-min / full). The full-ass path probably wants to open a browser tab. Untested in the wild — nobody's been onboarded since flow was built. Real validation needs new humans, not the harness.</li>
+    <li class="todo"><strong>Per-shelf example structure header</strong> (D3) — show the user what shape entries take so they know how to add manually.</li>
+    <li class="todo"><strong>Stale watercolor portraits on settings/library</strong> (D5) — Brian saw old portraits even after hard refresh on character-art route. Different URL path or cached reference somewhere. Audit pages.ts + library-shelves.ts img srcs.</li>
+    <li class="todo"><strong>Bug-report + system-feedback aggregation</strong> (G1).</li>
+    <li class="todo"><strong>Per-tool-call reflection A/B</strong> — Brian's hypothesis ("on every tool call have the LM think for a second about whether there's anything it seems the user wants"). UX harness was supposed to test it; deferred. Need to wire as toggle in harness + persona pairs.</li>
+  </ul>
+</section>
+
+<section id="known">
+  <h2>known issues / debt</h2>
+  <ul class="tasks">
+    <li class="warn"><strong>UX harness blind spot</strong>: <code>tgSend</code> always fails for sandbox chat IDs (they don't exist on Telegram). Means harness can't validate any /start flow, slash commands that respond via tgSend, or anything where the bot's reply path is Telegram. Only LLM-generated archive entries are visible. Donna cold-open was the false-positive caused by this. Workaround would be a test-mode flag that captures sends to a blob instead of Telegram.</li>
+    <li class="warn"><strong>Events.json positional-slice bug</strong>: harness's tool-fire counter slices events array by length-delta, which breaks at the 1000-cap (new events rotate old ones out, length stays 1000). Fix is timestamp-based diff. Caused the misleading "0 tools fired" finding in the original UX run.</li>
+    <li class="warn"><strong>Events.json saturates fast</strong>: at 1000-entry cap after one day of testing. Worth date-keying the buffer or raising cap.</li>
+    <li class="warn"><strong>Telegram parse-entities errors</strong> showing up in some persona transcripts — malformed Markdown on certain turns. Test suite's "only-expected tg_send_errors" check allows all 400 errors so it doesn't catch them.</li>
+    <li class="warn"><strong>NAME_LIKE_PATTERN false-positive</strong>: contextual-loading trigger for people-tools fires on most sentences with capitalized words (which is most of them). Defensible — false-negative cost (a person not getting saved) > false-positive cost (a few hundred extra tokens). Worth tightening if it bites.</li>
+    <li class="warn"><strong>DNS-rebinding-style SSRF</strong>: SSRF guards are hostname-string-based, not DNS-resolved. Determined attacker controlling a hostname could point at 127.0.0.1. Not in scope for "doesn't get embarrassingly hacked" but flagged.</li>
+    <li class="warn"><strong>save_to_reading_list / fetchCoverUrl</strong> don't use validateOutboundUrl. Same SSRF reasoning. Worth a follow-up pass.</li>
+    <li class="warn"><strong>Cron-path morning compose</strong> doesn't pre-check spend cap; relies on inner LLM call to catch it. Fine for $0.10-0.15 morning fires; would matter for heavier rituals.</li>
+    <li class="warn"><strong>Webhook button on /admin page</strong> POSTs without forwarding the secret — broken since C5. Manual <code>/?action=register-webhook&secret=...</code> URL is the working path.</li>
+    <li class="warn"><strong>Journal shelf re-enable</strong> only affects new users (existing users including Brian + 2 friends need to add via templates UI in /settings).</li>
+    <li class="warn"><strong>Old watercolor portraits</strong> still showing somewhere despite character-art route fix. Cached path or different URL. (See D5 above.)</li>
+    <li class="warn"><strong>16-char keyboard-mash CONFIG_SECRET</strong> is at the boundary of placeholder check (<code>length &lt; 16</code> rejects, =16 passes). Worth rotating to 32+ random chars when convenient.</li>
+  </ul>
+</section>
+
+<section id="numbers">
+  <h2>numbers</h2>
+  <ul class="tasks">
+    <li class="done"><strong>Tests</strong>: 31/31 green throughout. One pre-existing flaky test alternates between two states; didn't drop below 30/31.</li>
+    <li class="done"><strong>Commits this session</strong>: 8 — <code>2a911de</code> (new tools wiring) → <code>50ad52f</code> (security) → <code>cda3a8f</code> (bulk-import) → <code>c2af78d</code> (architecture refactor) → <code>10ed312</code> (ux harness) → <code>3aea823</code> (voice fixes) → <code>904b449</code> (routes+playground bug fixes) → <code>2061ac8</code> (gitignore) → <code>71ab1f5</code> (ux table fixes).</li>
+    <li class="done"><strong>System-prompt token budget</strong>: ~5.1k → ~2.1k typical / ~4.5k worst case (people+library both fire). Mode prompt now last so recency works for persona voice.</li>
+    <li class="done"><strong>UX harness run</strong>: 6 personas, 42 webhook calls, $0.29 spend (cap $3). HTML report at <code>share/ux-report-2026-05-01.html</code>.</li>
+    <li class="done"><strong>Sub-agent dispatches</strong>: 5 (Agent 1 security, Agent 2 architecture, Agent 3 bulk-import, Agent 4 UX harness×2 — first attempt deadlocked, took over the run myself, Agent 5 verification).</li>
+    <li class="done"><strong>Cost</strong>: ~$3-4 OpenAI today + a couple hundred K of Opus tokens for orchestration.</li>
+  </ul>
+</section>
+
+<section id="read">
+  <h2>my read</h2>
+  <div class="takes">
+    <p><strong>The voice/register fix may be the highest-leverage change of the day.</strong> McCarthy was visibly washed out before, visibly back after. The mechanism — operational stuff in BACKSTAGE, persona prompt last — generalizes: any future operational scaffolding lands in the wrapper, not on top of the persona. The persona-note toggle gives you a clean way to test a lighter-prompted argos without losing the synthesized data.</p>
+    <p><strong>The UX harness shipped a useful artifact even with bugs.</strong> The Mira and Tasha post-mortems gave language for friction patterns (menu reflex, confidence uniformity, receipting) that probably exists for real users too — even if the personas hit it harder than humans would. The harness's blind spots (tgSend fails on sandbox IDs; positional-slice tool-fire counter) are addressable; both are flagged.</p>
+    <p><strong>Goodhart watch on UX-driven fixes</strong>: of the 8 findings, 4 shipped, 1 was a false positive, 1 (#2 menu) shipped a fix that didn't work, 2 are still open. The one that didn't work taught us something useful: TOOL_GUIDANCE-level behavioral principles have weaker leverage than mode-prompt-level ones. Worth knowing for future tightening.</p>
+    <p><strong>The bulk-import page is the most-likely-to-actually-get-used new surface.</strong> If you have years of Obsidian journals, this is the cheapest way to get them into argos's awareness. Source-tracking on log entries means imported content doesn't fool the awareness block into thinking the user's "deep in money lately."</p>
+    <p><strong>Open question I'd push on next</strong>: the per-tool-call reflection A/B. You floated it earlier; it's the kind of architectural hypothesis that's hard to prove without harness coverage. Wiring it as a toggle and re-running the harness would be a real experiment. Don't trust it just because it sounds right; test it.</p>
+    <p><strong>What the UX harness can't tell us</strong>: anything about real users. Same personas with same scripts will hit the same friction. Real validation is humans who don't know how the bot works. Donna's persona explicitly modeled this ("would just close the app") but couldn't actually behave that way mid-run. Any fix-and-retest loop with the same harness is partial signal — useful for catching regressions, weak for confirming improvements.</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

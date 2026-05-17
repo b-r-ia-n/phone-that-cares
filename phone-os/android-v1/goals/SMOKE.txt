@@ -1,0 +1,1 @@
+A file at /Users/b/Desktop/PhoneThatCares/phone-os/android-v1/reports/SMOKE/hello.txt exists and contains exactly the 5 bytes hello (no newline, no quotes). Verify the file content in the transcript before declaring done. Stop after 5 turns.

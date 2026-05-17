@@ -1,0 +1,7 @@
+---texting-back-todo---
+- new agent, no handoff yet — scoped to the messaging-triage / "phatic queue" feature
+- read: pm-dashboard-strategy 5/12, telegram-agent HANDOFF, deep research texting-back-research.md
+- core insight: cost is engagement, not typing — Tapbacks/Smart Reply only address typing
+- gap: no shipping product has a *triage layer above threads* + phatic-queue + snooze/done
+- likely lives in Argos register (helper does triage on your behalf), not a separate app
+- open: surface to prototype? website artifact vs Argos workflow vs OS mock

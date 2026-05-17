@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phone That Cares — Dashboard</title>
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --text: #e8e8e8;
+    --muted: #777;
+    --muted2: #555;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --orange: #f97316;
+    --red: #f87171;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --accent: #c8b89a;
+    --warm: #d4a574;
+    font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 2rem; line-height: 1.5; }
+
+  h1 { font-size: 1.4rem; font-weight: 600; letter-spacing: -0.02em; }
+  h2 { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.9rem; }
+  h3 { font-size: 0.95rem; font-weight: 600; }
+
+  .layout { max-width: 1100px; margin: 0 auto; display: grid; gap: 1.25rem; }
+
+  /* Header */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+  .header-subtitle { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+  .countdown { text-align: right; flex-shrink: 0; }
+  .countdown-big { font-size: 2.2rem; font-weight: 700; color: var(--accent); letter-spacing: -0.04em; line-height: 1; }
+  .countdown-label { font-size: 0.72rem; color: var(--muted); margin-top: 0.2rem; }
+  .month-bar { background: var(--surface); border-radius: 4px; height: 5px; overflow: hidden; margin-top: 0.4rem; width: 160px; margin-left: auto; }
+  .month-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--orange)); border-radius: 4px; }
+  .thesis { font-size: 0.82rem; font-style: italic; color: var(--accent); border-left: 2px solid var(--accent); padding-left: 0.8rem; line-height: 1.6; margin-top: 0.9rem; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.25rem; }
+
+  /* Banner */
+  .week-banner { background: rgba(200,184,154,0.07); border: 1px solid rgba(200,184,154,0.25); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: baseline; gap: 1.25rem; flex-wrap: wrap; }
+  .week-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+  .week-themes { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .week-theme { font-size: 0.82rem; font-weight: 500; color: var(--text); background: rgba(200,184,154,0.1); border: 1px solid rgba(200,184,154,0.2); border-radius: 20px; padding: 0.25rem 0.75rem; }
+  .week-note { font-size: 0.72rem; color: var(--muted); flex-basis: 100%; margin-top: 0.1rem; }
+
+  /* Two-thread frame */
+  .threads { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .thread { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.1rem 1.2rem; }
+  .thread.primary { border-color: rgba(212,165,116,0.4); background: linear-gradient(180deg, rgba(212,165,116,0.06), transparent 60%); }
+  .thread-tag { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+  .thread.primary .thread-tag { color: var(--warm); }
+  .thread h3 { font-size: 1rem; margin-bottom: 0.35rem; }
+  .thread p { font-size: 0.78rem; color: var(--muted); line-height: 1.55; }
+  .thread .pulse { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 0.45rem; vertical-align: middle; box-shadow: 0 0 8px rgba(74,222,128,0.6); }
+
+  /* Status grid */
+  .status-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.65rem; }
+  .status-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.9rem; }
+  .status-card .icon { font-size: 1.2rem; margin-bottom: 0.4rem; }
+  .status-card h3 { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .status-card p { font-size: 0.7rem; color: var(--muted); line-height: 1.4; }
+  .badge { display: inline-block; font-size: 0.6rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 0.18rem 0.4rem; border-radius: 4px; margin-bottom: 0.4rem; }
+  .badge.shipped  { background: rgba(74,222,128,0.12); color: var(--green); }
+  .badge.live     { background: rgba(212,165,116,0.15); color: var(--warm); }
+  .badge.built    { background: rgba(96,165,250,0.12); color: var(--blue); }
+  .badge.proto    { background: rgba(251,191,36,0.12); color: var(--yellow); }
+  .badge.ref      { background: rgba(167,139,250,0.12); color: var(--purple); }
+  .badge.parked   { background: rgba(100,100,100,0.18); color: var(--muted); }
+
+  /* Two-col */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.25rem; }
+
+  /* Checklist */
+  .checklist { display: flex; flex-direction: column; gap: 0.4rem; }
+  .check-item { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0.8rem; border-radius: 7px; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; user-select: none; transition: opacity 0.2s; }
+  .check-item:hover { border-color: #3e3e3e; }
+  .check-item.done { opacity: 0.38; }
+  .check-item.done .check-body { text-decoration: line-through; color: var(--muted2); }
+  .check-box { width: 15px; height: 15px; border: 1.5px solid var(--border); border-radius: 3px; flex-shrink: 0; margin-top: 0.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .check-item.done .check-box { background: var(--green); border-color: var(--green); }
+  .check-tick { display: none; color: #0f0f0f; font-size: 0.65rem; font-weight: 700; }
+  .check-item.done .check-tick { display: block; }
+  .check-body { font-size: 0.78rem; line-height: 1.4; flex: 1; }
+  .check-body strong { font-weight: 600; }
+  .check-body .sub { font-size: 0.68rem; color: var(--muted); margin-top: 0.1rem; display: block; }
+  .check-tag { display: inline-block; font-size: 0.58rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.12rem 0.3rem; border-radius: 3px; margin-top: 0.25rem; }
+  .tag-now     { background: rgba(212,165,116,0.15); color: var(--warm); }
+  .tag-week    { background: rgba(251,191,36,0.1); color: var(--yellow); }
+  .tag-month   { background: rgba(96,165,250,0.1); color: var(--blue); }
+  .tag-bg      { background: rgba(100,100,100,0.12); color: var(--muted); }
+  .tag-surface { background: rgba(74,222,128,0.1); color: var(--green); }
+
+  /* Bug / question list */
+  .bug-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .bug-item { padding: 0.65rem 0.9rem; border-radius: 7px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.75rem; line-height: 1.5; }
+  .bug-item .bug-head { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+  .bug-item strong { font-size: 0.78rem; }
+  .bug-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .bug-dot.open { background: var(--orange); }
+  .bug-dot.question { background: var(--yellow); }
+  .bug-dot.decision { background: var(--warm); }
+  .bug-item p { color: var(--muted); }
+
+  /* People */
+  .person-list { display: flex; flex-direction: column; gap: 0.4rem; }
+  .person-item { padding: 0.65rem 0.9rem; border-radius: 7px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.75rem; line-height: 1.5; }
+  .person-item strong { font-size: 0.78rem; }
+  .person-item .why { color: var(--muted); margin-top: 0.1rem; display: block; }
+  .person-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+  .chip { font-size: 0.7rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 0.2rem 0.55rem; color: var(--muted); }
+
+  /* Reading list */
+  .reading-list { display: flex; flex-direction: column; gap: 0.35rem; }
+  .reading-item { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0.8rem; border-radius: 7px; background: var(--surface2); border: 1px solid var(--border); font-size: 0.75rem; }
+  .reading-item a { color: var(--text); text-decoration: none; font-weight: 600; }
+  .reading-item a:hover { color: var(--accent); }
+  .reading-item .reading-note { color: var(--muted); font-size: 0.7rem; }
+  .reading-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 0.35rem; }
+
+  /* Metrics */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.65rem; }
+  .metric { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 0.85rem; }
+  .metric .val { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.03em; color: var(--accent); line-height: 1; }
+  .metric .label { font-size: 0.66rem; color: var(--muted); margin-top: 0.25rem; }
+
+  @media (max-width: 900px) {
+    .status-grid { grid-template-columns: repeat(3, 1fr); }
+    .two-col, .three-col, .threads { grid-template-columns: 1fr; }
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>A Phone That Cares About You</h1>
+      <div class="header-subtitle">Dashboard &mdash; May 12, 2026 &mdash; Brian in Bay Area through ~Jun 3 &mdash; Live at <a href="https://aphonethatcares.com" target="_blank" style="color: var(--accent); text-decoration: none;">aphonethatcares.com</a></div>
+      <p class="thesis">The phone's display layer is the right intervention point — not willpower, not platforms.<br>The project has two threads now: <strong style="color: var(--warm); font-style: normal;">a phone that actively helps</strong> (Argos, the assistant) and <strong style="color: var(--text); font-style: normal;">a phone that gets out of your way</strong> (Scroll Lab, OS-layer interventions).</p>
+    </div>
+    <div class="countdown">
+      <div class="countdown-big">18</div>
+      <div class="countdown-label">days to May 30 checkpoint</div>
+      <div class="month-bar"><div class="month-bar-fill" style="width: 82%"></div></div>
+      <div style="font-size:0.62rem; color: var(--muted); margin-top: 0.25rem;">momentum or pivot</div>
+    </div>
+  </div>
+
+  <!-- Right now -->
+  <div class="week-banner" style="border-color: rgba(212,165,116,0.4); background: rgba(212,165,116,0.06);">
+    <span class="week-label" style="color: var(--warm);">Right now</span>
+    <div class="week-themes">
+      <span class="week-theme" style="background: rgba(212,165,116,0.12); border-color: rgba(212,165,116,0.3);"><strong>Argos → Claude Sonnet 4.6 (tonight)</strong></span>
+      <span class="week-theme">Emergent Ventures application in consideration</span>
+      <span class="week-theme">Human+Tech Week May 14–17</span>
+    </div>
+    <span class="week-note">May 11 sprint shipped: librarian live, /agents editor, per-user prompt overlays, health digest. Tonight: main LLM swapped from gpt-5.4 to Claude Sonnet 4.6 — confirmed live. EV grant application is an open option (application file exists). Human+Tech Week at Lighthaven starts in 2 days — densest people window of the Bay stay.</span>
+  </div>
+
+  <!-- Two-thread reframing -->
+  <div>
+    <h2>The two threads</h2>
+    <div class="threads">
+      <div class="thread primary">
+        <div class="thread-tag"><span class="pulse"></span>Active — primary energy</div>
+        <h3>Helper thread — Argos</h3>
+        <p>What does a phone that actively cares <em>do for you</em>? Telegram bot, agentic backend, mentor lenses, morning rituals, library/journal, taste profile. Started as a side project; has become the most alive part of PTC. Public as of May 4.</p>
+      </div>
+      <div class="thread">
+        <div class="thread-tag">Substrate — slower burn</div>
+        <h3>Bouncer thread — display layer</h3>
+        <p>What does the phone <em>prevent</em>, gently? Scroll Lab (Chrome extension, ~7 experiments), OS mocks, Android tier-explorer research. Low priority right now — Brian is "frankly less excited about it" and most users aren't on Scroll Lab. Still the original thesis; not abandoned.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- What exists -->
+  <div>
+    <h2>What exists today</h2>
+    <p style="font-size: 0.75rem; color: var(--muted); margin-bottom: 0.9rem;">aphonethatcares.com is the workbench; argos is the live product the public can touch.</p>
+    <div class="status-grid">
+      <div class="status-card" style="border-color: rgba(212,165,116,0.3); background: rgba(212,165,116,0.04);">
+        <div class="icon">🤖</div>
+        <div class="badge live">Public</div>
+        <h3>Argos (Telegram)</h3>
+        <p>@argostherobot. Claude Sonnet 4.6 as of tonight. Modes, morning/evening rituals, library, taste profile, journal, mentors, /agents editor, per-user prompt overlays, librarian running async. Webhook-secured, spend-capped.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">👋</div>
+        <div class="badge shipped">Live</div>
+        <h3>aphonethatcares.com</h3>
+        <p>Home / Experiments / Vision / Research / Brainstorms / Connect / Telegram-bot. Deploys via <code style="font-size: 0.65rem;">vercel --prod</code> from local — not git.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">🧪</div>
+        <div class="badge shipped">Live</div>
+        <h3>/telegram-bot page</h3>
+        <p>Public landing for Argos. @argostherobot link + 7-step self-host walkthrough. Both placeholders resolved as of this week.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">✍️</div>
+        <div class="badge shipped">3 essays</div>
+        <h3>Substack</h3>
+        <p>Three essays. Writing tab on website mirrors. Pick one canonical essay before any cold outreach.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">🔬</div>
+        <div class="badge ref">Research</div>
+        <h3>Tier Explorer</h3>
+        <p>aphonethatcares.com/research/tier-explorer — Android moves × services feasibility matrix. Substrate, not product.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">🌀</div>
+        <div class="badge parked">Low-priority</div>
+        <h3>Scroll Lab</h3>
+        <p>Chrome extension. Grayscale A/B bug diagnosed (startSession() overwrites user choice on load). Fix requires a path decision. Parked, not abandoned.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">📱</div>
+        <div class="badge parked">Pre-build</div>
+        <h3>Android</h3>
+        <p>Leading approach: rooted Pixel + Magisk + Zygisk-DenyList. Move-level call not yet pressure-tested — adversarial POSSIBLE-vs-IMPOSSIBLE round owed before committing.</p>
+      </div>
+      <div class="status-card">
+        <div class="icon">📐</div>
+        <div class="badge built">Reference</div>
+        <h3>Design system</h3>
+        <p>_context/DESIGN-SKILL.md — taste model from 28-site rating exercise. Warm restraint, #f6f3ec, Inter tnum, sub-200ms. Read before designing any surface.</p>
+      </div>
+      <div class="status-card" style="grid-column: span 2;">
+        <div class="icon">💰</div>
+        <div class="badge proto">Considering</div>
+        <h3>Emergent Ventures application</h3>
+        <p>Application file exists at <code style="font-size: 0.65rem;">telegram-agent/memory/projects/ev-application.md</code>. Tyler Cowen / EV is on the outreach list anyway — worst case is silence. Worth submitting before end of Bay stay.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div>
+    <h2>Output metrics</h2>
+    <div class="metrics">
+      <div class="metric"><div class="val">2</div><div class="label">Bots live (legacy + public)</div></div>
+      <div class="metric"><div class="val">3</div><div class="label">Essays on Substack</div></div>
+      <div class="metric"><div class="val">live</div><div class="label">aphonethatcares.com</div></div>
+      <div class="metric"><div class="val">0</div><div class="label">Lines of Android code</div></div>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="two-col">
+
+    <div class="card">
+      <h2>Open — Argos</h2>
+      <div class="checklist" id="checklist-argos">
+
+        <div class="check-item" data-id="a1">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Split system prompt for real cache hits</strong>
+            <span class="sub">Cache is a no-op right now — timestamp in system prompt invalidates every turn. ~30 min: move volatile bits (time, memory counts) to user message, put cache breakpoint on stable block.</span>
+            <span class="check-tag tag-now">Follow-up from Claude swap</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="a2">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Watch for spurious tool calls</strong>
+            <span class="sub">Sonnet follows MUST/CRITICAL more literally than gpt-5.4 — save_fact and set_context may over-trigger in first few days. Soften prompts if it shows up.</span>
+            <span class="check-tag tag-now">Monitor</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="a3">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Morning art reliability</strong>
+            <span class="sub">57% hit rate. 5 send_photo failures (Telegram URL-fetch flaky on ARTIC/Wikimedia). Fix: download-then-multipart. Also: severe artist clustering (Yoshitoshi 11, Hasui 10) needs diversity nudge.</span>
+            <span class="check-tag tag-week">Quality</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="a4">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Scroll Lab grayscale bug</strong>
+            <span class="sub">startSession() randomly assigns one of 4 features on page load, overwriting user choice. Fix diagnosed. Decision: is A/B data collection still a live goal? Determines which fix path.</span>
+            <span class="check-tag tag-week">Decision needed</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Open — surface area &amp; strategy</h2>
+      <div class="checklist" id="checklist-surface">
+
+        <div class="check-item" data-id="s1">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Emergent Ventures application</strong>
+            <span class="sub">Application file exists. Tyler Cowen is on outreach list anyway. Worth submitting before end of Bay stay — worst case is silence.</span>
+            <span class="check-tag tag-now">Optionality</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="s2">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Human+Tech Week — Lighthaven, May 14–17</strong>
+            <span class="sub">Densest people window of the Bay stay. Vitalist Bay overlaps. Argos is now a real thing to show.</span>
+            <span class="check-tag tag-now">This week</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="s3">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>First outreach contact</strong>
+            <span class="sub">List has been ready since April. Site concern: vision page feels AI-y, no single essay picked. Petr Nálevka or Joe Edelman as first targets. Don't blast — start with one.</span>
+            <span class="check-tag tag-week">Unblocks people</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="s4">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Android adversarial round</strong>
+            <span class="sub">POSSIBLE-vs-IMPOSSIBLE pressure test before committing to rooted Pixel + Magisk approach. Pre-build; nothing started yet.</span>
+            <span class="check-tag tag-month">Before building</span>
+          </div>
+        </div>
+
+        <div class="check-item" data-id="s5">
+          <div class="check-box"><span class="check-tick">✓</span></div>
+          <div class="check-body">
+            <strong>Ship one public essay</strong>
+            <span class="sub">Material exists. Nothing shipped. This is the real publishing bottleneck. Pick one, tighten it, post it — before any wider outreach push.</span>
+            <span class="check-tag tag-bg">Whenever</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Open questions -->
+  <div class="card">
+    <h2>Open questions / decisions awaiting Brian</h2>
+    <div class="bug-list">
+
+      <div class="bug-item">
+        <div class="bug-head"><div class="bug-dot decision"></div><strong>Scroll Lab A/B — still a live goal?</strong></div>
+        <p>Determines which fix path for the grayscale overwrite bug. If A/B data is no longer needed, path A (simpler fix) is obvious. If still collecting, path B preserves experiment logic.</p>
+      </div>
+
+      <div class="bug-item">
+        <div class="bug-head"><div class="bug-dot decision"></div><strong>EV application — submit or skip?</strong></div>
+        <p>Application file exists. Low-cost option. Bay stay creates a natural deadline. Worth a conversation before leaving.</p>
+      </div>
+
+      <div class="bug-item">
+        <div class="bug-head"><div class="bug-dot decision"></div><strong>Which essay to send for outreach?</strong></div>
+        <p>Three exist on Substack. Pick one canonical link before any cold email goes out. Vision page may also need a tightening pass — currently reads AI-y.</p>
+      </div>
+
+      <div class="bug-item">
+        <div class="bug-head"><div class="bug-dot question"></div><strong>Android: pressure-test the leading approach</strong></div>
+        <p>Rooted Pixel + Magisk + Zygisk-DenyList is the working assumption. Adversarial POSSIBLE-vs-IMPOSSIBLE round owed before committing any build time.</p>
+      </div>
+
+      <div class="bug-item">
+        <div class="bug-head"><div class="bug-dot question"></div><strong>Business model</strong></div>
+        <p>Still unresolved: open-source launcher vs. phone company vs. something else. Not urgent, but May 30 checkpoint is a good moment to have a clearer take.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- People -->
+  <div class="card">
+    <h2>People — re-framed approach</h2>
+    <p style="font-size: 0.75rem; color: var(--muted); margin-bottom: 1rem;">The top-30 LLM-generated list <em>didn't</em> move Brian to action — he doesn't know enough about the people to feel pulled. New plan: pick <strong style="color: var(--text);">three he's actually excited about</strong>, build a dossier-UI HTML that compresses each person's web presence into one scrollable view, then let contact follow naturally. Full ranked top-30 still in <a href="MD context files/HANDOFF-outreach.md" style="color: var(--muted); text-decoration: underline;">HANDOFF-outreach.md</a> as backstop.</p>
+
+    <div style="margin-bottom: 1rem;">
+      <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.6rem;">Strongest resonances (start dossier here)</div>
+      <div class="person-list">
+        <div class="person-item"><strong>Petr Nálevka</strong> — Urbandroid (Twilight, Sleep as Android) <span class="why">Per-app color overlay on Android for 10+ years — the Argos display-layer technical blocker is his day job.</span></div>
+        <div class="person-item"><strong>Joe Edelman</strong> — Meaning Alignment Institute <span class="why">Closest philosophical match. "What does the user actually want to become" rhymes with the Argos thesis directly.</span></div>
+        <div class="person-item"><strong>Adam Wiggins</strong> — Muse (ex-Heroku) <span class="why">Shipped the closest cousin: a calm, intentional premium app for thinking. Knows the calm-tech-as-business-model question.</span></div>
+        <div class="person-item"><strong>Joe Hollier / Kaiwei Tang</strong> — Light Phone <span class="why">The direct precedent — taken every punch PTC is about to take.</span></div>
+        <div class="person-item"><strong>Jason Keats</strong> — OSOM Products <span class="why">If PTC ever goes launcher → custom phone. Coffee in SF, not email.</span></div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid var(--border); padding-top: 0.85rem; margin-bottom: 0.85rem;">
+      <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;">Backstop / second tier</div>
+      <div class="person-chips">
+        <span class="chip">Eric Migicovsky (Pebble)</span>
+        <span class="chip">Linda Stone</span>
+        <span class="chip">Mishaal Rahman</span>
+        <span class="chip">Jenny Odell</span>
+        <span class="chip">David Pierce</span>
+        <span class="chip">Charles Broskoski (Are.na)</span>
+        <span class="chip">Andy Matuschak</span>
+        <span class="chip">Amber Case</span>
+        <span class="chip">Jonathan Stray</span>
+        <span class="chip">Anjan Katta (Daylight)</span>
+        <span class="chip">Kenneth Schlenker (Opal)</span>
+        <span class="chip">Cabel Sasser</span>
+        <span class="chip">Maggie Appleton</span>
+        <span class="chip">Gordon Brander</span>
+        <span class="chip">Henrik Karlsson</span>
+        <span class="chip">Craig Mod</span>
+        <span class="chip">Tyler Cowen / EV</span>
+        <span class="chip">Toby Shorin</span>
+        <span class="chip">Spencer Chang</span>
+        <span class="chip">Jasmine Sun</span>
+        <span class="chip">Ivan Vendrov</span>
+        <span class="chip">kdrag0n</span>
+        <span class="chip">Micah Carroll</span>
+        <span class="chip">Sara Hendren</span>
+        <span class="chip">Caroline Sinders</span>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid var(--border); padding-top: 0.85rem;">
+      <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem;">Bay anchors — through Jun 7</div>
+      <div style="display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.75rem; color: var(--muted);">
+        <div><strong style="color: var(--warm);">Lighthaven (Berkeley)</strong> — May 14–17 = Vitalist Bay + Human+Tech Week. Densest people window. <strong style="color: var(--warm);">This week.</strong></div>
+        <div><strong style="color: var(--text);">Frontier Tower</strong> (Market & 9th, SF) — show up, surfaces 3–5 relevant events per visit</div>
+        <div><strong style="color: var(--text);">The Interval at Long Now</strong> (Fort Mason) — best "show up alone, leave with contacts" venue</div>
+        <div style="color: var(--muted2);">Edge Esmeralda — May 30–Jun 27, Healdsburg. Overlaps; possible.</div>
+        <div style="color: var(--muted2);">Bike trip with Preston — date-TBD; closes the stay.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hopes -->
+  <div class="card" style="border-color: rgba(212,165,116,0.25); background: rgba(212,165,116,0.03);">
+    <h2 style="color: var(--warm);">Hopes for this stretch</h2>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; font-size: 0.78rem; line-height: 1.6;">
+      <div>
+        <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;">For Argos</div>
+        <p style="color: var(--text);">The librarian lands and the library starts feeling alive — pages describe what argos is doing in each shelf, not static descriptions. Settings page reads as a real product. A handful of the public users come back daily without being prompted.</p>
+      </div>
+      <div>
+        <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;">For people</div>
+        <p style="color: var(--text);">3 dossiers built; one real conversation with someone in the orbit (Petr, Joe E., Adam, or a Bay anchor). Argos as tangible artifact makes the conversation easier than cold-essay-link would have.</p>
+      </div>
+      <div>
+        <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;">For the bouncer thread</div>
+        <p style="color: var(--text);">Held, not pressured. Scroll Lab grayscale fix when convenient. Tier-explorer remains the substrate. Android prototype only if a clear v1 user shows up — otherwise wait for the helper thread to earn it.</p>
+      </div>
+      <div>
+        <div style="font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem;">For the Jun 7 checkpoint</div>
+        <p style="color: var(--text);">A clear, honest read on whether to keep at it past summer or pivot — backed by Argos usage data, real conversations from the Bay stay, and one investor-facing artifact (maybe the EV application) that compresses everything.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reading list -->
+  <div class="card">
+    <h2>Reading &amp; reference</h2>
+    <div class="reading-list">
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="MD context files/DESIGN-SKILL.md" target="_blank">DESIGN-SKILL.md</a> <span class="reading-note">— PTC's working taste model. Read before designing any new surface.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://aphonethatcares.com/research/tier-explorer" target="_blank">Tier Explorer</a> <span class="reading-note">— Android moves × services feasibility matrix.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://specialprojects.studio/project/aperture/" target="_blank">Aperture — Special Projects</a> <span class="reading-note">— digital wellbeing via AI + physical design. Direct overlap.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://x.com/eddiejiao_obj/status/1975959423790272665" target="_blank">cmmnknwledge — live homescreen doc</a> <span class="reading-note">— Eddie Jiao. Replacing the homescreen with a live doc.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://kanjun.substack.com/p/research-as-understanding" target="_blank">Research as Understanding</a> <span class="reading-note">— Kanjun. Via Vincent.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://nxhx.org/Choicemaking/" target="_blank">Choicemaking</a> <span class="reading-note">— nxhx.org. Via Vincent.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://www.forethought.org/research/angels-on-the-shoulder" target="_blank">Angels on the Shoulder</a> <span class="reading-note">— AI-as-companion / advisor frame.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://dynamicland.org/" target="_blank">Dynamicland</a> <span class="reading-note">— Bret Victor's lab. Useful philosophical contrast.</span></div></div>
+      <div class="reading-item"><div class="reading-dot"></div><div><a href="https://www.thediff.co/archive/ad-based-platforms-have-mostly-solved-optimal-taxation/" target="_blank">Ad-based platforms have mostly solved optimal taxation</a> <span class="reading-note">— The Diff. Economic framing.</span></div></div>
+    </div>
+  </div>
+
+  <!-- Working model -->
+  <div class="card" style="background: transparent; border-style: dashed;">
+    <h2>Working model</h2>
+    <p style="font-size: 0.78rem; color: var(--muted); line-height: 1.6;">Brian is the single interface. PM coordinates threads — primarily <strong style="color: var(--warm);">Argos</strong> right now, with <strong style="color: var(--text);">Website</strong>, <strong style="color: var(--text);">Outreach (dossier-mode)</strong>, <strong style="color: var(--text);">Design</strong>, <strong style="color: var(--text);">Android Feasibility</strong>, and <strong style="color: var(--text);">Visualizations</strong> as supporting workstreams. Sub-agents dispatched via Task tool — Sonnet/Haiku for file-system / log-reading / web research; Opus for voice-sensitive synthesis and judgment. <code style="background: var(--surface2); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.72rem;">claude-peers</code> MCP available as fallback. Brian distrusts ALL-CAPS imperatives and wellness-app affordances; design register is warm restraint, sub-200ms motion, lowercase-friendly.</p>
+  </div>
+
+</div>
+
+<script>
+  const STORE_KEY = 'ptc-dashboard-checks-v2';
+
+  function loadDone() {
+    try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
+  }
+
+  function saveDone(done) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(done));
+  }
+
+  function applyState(item, done) {
+    if (done) item.classList.add('done');
+    else item.classList.remove('done');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const done = loadDone();
+    document.querySelectorAll('.check-item').forEach(item => {
+      const id = item.dataset.id;
+      if (done[id]) applyState(item, true);
+      item.addEventListener('click', () => {
+        const d = loadDone();
+        d[id] = !d[id];
+        saveDone(d);
+        applyState(item, d[id]);
+      });
+    });
+  });
+</script>
+</body>
+</html>
