@@ -1,12 +1,9 @@
 ---android-todo---
-- T0 ✓ launcher prep fixes (drag, first-frame black, watchdog) — emulator-validated, committed launcher 4f62cd7
-- T1 ✓ research: Plan A doesn't need platform-cert signing; RRO or pm-disable-component for Keyguard; ~70% prior Plan A works
-- T2 ✓ Magisk module skeleton at /android-magisk-module/ (build-module.sh, flash.sh, reset.sh, README, permission XML)
-- T3 ✓ S1 spike protocol at _context/.../research/s1-spike-protocol.md
-- T7 ✓ notification filter scaffolding (NotificationsSettings.kt + NotificationFilter.kt + listener + 6 tests + debug ring buffer); APK rebuilt; committed launcher 631677d
-- T4 ✓ hardware runbook (runbook-hardware-prep.md) — synth of where-we-got-stuck + workarounds for morning Brian
-- T4.5 ✓ test-apps.md — 24 apps, install path documented
-- Pixel: bootloader unlocked, kernel updated to August 2024 build, Magisk APK installed, /system boot patched
-- BLOCKED: ro.boot.veritymode=enforcing — fastboot 37.0.0 errors "Failed to find AVB_MAGIC at offset: 0" on vbmeta despite valid AVB0 header. Trying PATCHVBMETAFLAG=true approach now (in-boot.img vbmeta-disable instead of touching vbmeta partition).
-- DND total silence on (zen_mode=2) so notifications won't wake Brian
-- if PATCHVBMETAFLAG works: full S1 spike possible tonight | if not: morning Brian picks up at runbook §3 with documented workarounds
+- READ FIRST: _context/android-build-2026-05-16/MORNING-BRIEF-2026-05-17.md
+- T0/T1/T2/T3/T4/T4.5/T7 all done, committed (see brief for commits)
+- Pixel ended overnight in a STUCK-BOOT state — likely kernel/system ABI mismatch (boot.img from Aug factory, system stays on June stock)
+- Verified working: fastboot 33.0.3 (at downloads/platform-tools-33/) handles vbmeta-disable cleanly, where fastboot 37 fails with "Failed to find AVB_MAGIC"
+- Verified: Magisk boot_patch.sh runs cleanly on-device with all binaries from Magisk-v28.1 APK
+- Open: morning Brian needs to force-fastboot via volume-down+power, recover with stock boot, retry with June 2024 factory image (matching device build)
+- DND total silence on so device won't ring even from hung-boot state
+- If hard fail after retry: still no Plan B pivot warranted per research, but OTA-update-device-first becomes a real consideration
