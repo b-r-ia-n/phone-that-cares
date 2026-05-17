@@ -1,9 +1,9 @@
 ---android-todo---
-- READ FIRST: _context/android-build-2026-05-16/MORNING-BRIEF-2026-05-17.md
-- T0/T1/T2/T3/T4/T4.5/T7 all done, committed (see brief for commits)
-- Pixel ended overnight in a STUCK-BOOT state — likely kernel/system ABI mismatch (boot.img from Aug factory, system stays on June stock)
-- Verified working: fastboot 33.0.3 (at downloads/platform-tools-33/) handles vbmeta-disable cleanly, where fastboot 37 fails with "Failed to find AVB_MAGIC"
-- Verified: Magisk boot_patch.sh runs cleanly on-device with all binaries from Magisk-v28.1 APK
-- Open: morning Brian needs to force-fastboot via volume-down+power, recover with stock boot, retry with June 2024 factory image (matching device build)
-- DND total silence on so device won't ring even from hung-boot state
-- If hard fail after retry: still no Plan B pivot warranted per research, but OTA-update-device-first becomes a real consideration
+- READ FIRST: _context/android-build-2026-05-16/TROUBLESHOOTING-LOG.md — chronological, every theory tried + outcome
+- THEN: _context/android-build-2026-05-16/MORNING-BRIEF-2026-05-17.md — high-level state + path
+- T0/T1/T2/T3/T4/T4.5/T7 software all done + committed on wip/overnight-2026-05-16 (both repos)
+- Pixel ended morning in stock recovery; bootloader unlocked; slot B has fresh-ish June 2024 OS but won't complete boot
+- Magisk install requires fastbootd to reflash super partitions; `fastboot reboot fastboot` (software transition) hangs persistently
+- Workaround NOT yet tried: enter fastbootd via DEVICE UI (VOL DOWN + POWER → fastboot menu → "Fastbootd") which bypasses the broken software transition — this is the next thing to try
+- Full path documented in TROUBLESHOOTING-LOG.md §"Recovery path for Brian when back"
+- Real discoveries that hold across attempts: fastboot v37 vbmeta bug → use fb33; Pixel 6 uses boot.img not init_boot; mirror-Android principle; recovery has FULL menu only via specific button combos

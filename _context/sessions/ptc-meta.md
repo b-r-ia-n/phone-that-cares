@@ -1,0 +1,4 @@
+- loaded as meta — rig, agent defs, zoom-out
+- no active thread yet; waiting on what you want
+- last meta state: tmux popup + micro notes, all 5 role agents on `tab <role>`
+- stray open: telegram val ID confirmation (e534cea8 vs 46072a84)
