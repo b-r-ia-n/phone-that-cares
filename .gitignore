@@ -59,6 +59,7 @@ words/extracts.bak/
 
 # Worktree directories created by subagents (if they land at root)
 /.claude-worktrees/
+.claude/worktrees/
 
 # overnight build artifacts — large binaries, kept locally
 _context/android-build-2026-05-16/downloads/
