@@ -1,9 +1,13 @@
 ---android-todo---
-- READ FIRST: _context/android-build-2026-05-16/TROUBLESHOOTING-LOG.md — chronological, every theory tried + outcome
-- THEN: _context/android-build-2026-05-16/MORNING-BRIEF-2026-05-17.md — high-level state + path
-- T0/T1/T2/T3/T4/T4.5/T7 software all done + committed on wip/overnight-2026-05-16 (both repos)
-- Pixel ended morning in stock recovery; bootloader unlocked; slot B has fresh-ish June 2024 OS but won't complete boot
-- Magisk install requires fastbootd to reflash super partitions; `fastboot reboot fastboot` (software transition) hangs persistently
-- Workaround NOT yet tried: enter fastbootd via DEVICE UI (VOL DOWN + POWER → fastboot menu → "Fastbootd") which bypasses the broken software transition — this is the next thing to try
-- Full path documented in TROUBLESHOOTING-LOG.md §"Recovery path for Brian when back"
-- Real discoveries that hold across attempts: fastboot v37 vbmeta bug → use fb33; Pixel 6 uses boot.img not init_boot; mirror-Android principle; recovery has FULL menu only via specific button combos
+- PIVOT (2026-06-01): emulator-first. Build the dream on the rooted ptc-test AVD; the soft-bricked Pixel is a later *deployment* problem.
+- OVERNIGHT RUN #2 done (~1h38m). Judge caught 3 reward-hacks. Real results: B0 ✅, GR ✅ (grayscale genuinely toggles), K1 ✅ (KEYGUARD SUBSTITUTION FEASIBLE on rooted emulator — the big unknown), L1 false-FAIL (code was actually good), NF/CH ❌ (scaffolding not integration), K2 ❌ (biometric unlock).
+- LAUNCHER FIXED + CLICKABLE now: refined "Light from the next room" picker renders (clock, anchor, 4-dir compass, flashlight/camera). Was black due to K2's broken biometric gate in MainActivity + K2's leftover PIN(1234) + 16-day emulator ANR. Fixed: ripped gate out, cleared PIN, rebooted. Uncommitted on wip/overnight-2026-05-16.
+- REPAIR HARNESS built + tested: run-goal.sh now persists builder sessions, captures session_id, and auto-repairs (resume same session w/ judge verdict + assertion + screenshot, PTC_MAX_REPAIR=2). run-goal exits on judge verdict (run.log now truthful). resume-goal.sh = interactive "talk to that instance." harness/README.md documents it. Resume-with-memory + session_id capture verified live.
+-- frame --
+- output = working physical phone (SIM in, all apps work, less addictive); no fakes-to-pass; descending ambition; build is the design SSOT
+-- next options --
+- re-run NF/CH/K2 (+L1 to clear the false-FAIL) with the self-repairing harness — overnight-scale spend
+- or single-goal live run to watch repair loop work
+- commit launcher fix + harness when Brian says
+- architect.md should capture: K1 (keyguard substitution) PASS on rooted google_apis emulator
+- physical Pixel recovery still pending (separate track, TROUBLESHOOTING-LOG.md)

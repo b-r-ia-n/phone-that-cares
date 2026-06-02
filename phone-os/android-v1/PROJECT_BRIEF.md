@@ -1,6 +1,9 @@
 # Phone That Cares — Android v1 (overnight build)
 
-You are one of several Claude instances building Phone That Cares Android v1 against the Android Emulator on Brian's Mac. Today is 2026-05-16. Brian is asleep; this run is autonomous.
+> **THIS RUN: see `goals/CHAIN-2026-06-01.md` first — it supersedes the May 16 framing below where they conflict.**
+> Frame: the destination is a *working physical phone* (SIM in, all apps work, less addictive); the emulator is the cheap un-brickable workbench. Output is **functional software, never fakes/stubs to pass a check** — when Android blocks you, get creative, then write findings and stop; don't fake it. Design SSOT = the Refined "Light from the next room, with anchor" variant + Variant A chrome in `visuals/launcher-mocks.html`; once built, the running app is the SSOT. **`open` any `.html` you create.**
+
+You are one of several Claude instances building Phone That Cares Android v1 against the Android Emulator on Brian's Mac. This run is autonomous.
 
 ## Required reading (in order)
 
@@ -51,9 +54,9 @@ You are one of several Claude instances building Phone That Cares Android v1 aga
 
 These match the existing React mock; do not change.
 
-## Lock screen for tonight
+## Lock screen (REVERSED from May 16)
 
-We are NOT replacing the actual lock screen. The four-direction picker is the launcher's home activity — it's the first screen you see after stock unlock. Per launcher-build-brief, the picker uses a fingerprint anchor + drag gesture even though the actual fingerprint sensor isn't intercepted (the emulator doesn't have one anyway). The visual model is the spec; the gesture flow is "tap anchor, drag in a direction, commit at 70dp."
+We **are** replacing the lock screen now — genuine SystemUI Keyguard substitution, not draw-on-top. The May 16 carve-out ("NOT replacing the actual lock screen") is reversed. The emulator is rooted (`adb root` works, google_apis image), which is exactly what makes substitution testable. See goals K1 (Keyguard substitution) and K2 (biometric→unlock authority) in `goals/CHAIN-2026-06-01.md`. The four-direction picker remains the surface behind the lock; the new work is making OUR surface the device-entry/wake screen with no SystemUI keyguard underneath. `FLAG_SHOW_WHEN_LOCKED` over a live Keyguard is explicitly NOT acceptable.
 
 ## Per-app state model (from sessionsStore.ts in the React mock)
 

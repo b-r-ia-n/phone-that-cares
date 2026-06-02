@@ -7,6 +7,10 @@ Brian's sabbatical project. Thesis: the display layer of your phone is the best 
 `_context/state-of-project.md` — current state + Brian's voice. Read this before anything else.
 `_context/task.md` — live current-session task state (overwrite each session, don't append).
 
+## Conventions
+
+- **Auto-open HTML.** Any time you create (or meaningfully regenerate) a `.html` file, immediately run `open <path>` so it surfaces in Brian's browser. Don't hand him a `file://` link or a path to click — terminal links aren't clickable for him. This applies to reports, mocks, dashboards, anything. (Overnight/headless instances: still call `open`; it queues for when he's back.)
+
 ## Folder map
 
 - `_context/` — handoffs, state-of-project, writing corpus, dashboards

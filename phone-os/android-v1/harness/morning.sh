@@ -12,12 +12,18 @@ goal_section() {
   local D="$PTC_REPORTS/$G"
   local TITLE
   case "$G" in
-    G1) TITLE="Bootstrap — project scaffold + emulator install" ;;
-    G2) TITLE="Home claim + four-direction picker" ;;
-    G3) TITLE="Four screens render" ;;
-    G4) TITLE="Per-app grayscale via Accessibility" ;;
-    G5) TITLE="UsageStatsManager wired into Discover" ;;
-    G6) TITLE="Ask wired to STT + Argos" ;;
+    B0) TITLE="Baseline regression — still builds & runs" ;;
+    L1) TITLE="Refined lockscreen — Light from the next room + flashlight/camera" ;;
+    GR) TITLE="Grayscale end-to-end on real apps" ;;
+    NF) TITLE="Notification filter — live (OpenAI)" ;;
+    CH) TITLE="Ask-page conversation recall" ;;
+    K1) TITLE="Keyguard substitution (rooted emulator)" ;;
+    K2) TITLE="Biometric → unlock authority" ;;
+    FD) TITLE="Discover — fidelity to mock" ;;
+    FA) TITLE="Ask — fidelity to mock" ;;
+    FC) TITLE="Connect — fidelity to mock" ;;
+    FH) TITLE="Home — fidelity to mock" ;;
+    *)  TITLE="$G" ;;
   esac
 
   if [[ ! -d "$D" ]]; then
@@ -41,6 +47,26 @@ EOF
   local CSS="unknown"
   if [[ "$EXIT_CODE" == "0" ]]; then STATUS="completed"; CSS="ok"; fi
   if [[ "$EXIT_CODE" =~ ^[1-9] ]]; then STATUS="failed or capped"; CSS="bad"; fi
+
+  # Prefer the independent judge verdict if present (the real pass/fail signal)
+  local VERDICT_WHY="" VERDICT_HACK=""
+  if [[ -f "$D/verdict.json" ]]; then
+    local VSTAT
+    VSTAT=$(python3 -c "import json;print(json.load(open('$D/verdict.json')).get('status',''))" 2>/dev/null)
+    VERDICT_WHY=$(python3 -c "import json;d=json.load(open('$D/verdict.json'));print(d.get('why','')+((' [CAVEAT: '+d['caveats']+']') if d.get('caveats') else ''))" 2>/dev/null | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+    VERDICT_HACK=$(python3 -c "import json;print('yes' if json.load(open('$D/verdict.json')).get('reward_hack_suspected') else '')" 2>/dev/null)
+    case "$VSTAT" in
+      pass)    STATUS="judge: PASS"; CSS="ok" ;;
+      partial) STATUS="judge: PARTIAL"; CSS="unknown" ;;
+      fail)    STATUS="judge: FAIL"; CSS="bad" ;;
+    esac
+  fi
+
+  # Assertion output (the mechanical spec result)
+  local ASSERT_TAIL=""
+  if [[ -f "$D/assertion.txt" ]]; then
+    ASSERT_TAIL=$(cat "$D/assertion.txt" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
+  fi
 
   # Extract final result + cost from the stream.jsonl
   local FINAL="" COST="?"
@@ -92,7 +118,9 @@ print(final + '\n---COST---\n' + cost)
 <section class="goal $CSS">
   <div class="head"><span class="id">$G</span><span class="status $CSS">$STATUS</span><span class="meta">${DUR_MIN}m · exit $EXIT_CODE · \$${COST:-?}</span></div>
   <h3>$TITLE</h3>
+  ${VERDICT_WHY:+<p class="verdict"><strong>Judge:</strong> $VERDICT_WHY${VERDICT_HACK:+ <span class="hack">⚠ reward-hack suspected</span>}</p>}
   ${SHOT:+<img src="$SHOT" alt="$G after screenshot" />}
+  ${ASSERT_TAIL:+<details><summary>Assertion output (the spec)</summary><pre>$ASSERT_TAIL</pre></details>}
   ${FINAL:+<details open><summary>Final claude turn</summary><pre>$FINAL</pre></details>}
   ${LIVE_TAIL:+<details><summary>Tool log (tail)</summary><pre>$LIVE_TAIL</pre></details>}
   $STUCK
@@ -102,7 +130,10 @@ EOF
 
 # Aggregate
 SECTIONS=""
-for G in G1 G2 G3 G4 G5 G6; do
+# Show whatever actually ran (any reports/<goal>/ with a result.txt).
+for D in "$PTC_REPORTS"/*/; do
+  G=$(basename "$D")
+  [[ -f "$D/result.txt" ]] || continue
   SECTIONS+=$(goal_section "$G")
   SECTIONS+="
 "
@@ -143,6 +174,8 @@ details{margin-top:8px;}
 summary{cursor:pointer;font-size:13px;color:var(--muted);}
 pre{font-family:'Berkeley Mono',ui-monospace,monospace;font-size:12px;background:#f1ece2;padding:10px 12px;border-radius:4px;overflow-x:auto;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
 .dim{color:var(--muted);font-size:13.5px;}
+.verdict{font-size:13.5px;margin:6px 0 10px;padding:8px 10px;background:#f1ece2;border-left:2px solid var(--accent);border-radius:3px;}
+.hack{color:var(--bad);font-weight:600;}
 section.commits{background:var(--card);border:1px solid var(--card-rule);border-radius:6px;padding:16px 18px;margin-bottom:14px;}
 </style>
 </head>

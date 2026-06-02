@@ -29,7 +29,9 @@ fi
 
 # Run the goal chain. Each goal: up to 3 attempts. Cap-hit failures sleep 30 min
 # before retry; other failures move on immediately.
-GOALS=(G1 G2 G3 G4 G5 G6)
+# Goals to run: pass IDs as args (e.g. `overnight.sh FD FA FC FH`), else the full chain.
+GOALS=("$@")
+[[ ${#GOALS[@]} -eq 0 ]] && GOALS=(B0 L1 GR NF CH K1 K2)
 MAX_ATTEMPTS=3
 CAP_SLEEP=1800   # 30 min between cap-hit retries
 CAP_PATTERN='usage limit|rate limit|429|quota|plan usage|API_OVERLOADED|too many requests|quota_exceeded'
@@ -72,10 +74,14 @@ echo "=== all goals done, generating morning report ===" | tee -a "$RUN_LOG"
 osascript -e 'display notification "Overnight run complete — see morning.html" with title "PTC overnight"' 2>/dev/null || true
 open "$PTC_REPORTS/morning.html" 2>/dev/null || true
 
-# Shut down emulator
-if [[ -f "$PTC_REPORTS/emulator.pid" ]]; then
-  kill $(cat "$PTC_REPORTS/emulator.pid") 2>/dev/null || true
+# Leave the emulator RUNNING and windowed for Brian to click in the morning.
+# Ensure the latest build is installed + set as home so the window shows our launcher.
+if adb devices | grep -q "emulator-"; then
+  APK="$PTC_LAUNCHER/app/build/outputs/apk/debug/app-debug.apk"
+  [[ -f "$APK" ]] && adb install -r "$APK" 2>/dev/null || true
+  adb shell cmd package set-home-activity com.ptc.launcher/.MainActivity 2>/dev/null || true
+  adb shell am start -n com.ptc.launcher/.MainActivity 2>/dev/null || true
+  echo "=== emulator left running (windowed) with latest build installed ===" | tee -a "$RUN_LOG"
 fi
-adb emu kill 2>/dev/null || true
 
 echo "=== done $(date -Iseconds) ===" | tee -a "$RUN_LOG"

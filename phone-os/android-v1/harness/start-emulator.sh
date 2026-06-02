@@ -13,7 +13,7 @@ if adb devices | grep -q "emulator-"; then
 fi
 
 echo "[emu] booting AVD $PTC_AVD (headless, no snapshot)…"
-nohup emulator -avd "$PTC_AVD" -no-snapshot -no-window -no-audio -gpu swiftshader_indirect \
+nohup emulator -avd "$PTC_AVD" -no-snapshot -no-audio -gpu swiftshader_indirect \
   > "$LOG" 2>&1 &
 echo $! > "$PTC_REPORTS/emulator.pid"
 

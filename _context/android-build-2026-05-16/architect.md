@@ -75,6 +75,18 @@ Full success criterion: see `lockscreen-replacement-plan.md` — "Success criter
 - **Why:** "nothing works first time" — Brian's explicit assumption. Avoid committing to expensive paths before the critical unknowns resolve.
 - **Implication:** S1 (biometric spike) gates the whole Path A bet.
 
+### Render layer: native Compose (WebView considered and rejected) — 2026-06-01
+- **Decided:** 2026-06-01. Brian.
+- **Decision:** launcher/lockscreen surfaces are native Jetpack Compose, NOT a WebView wrapping the React mock.
+- **Why:** the launcher/lockscreen is the most latency- and gesture-sensitive, instant-wake, always-on surface on the phone — exactly where WebView is weakest (touch/scroll lag; Chromium cold-start = first-frame-black risk; heavier memory/battery; JS↔native bridge needed for app-launch + usage-stats). The OS hooks (home intent, Keyguard substitution, biometric, grayscale AccessibilityService, notification listener, launching apps) live in the native shell either way — so WebView would buy fidelity at the cost of feel exactly where feel matters most.
+- **Fidelity is a process problem, not a Compose limitation:** L1 proved Compose renders the polished lock surface well. The screen builders just weren't held to fidelity (assertions checked function, not "looks like this"). Fix: per-screen fidelity goals (FD/FA/FC/FH) giving the builder the exact React component as spec + a reference screenshot, judged on visual match by the screenshot-reading judge.
+- **WebView retained only as a fallback** if Compose fidelity proves too slow — consistent with descending-ambition.
+- **Design SSOT:** React mock at `phone-os/ArgOS.Mock.Sessions.2026.04.15/src/app/components/` + reference screenshots in `phone-os/android-v1/goals/refs/`. Once built, the running Compose app is the SSOT.
+
+### Keyguard substitution feasibility — CONFIRMED on rooted emulator (2026-06-01)
+- **Finding:** overnight run #2 goal K1 PASSED — on the rooted `ptc-test` emulator (google_apis, `adb root`), SystemUI Keyguard can be disabled/substituted so our surface is the device-entry/wake screen (`isKeyguardShowing=false`, no keyguard underneath). The central v1 unknown, answered positively without hardware.
+- **Caveat:** validated on the controlled emulator substrate only; real Pixel 6 may hit different SELinux/bootloader/AVB constraints. K2 (biometric→unlock authority) FAILED — biometric unlock not wired correctly yet, AND the emulator fakes the sensor + skips the real Gatekeeper/keystore trust path, so biometric-as-unlock-authority remains the open hardware-fidelity question.
+
 ---
 
 ## Open decisions (waiting on Brian)
