@@ -23,6 +23,7 @@ goal_section() {
     FA) TITLE="Ask — fidelity to mock" ;;
     FC) TITLE="Connect — fidelity to mock" ;;
     FH) TITLE="Home — fidelity to mock" ;;
+    RAMP) TITLE="Gradual true-grayscale ramp (the core mechanic)" ;;
     *)  TITLE="$G" ;;
   esac
 
