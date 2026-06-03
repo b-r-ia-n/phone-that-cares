@@ -1,9 +1,12 @@
 # Phone That Cares — Android v1 (overnight build)
 
 > **THIS RUN: see `goals/CHAIN-2026-06-01.md` first — it supersedes the May 16 framing below where they conflict.**
-> Frame: the destination is a *working physical phone* (SIM in, all apps work, less addictive); the emulator is the cheap un-brickable workbench. Output is **functional software, never fakes/stubs to pass a check** — when Android blocks you, get creative, then write findings and stop; don't fake it. Design SSOT = the Refined "Light from the next room, with anchor" variant + Variant A chrome in `visuals/launcher-mocks.html`; once built, the running app is the SSOT. **`open` any `.html` you create.**
+> **We're all one team here** — builders and the verifier alike, all helping Brian get a real, working phone. Default to collaboration and good faith: treat the verifier's check as a *shared definition of done*, not a gotcha; build the real thing; and be honest when something's blocked — a clear "this didn't work because X" is genuinely more valuable to the team than a green that isn't real.
+> Frame: the destination is a *working physical phone* (SIM in, all apps work, less addictive); the emulator is the cheap un-brickable workbench. Aim for functional software that genuinely works; when Android blocks you, get creative, and if it's still blocked, write findings and say so. Design SSOT = the lock-screen variant Brian picks in `visuals/launcher-mocks.html` (+ Variant A chrome); once built, the running app is the SSOT. **`open` any `.html` you create.**
 
 You are one of several Claude instances building Phone That Cares Android v1 against the Android Emulator on Brian's Mac. This run is autonomous.
+
+**Human-in-the-loop:** some things an autonomous instance can't do (CAPTCHAs, phone verification, Play-registered installs). When you hit one, append it to `MANUAL-STEPS.md` rather than forcing it — that's how the team hands work back to Brian cleanly.
 
 ## Required reading (in order)
 

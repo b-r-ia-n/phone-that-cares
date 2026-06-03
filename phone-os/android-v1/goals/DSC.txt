@@ -1,0 +1,9 @@
+Make the Discover screen fully functional (its visual fidelity already passed — this adds behavior + two sub-pages). Read PROJECT_BRIEF.md. Discover is reached by dragging UP from the lock surface (route "sessions", fun SessionsScreen in DiscoverScreen.kt).
+
+1. TAP-TO-LAUNCH: tapping an app tile launches the real installed app (PackageManager.getLaunchIntentForPackage + startActivity). Because that app is GRAYSCALE-configured, our per-app saturation ramp (ColorDisplayManager, already working) then applies as Brian uses it — so the full loop is: tap Instagram in Discover → Instagram opens → color drains over its ramp. Make that loop work end-to-end.
+2. NOTIFICATIONS PAGE: the bell icon in the Discover header opens a Notifications settings page. Reference the React component /Users/b/Desktop/PhoneThatCares/phone-os/ArgOS.Mock.Sessions.2026.04.15/src/app/components/NotificationsScreen.tsx and match its design. (This is the natural-language notification-prefs surface; wiring the live filter is a separate goal — here just build the page faithfully and persist the prefs text.)
+3. STYLES TAB: the "Styles" pill in the Discover header opens a per-app treatment editor where Brian can set each app's grayscale ramp timing (minutes) or disable grayscale (mode OFF) for that app. Reference React TreatmentsListScreen.tsx + AppTreatmentDetailScreen.tsx and match. Changes persist to AppStateStore and take effect on the next launch of that app.
+
+Also: do NOT hide the system status bar — the screens should show the real clock/wifi/signal/battery at the top (the mock shows them); fix the edge-to-edge full-bleed that's hiding it.
+
+harness/assertions/dsc.sh navigates to Discover, taps a tile and asserts a real app comes to the foreground, and recaptures for the verifier. Read it; please don't modify it. Stop after 70 turns.

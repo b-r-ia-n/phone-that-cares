@@ -1,0 +1,13 @@
+Bring the LOCK SURFACE to fidelity with the design mock and refine the gesture. Read PROJECT_BRIEF.md. This is the first screen (startDestination "lock"; LockSurface in LockSurface.kt) — the "Light from the next room, with an anchor" surface. It already exists and works; this is a fidelity + feel pass.
+
+REFERENCE: goals/refs/lock.png — match the PHONE SCREEN faithfully. Key deltas from the current build:
+- The anchor is a REAL FINGERPRINT GLYPH (like the reference), NOT the "⊕" unicode character. Draw/vector a proper fingerprint icon in the anchor circle with its breathing ring.
+- SHOW THE SYSTEM STATUS BAR: real clock + wifi + signal + battery at the very top (the reference shows 11:11, wifi, signal, 87%). Don't hide it with edge-to-edge full-bleed.
+- Clock: large thin "11:11", "TUE · MAY 15 · ☀ 68°" meta line — match the reference weight/spacing.
+- Notification cards: rounded dark cards with circular colored avatar + title + preview + right-aligned timestamp (Messages/Sarah, Slack), matching the reference.
+
+KEEP the motion Brian loves: the destination's light/color bleeds in from the edge you're dragging toward (the mood overlay), the room dims underneath, the destination name previews top-left. Four directions unchanged (UP Discover, DOWN Ask, LEFT Connect, RIGHT Home).
+
+GESTURE CHANGE: raise the commit threshold by 35% — currently COMMIT_DP = 70f in LockSurface.kt; set it to ~95f (95dp). Brian found 70 too easy to trigger accidentally. Keep the snap-back-under-threshold behavior. Make sure the DragNavigationTest still passes (update its drag distances if needed so the four-direction commits still register at the new threshold).
+
+harness/assertions/fl.sh relaunches to the lock surface and recaptures for the verifier (who compares to refs/lock.png). Read it; please don't modify it. Stop after 60 turns.

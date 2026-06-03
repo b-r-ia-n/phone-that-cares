@@ -1,0 +1,8 @@
+Make our Connect screen a real, working SMS client — text actual people through our UI. Read PROJECT_BRIEF.md. We're a team; flag honestly anything that's blocked.
+
+Our launcher app becomes the device's DEFAULT SMS APP and the Connect screen (ConnectScreen.kt, reached by dragging LEFT from the lock surface) shows + sends real SMS:
+- Register the components Android requires of a default SMS app: a BroadcastReceiver for SMS_DELIVER (android.provider.Telephony.SMS_DELIVER), one for WAP_PUSH_DELIVER (MMS), a Service for ACTION_RESPOND_VIA_MESSAGE, and an Activity that can SENDTO/sms. Request the default-SMS-app role (RoleManager ROLE_SMS / set via `cmd role` with root on the emulator) and read SMS via the Telephony content provider.
+- Connect inbox: render real SMS conversations from the device (Telephony.Sms/Threads) in the existing Connect card design (keep the FC fidelity look — avatars, name, preview, timestamp). Tapping a thread opens a conversation view; composing + sending uses SmsManager.sendTextMessage.
+- TESTING ON EMULATOR (honest note): the emulator has no real SIM, so you test send/receive via the emulator console — `adb emu sms send <from> <text>` injects an inbound SMS; verify it appears in Connect. Real cross-device texting comes with the hardware/SIM later. Outbound sendTextMessage on the emulator is a no-op to the network but should write to the Sent box and show in-thread.
+
+Scope: SMS only (no Signal/WhatsApp/IG — that's a separate, much bigger bridge project). harness/assertions/sms.sh verifies our app holds the SMS role and that an injected inbound SMS shows up. Read it; please don't modify it. Stop after 70 turns.
