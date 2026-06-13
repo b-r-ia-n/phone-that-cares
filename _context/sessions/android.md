@@ -1,13 +1,15 @@
 ---android-todo---
-- PIVOT (2026-06-01): emulator-first. Build the dream on the rooted ptc-test AVD; the soft-bricked Pixel is a later *deployment* problem.
-- OVERNIGHT RUN #2 done (~1h38m). Judge caught 3 reward-hacks. Real results: B0 ✅, GR ✅ (grayscale genuinely toggles), K1 ✅ (KEYGUARD SUBSTITUTION FEASIBLE on rooted emulator — the big unknown), L1 false-FAIL (code was actually good), NF/CH ❌ (scaffolding not integration), K2 ❌ (biometric unlock).
-- LAUNCHER FIXED + CLICKABLE now: refined "Light from the next room" picker renders (clock, anchor, 4-dir compass, flashlight/camera). Was black due to K2's broken biometric gate in MainActivity + K2's leftover PIN(1234) + 16-day emulator ANR. Fixed: ripped gate out, cleared PIN, rebooted. Uncommitted on wip/overnight-2026-05-16.
-- REPAIR HARNESS built + tested: run-goal.sh now persists builder sessions, captures session_id, and auto-repairs (resume same session w/ judge verdict + assertion + screenshot, PTC_MAX_REPAIR=2). run-goal exits on judge verdict (run.log now truthful). resume-goal.sh = interactive "talk to that instance." harness/README.md documents it. Resume-with-memory + session_id capture verified live.
+- ⏸️ PAUSED 2026-06-12: emulator/exo OS-fork track paused on purpose. Brian building the best STANDALONE Android app first, then back to the fork. Full resume state: _context/HANDOFF-android-exo-2026-06-12.md (read first).
+- Emulator track PROVED the loop is buildable. AI chat (text) VERIFIED LIVE 2026-06-12 (real OpenAI reply). All surfaces real; grayscale ramp works.
+- Emulator: AVD ptc-test bumped 2G→4GB RAM (was freezing). IG logged in. Launch: emulator -avd ptc-test -no-snapshot -no-audio -gpu swiftshader_indirect -memory 4096.
+-- still open (for the fork track) --
+- voice tap-to-talk (untested, needs Mac mic routed); Connect open-thread view (untested); send is no-op (no SIM)
+- NF filtering dead; K2 biometric dead; PHYSICAL PIXEL still bricked (the real frontier, gated on un-brick)
+-- carries to standalone app --
+- Compose surfaces + AI chat wiring (ChatService/AskViewModel) + design system all reusable. Fork-only powers (real keyguard, default-SMS, true per-app grayscale) need deciding which matter for the app.
 -- frame --
-- output = working physical phone (SIM in, all apps work, less addictive); no fakes-to-pass; descending ambition; build is the design SSOT
--- next options --
-- re-run NF/CH/K2 (+L1 to clear the false-FAIL) with the self-repairing harness — overnight-scale spend
-- or single-goal live run to watch repair loop work
-- commit launcher fix + harness when Brian says
-- architect.md should capture: K1 (keyguard substitution) PASS on rooted google_apis emulator
-- physical Pixel recovery still pending (separate track, TROUBLESHOOTING-LOG.md)
+- TEAM tone; rig="exo"; honesty>fake-green; running build is design SSOT
+-- exo notes --
+- assertion false-FAIL lesson: gate on render (screencap >55KB) + confirm foreground + error-level crash-grep. Pattern in dsc/fl/ask.sh. models=claude-opus-4-8; 90-min watchdog doesn't hard-kill.
+-- git --
+- root committed through 20dc5eb; launcher through 628cba6. All clean.
