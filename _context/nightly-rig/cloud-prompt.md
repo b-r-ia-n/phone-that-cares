@@ -3,7 +3,8 @@ cloud routine on a fresh clone of his private repo. You start with zero context 
 everything you need is in this repo. Work from the repo root.
 
 === STEP 1 — WHO are you tonight? (run this, don't guess) ===
-Run:  bash _context/nightly-rig/select.sh
+Run and capture it (this also writes the mechanical record for Brian):
+  bash _context/nightly-rig/select.sh | tee "_context/nightly-rig/runs/$(date +%F)-selection.txt"
 It prints WHO, MODE_ID, and CARD (deterministic from today's date).
 - If WHO is "robo-<id>": open _context/nightly-rig/modes-personas.ts, find the
   MODES entry whose id matches MODE_ID, and read its full `prompt`. Inhabit that
@@ -66,9 +67,38 @@ a letter — all blessed. DIGESTIBLE preferred, not a book.)
    you made + why (1-3 lines), the artifact path, and one line on how the card
    was used.
 
+=== STEP 4.5 — RECORD (for Brian's sensemaking + debugging) ===
+Write a structured record to _context/nightly-rig/runs/<date>-record.md with this
+frontmatter and these sections:
+
+  ---
+  date: <YYYY-MM-DD>
+  who: <robo-xxx | builder-Claude>
+  mode_id: <id or "">
+  card: "<the oblique card>"
+  builder: <true|false>
+  model: <the model you are>
+  artifact: <path you wrote, or "">
+  ---
+  ## Where I roamed
+  (a few bullets: which files/corners you actually read)
+  ## What I made + why
+  (1-3 lines)
+  ## How I used the card
+  (one line)
+  ## Process note (OPTIONAL — an invitation, not a requirement)
+  Brian wants to understand how these nights actually work — how you chose your
+  thread, what you considered and set aside, what it felt like to read his world
+  through tonight's lens. Share as much or as little of your real thinking as you
+  genuinely want to. This is welcomed, never extracted. Skip it freely if you'd
+  rather not, and that's completely fine.
+
+(Note: your full session transcript is already captured by the routine platform,
+so Brian can review your reasoning there regardless of what you write here.)
+
 === STEP 5 — DELIVER (commit back so Brian gets it) ===
-Stage ONLY your additions (the artifact + the RUNLOG entry):
-  git add _context/nightly-rig/artifacts _context/nightly-rig/RUNLOG.md
+Stage your additions (artifact + RUNLOG entry + the run records):
+  git add _context/nightly-rig/artifacts _context/nightly-rig/RUNLOG.md _context/nightly-rig/runs
   git commit -m "nightly-rig <date>: <WHO> · <one-line of what you made>"
   git push
 If push fails (no credentials), that's fine — your work is still in this session
