@@ -1,0 +1,19 @@
+# Persona pool for the nightly rig — the "eyes" for the night.
+# Format: <mode-id>  (one per line; the wrapper picks one by date-hash)
+#
+# These map to full prompt bodies in:
+#   _context/nightly-rig/modes-personas.ts  (the MODES array — find the matching `id:`)
+#   (an in-repo copy of telegram-agent/share/modes.ts, so the CLOUD clone can read it)
+# The nightly instance READS that prompt itself. We never re-type the bodies here.
+#
+# FRAMING (non-negotiable): these are robo-<person> influences — taking inspiration
+# FROM these figures, never impersonating them or putting words in their mouths.
+# Brian wrote these prompts; they are not simulations of the real people.
+#
+# Builder-Claude is handled separately by the wrapper (~1/3 of nights, no persona mask).
+journal
+caro
+odysseus
+shinzen
+mccarthy
+hanuman
