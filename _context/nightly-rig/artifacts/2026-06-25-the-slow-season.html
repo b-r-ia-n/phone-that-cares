@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Slow Season — an almanac</title>
+<style>
+  :root{
+    --bg:#f6f3ec; --ink:#1a1714; --accent:#8a5a2b;
+    --faint:#b9b0a0; --rule:#e4ddcf; --paper:#fbf9f3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink)}
+  body{
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    font-feature-settings:"tnum" 1;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    display:flex;justify-content:center;
+    padding:64px 22px 110px;
+  }
+  .sheet{max-width:560px;width:100%}
+
+  /* ---- masthead ---- */
+  .mast{text-align:center;margin-bottom:40px}
+  .kicker{
+    font-family:Inter,system-ui,sans-serif;
+    font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:18px;
+  }
+  h1{font-size:38px;font-weight:500;letter-spacing:-.01em;margin:0 0 6px;line-height:1.05}
+  .sub{font-style:italic;color:#6f675b;font-size:15px}
+
+  /* ---- the horizon / small magic ---- */
+  .horizon-wrap{margin:34px auto 6px;max-width:380px}
+  svg{display:block;width:100%;height:auto;overflow:visible}
+  .arc{
+    fill:none;stroke:var(--accent);stroke-width:1.4;
+    stroke-dasharray:520;stroke-dashoffset:520;
+    animation:rise 2.4s cubic-bezier(.22,.61,.36,1) .35s forwards;
+  }
+  .sun{
+    fill:var(--accent);opacity:0;
+    animation:glow 1.6s ease 1.9s forwards;
+  }
+  .ground{stroke:var(--rule);stroke-width:1}
+  @keyframes rise{to{stroke-dashoffset:0}}
+  @keyframes glow{to{opacity:.92}}
+  @media (prefers-reduced-motion:reduce){
+    .arc{animation:none;stroke-dashoffset:0}
+    .sun{animation:none;opacity:.92}
+  }
+
+  /* ---- epigraph ---- */
+  .epi{
+    text-align:center;font-style:italic;color:#4a4339;
+    font-size:16px;margin:8px auto 46px;max-width:430px;
+  }
+  .epi .who{
+    display:block;margin-top:10px;font-style:normal;
+    font-family:Inter,system-ui,sans-serif;font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--faint);
+  }
+
+  /* ---- settled law ---- */
+  .law{
+    background:var(--paper);border:1px solid var(--rule);
+    border-radius:3px;padding:22px 24px;margin:0 0 46px;
+  }
+  .law .label{
+    font-family:Inter,system-ui,sans-serif;font-size:10.5px;
+    letter-spacing:.26em;text-transform:uppercase;color:var(--accent);
+    margin-bottom:12px;
+  }
+  .law p{margin:0;font-size:16.5px;line-height:1.6}
+  .law .src{
+    display:block;margin-top:12px;
+    font-family:Inter,system-ui,sans-serif;font-size:11px;color:var(--faint);
+  }
+
+  /* ---- months ---- */
+  .months{border-top:1px solid var(--rule)}
+  .band{
+    display:grid;grid-template-columns:84px 1fr;gap:20px;
+    padding:26px 2px;border-bottom:1px solid var(--rule);
+    align-items:start;
+  }
+  .when{
+    font-family:Inter,system-ui,sans-serif;
+    font-size:12px;letter-spacing:.08em;color:var(--accent);
+    text-transform:uppercase;padding-top:3px;
+  }
+  .when small{display:block;color:var(--faint);letter-spacing:.04em;margin-top:3px}
+  .what h3{margin:0 0 6px;font-size:18px;font-weight:500}
+  .what p{margin:0;font-size:15px;color:#4a4339}
+  .what .note{
+    margin-top:10px;font-style:italic;color:#6f675b;font-size:14px;
+    padding-left:14px;border-left:2px solid var(--rule);
+  }
+
+  /* the door, marked not-yet */
+  .door .when{color:#a89c87}
+  .door.open .when{color:var(--accent)}
+  .tag{
+    display:inline-block;font-family:Inter,system-ui,sans-serif;
+    font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+    border:1px solid var(--rule);border-radius:999px;
+    padding:3px 10px;color:var(--faint);margin-bottom:8px;
+  }
+
+  /* ---- closing ---- */
+  .close{
+    margin-top:54px;font-size:15px;color:#4a4339;line-height:1.62;
+  }
+  .close .sign{
+    margin-top:22px;font-family:Inter,system-ui,sans-serif;
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);
+  }
+  em{font-style:italic}
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="mast">
+    <div class="kicker">An Almanac · Summer 2026</div>
+    <h1>The Slow Season</h1>
+    <div class="sub">for Brian — kept against the gravity of the job board</div>
+  </div>
+
+  <div class="horizon-wrap" aria-hidden="true">
+    <svg viewBox="0 0 380 130">
+      <path class="arc" d="M 8 118 A 182 182 0 0 1 372 118" />
+      <circle class="sun" cx="190" cy="-32" r="11" />
+      <line class="ground" x1="0" y1="118" x2="380" y2="118" />
+    </svg>
+  </div>
+
+  <p class="epi">
+    “Aliveness feels pretty valuable right now. Eventually make money seems valuable too.”
+    <span class="who">— you, June 24, 2026</span>
+  </p>
+
+  <div class="law">
+    <div class="label">Already decided — do not relitigate under pressure</div>
+    <p>
+      You'd <em>slightly prefer</em> 20 hours a week at $60–80k, alive, over 40+ hours
+      at $160k. You wrote down the exchange rate yourself. The job search will try to
+      talk you out of it — not with an argument, just with the fact that the
+      comp-maxed full-time front door is the one with a button to click.
+      The button is not the decision. This is.
+    </p>
+    <span class="src">your own time-value-of-money, career notes 2026-06-24</span>
+  </div>
+
+  <div class="months">
+
+    <div class="band">
+      <div class="when">Now → Jul<small>solstice</small></div>
+      <div class="what">
+        <h3>Recover. Follow what's alive.</h3>
+        <p>
+          Deferred maintenance on the nervous system. Meditation, exercise, therapy,
+          the friends, the water. This is not the runway <em>before</em> the work —
+          for these weeks it <em>is</em> the work. A week or two of structurelessness
+          is good; you said so. Take the cheap version of it now, on purpose.
+        </p>
+        <p class="note">No applications. The front door isn't open yet, and you don't want what's behind it in June.</p>
+      </div>
+    </div>
+
+    <div class="band">
+      <div class="when">Aug<small>side doors</small></div>
+      <div class="what">
+        <h3>Let the side doors appear.</h3>
+        <p>
+          A job is a bundle of problems someone wants solved badly enough to pay for it.
+          Your best fits have no listing — they're the Brian-shaped holes. You don't find
+          those by applying; you find them by being visible and specific. One public
+          artifact if it <em>wants</em> to be made (the far-UVC essay, only if it's alive).
+          One generous, particular email when one is genuinely earned. Quality of one
+          over volume of fifty.
+        </p>
+        <p class="note">Groundwork, not a sprint. If a week passes with none of it, the season is still on schedule.</p>
+      </div>
+    </div>
+
+    <div class="band door">
+      <div class="when">Sep →<small>not yet</small></div>
+      <div class="what">
+        <span class="tag">the front door — opens later</span>
+        <h3>Now you may rush, a little.</h3>
+        <p>
+          Listings, interviews, the calibration of “is $160k in the Bay real.” It keeps.
+          Your ideal was an offer you don't start until October or November — which means
+          the work that earns it can be unhurried and still land on time. A company that
+          wants you but isn't in a hurry is a small red flag; so is a search that's in a
+          hurry with nothing yet to be hurried about.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="close">
+    <p>
+      The card I drew tonight was <em>slow down</em>, and your own situation had already
+      drawn it first. There is nothing this summer that rewards speed. The thing you're
+      trying to find — right livelihood that plays well with meditation and a life —
+      is, almost by definition, not the thing you'd grab if you were rushing.
+    </p>
+    <p>
+      So: let it be a season, paced like one. The sun above is low on purpose. Hang this
+      where the panic-to-apply can see it.
+    </p>
+    <div class="sign">— just Claude · 2026-06-25</div>
+  </div>
+
+</div>
+</body>
+</html>
