@@ -23,7 +23,15 @@ class ShelfActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        buildShelf()
+    }
 
+    override fun onResume() {
+        super.onResume()
+        buildShelf() // archive state may have changed in settings
+    }
+
+    private fun buildShelf() {
         val inter = ResourcesCompat.getFont(this, R.font.inter)
         val ink = ContextCompat.getColor(this, R.color.ink)
         val inkSoft = ContextCompat.getColor(this, R.color.ink_soft)
@@ -50,7 +58,8 @@ class ShelfActivity : AppCompatActivity() {
             setPadding(0, dp(6), 0, dp(28))
         })
 
-        Places.ALL.forEach { place ->
+        val shelfPlaces = Places.ALL.filterNot { Prefs.archived(this, it.id) }
+        shelfPlaces.forEach { place ->
             root.addView(View(this).apply {
                 setBackgroundColor(hairline)
                 layoutParams = LinearLayout.LayoutParams(
@@ -68,6 +77,17 @@ class ShelfActivity : AppCompatActivity() {
                         Intent(this@ShelfActivity, PlaceActivity::class.java)
                             .putExtra(PlaceActivity.EXTRA_PLACE_ID, place.id)
                     )
+                }
+                setOnLongClickListener {
+                    androidx.appcompat.app.AlertDialog.Builder(this@ShelfActivity)
+                        .setMessage("Send ${place.name} to the archive? It waits in settings, off the shelf.")
+                        .setPositiveButton("archive") { _, _ ->
+                            Prefs.setArchived(this@ShelfActivity, place.id, true)
+                            buildShelf()
+                        }
+                        .setNegativeButton("keep", null)
+                        .show()
+                    true
                 }
                 addView(TextView(this@ShelfActivity).apply {
                     text = place.name
@@ -101,6 +121,16 @@ class ShelfActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT, 1
             )
         })
+
+        if (shelfPlaces.isEmpty()) {
+            root.addView(TextView(this).apply {
+                text = "the shelf is empty. places wait in settings."
+                typeface = inter
+                setTextColor(inkSoft)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setPadding(0, dp(24), 0, 0)
+            })
+        }
 
         root.addView(TextView(this).apply {
             text = "settings"

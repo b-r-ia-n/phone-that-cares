@@ -74,7 +74,7 @@ class PlaceActivity : AppCompatActivity() {
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-            userAgentString = UA
+            if (place.spoofUa) userAgentString = UA
             mediaPlaybackRequiresUserGesture = true
             loadWithOverviewMode = true
             useWideViewPort = true
@@ -228,20 +228,32 @@ class PlaceActivity : AppCompatActivity() {
         return real * mult
     }
 
-    private fun rampMs(): Long = Prefs.rampMinutes(this).coerceAtLeast(1) * 60_000L
+    /** Ramp used for timing (breaks, spacing). Falls back to the global
+     *  default when this place's color ramp is off. */
+    private fun rampMs(): Long {
+        val m = Prefs.rampMinutes(this, place.id)
+        val timing = if (m > 0) m else Prefs.defaultRampMinutes(this).coerceAtLeast(5)
+        return timing * 60_000L
+    }
+
+    private fun colorRampEnabled(): Boolean = Prefs.rampMinutes(this, place.id) > 0
 
     private fun progress(): Double =
         min(1.0, effectiveElapsed().toDouble() / rampMs().toDouble())
 
     private fun injectEnsure() {
-        val trim = if (Prefs.trims(this)) place.trimCss else ""
-        web.evaluateJavascript(CareEngine.ensureJs(place.itemSelector, trim), null)
+        val trimCss = place.trims
+            .filter { Prefs.trimEnabled(this, place.id, it.id) }
+            .joinToString("\n") { it.css }
+        web.evaluateJavascript(CareEngine.ensureJs(place.itemSelector, trimCss), null)
     }
 
     private fun applyProgress() {
         val p = progress()
-        val sat = 1.0 - p
-        val con = 1.0 - (1.0 - Care.CONTRAST_FLOOR) * p
+        val sat = if (colorRampEnabled()) 1.0 - p else 1.0
+        val con = if (colorRampEnabled()) {
+            1.0 - (1.0 - Care.CONTRAST_FLOOR) * p
+        } else 1.0
         val space = if (place.itemSelector.isEmpty()) 0
         else floor(Care.MAX_EXTRA_SPACE_PX * p).toInt()
         injectEnsure()
@@ -256,6 +268,7 @@ class PlaceActivity : AppCompatActivity() {
     }
 
     private fun maybeBreak() {
+        if (!Prefs.breakCards(this, place.id)) return
         val expected = expectedBreakCount(effectiveElapsed())
         if (breaksShown in 0 until expected) {
             breaksShown = expected

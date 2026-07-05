@@ -8,5 +8,15 @@
             android:exported="true"
             tools:node="merge"
             tools:replace="android:exported" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            tools:node="merge"
+            tools:replace="android:exported" />
+        <activity
+            android:name=".PlaceSettingsActivity"
+            android:exported="true"
+            tools:node="merge"
+            tools:replace="android:exported" />
     </application>
 </manifest>
