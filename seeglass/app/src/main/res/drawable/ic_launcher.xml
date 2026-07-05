@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- paper ground -->
+    <path
+        android:fillColor="#f6f3ec"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- sea-glass pebble -->
+    <path
+        android:fillColor="#9db8a8"
+        android:fillAlpha="0.85"
+        android:pathData="M54,26 C70,26 84,38 84,54 C84,72 70,84 54,84 C38,84 24,72 24,54 C24,38 38,26 54,26 Z" />
+    <!-- frosted highlight -->
+    <path
+        android:fillColor="#f6f3ec"
+        android:fillAlpha="0.45"
+        android:pathData="M42,38 C50,32 62,34 68,42 C60,42 48,44 42,52 C38,48 38,42 42,38 Z" />
+</vector>

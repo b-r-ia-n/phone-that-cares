@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Listens for the both-volume-buttons chord so you can borrow color for a while. Nothing else is read or recorded.</string>
+</resources>
