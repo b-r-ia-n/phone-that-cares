@@ -1,4 +1,4 @@
-# Graydawn — marketing / framing pass (July 5 overnight)
+I# Graydawn — marketing / framing pass (July 5 overnight)
 
 For Brian, over coffee. Docs only, nothing deployed. Frame held throughout: nothing is taken,
 nothing is owed. Gray is a different default. The hold saturates the phone for twenty minutes;

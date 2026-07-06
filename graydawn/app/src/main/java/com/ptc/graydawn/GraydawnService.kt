@@ -14,7 +14,8 @@ import android.view.accessibility.AccessibilityEvent
 class GraydawnService : AccessibilityService() {
 
     companion object {
-        private const val HOLD_MS = 400L
+        // A full, felt half-second — 400ms read as "instant" in practice.
+        private const val HOLD_MS = 550L
         const val DEBUG_ACTION = "com.ptc.graydawn.DEBUG_BORROW"
 
         /**
@@ -137,6 +138,9 @@ class GraydawnService : AccessibilityService() {
 
         when (event.action) {
             KeyEvent.ACTION_DOWN -> {
+                // Key repeats from a held button would keep resetting the
+                // hold timer; only fresh presses count.
+                if (event.repeatCount > 0) return upDown && downDown
                 if (isUp) upDown = true
                 if (isDown) downDown = true
                 if (upDown && downDown) {
