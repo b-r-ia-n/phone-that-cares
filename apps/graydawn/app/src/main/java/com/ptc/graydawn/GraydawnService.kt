@@ -150,28 +150,26 @@ class GraydawnService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(
-                debugReceiver, IntentFilter(DEBUG_ACTION), Context.RECEIVER_EXPORTED
+        // The adb test hooks exist only on debuggable builds. On release,
+        // exported receivers would let any co-installed app toggle the
+        // color, move the slider, or land a fake dawn — so they don't exist.
+        val debuggable =
+            (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (debuggable) {
+            val hooks = listOf(
+                debugReceiver to DEBUG_ACTION,
+                debugSplashReceiver to DEBUG_SPLASH,
+                debugLetterReceiver to DEBUG_LETTER,
+                debugDawnReceiver to DEBUG_DAWN,
             )
-            registerReceiver(
-                debugSplashReceiver, IntentFilter(DEBUG_SPLASH), Context.RECEIVER_EXPORTED
-            )
-            registerReceiver(
-                debugLetterReceiver, IntentFilter(DEBUG_LETTER), Context.RECEIVER_EXPORTED
-            )
-            registerReceiver(
-                debugDawnReceiver, IntentFilter(DEBUG_DAWN), Context.RECEIVER_EXPORTED
-            )
-        } else {
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(debugReceiver, IntentFilter(DEBUG_ACTION))
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(debugSplashReceiver, IntentFilter(DEBUG_SPLASH))
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(debugLetterReceiver, IntentFilter(DEBUG_LETTER))
-            @Suppress("UnspecifiedRegisterReceiverFlag")
-            registerReceiver(debugDawnReceiver, IntentFilter(DEBUG_DAWN))
+            for ((rcv, action) in hooks) {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    registerReceiver(rcv, IntentFilter(action), Context.RECEIVER_EXPORTED)
+                } else {
+                    @Suppress("UnspecifiedRegisterReceiverFlag")
+                    registerReceiver(rcv, IntentFilter(action))
+                }
+            }
         }
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         cameraPkgs = resolveCameraPackages()

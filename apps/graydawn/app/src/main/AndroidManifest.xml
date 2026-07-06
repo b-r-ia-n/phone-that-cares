@@ -49,11 +49,9 @@
                 android:resource="@xml/graydawn_service" />
         </service>
 
-        <!-- exported so `adb shell am start` can open it for testing; it
-             shows nothing and sends nothing without the person's taps -->
         <activity
             android:name=".LetterActivity"
-            android:exported="true" />
+            android:exported="false" />
 
         <activity
             android:name=".SettingsActivity"
