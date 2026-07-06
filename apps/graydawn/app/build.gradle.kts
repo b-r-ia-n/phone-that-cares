@@ -11,8 +11,8 @@ android {
         applicationId = "com.ptc.graydawn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.6"
+        versionCode = 7
+        versionName = "1.0"
     }
 
     // Shared PTC release key. Lives outside the repo (keys/ is gitignored);
