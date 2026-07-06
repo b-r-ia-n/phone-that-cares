@@ -27,12 +27,35 @@ class GraydawnService : AccessibilityService() {
         if (upDown && downDown && !fired) {
             fired = true
             Gray.borrow(this)
+            armWatchdog()
+        }
+    }
+
+    // Belt-and-suspenders behind the alarm: while a borrow is live, a slow
+    // tick (and every screen-on) checks whether it has run out.
+    private val watchdog = object : Runnable {
+        override fun run() {
+            if (Gray.borrowUntil(this@GraydawnService) == 0L) return
+            Gray.regrayIfDue(this@GraydawnService)
+            handler.postDelayed(this, 20_000L)
+        }
+    }
+
+    private fun armWatchdog() {
+        handler.removeCallbacks(watchdog)
+        handler.postDelayed(watchdog, 20_000L)
+    }
+
+    private val screenOnReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            Gray.regrayIfDue(this@GraydawnService)
         }
     }
 
     private val debugReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             Gray.borrow(this@GraydawnService)
+            armWatchdog()
         }
     }
 
@@ -46,12 +69,17 @@ class GraydawnService : AccessibilityService() {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(debugReceiver, IntentFilter(DEBUG_ACTION))
         }
+        registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         // If the dawn schedule is on, make sure the alarm exists.
         if (Gray.dawnEnabled(this)) Gray.scheduleDawn(this)
+        // A borrow may have been live when the service restarted.
+        if (Gray.borrowUntil(this) != 0L && !Gray.regrayIfDue(this)) armWatchdog()
     }
 
     override fun onDestroy() {
         runCatching { unregisterReceiver(debugReceiver) }
+        runCatching { unregisterReceiver(screenOnReceiver) }
+        handler.removeCallbacks(watchdog)
         super.onDestroy()
     }
 

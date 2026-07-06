@@ -64,11 +64,22 @@ object Gray {
                 pending(ctx, WarnReceiver::class.java, 1)
             )
         }
-        am.setWindow(
-            AlarmManager.RTC_WAKEUP, until, 20_000L,
+        // Exact + allow-while-idle: Doze may defer a plain setWindow alarm
+        // for hours on real hardware, so the snap-back must punch through.
+        am.setExactAndAllowWhileIdle(
+            AlarmManager.RTC_WAKEUP, until,
             pending(ctx, RegrayReceiver::class.java, 2)
         )
         vibrate(ctx, longArrayOf(0, 40, 80, 40))
+        return true
+    }
+
+    /** Watchdog: if a borrow has run out, end it now. True if it regrayed. */
+    fun regrayIfDue(ctx: Context): Boolean {
+        val until = borrowUntil(ctx)
+        if (until == 0L || System.currentTimeMillis() < until) return false
+        prefs(ctx).edit().putLong("borrow_until", 0L).apply()
+        setGray(ctx, true)
         return true
     }
 

@@ -23,6 +23,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var permStatus: TextView
     private lateinit var listenerStatus: TextView
+    private lateinit var tanglesBox: LinearLayout
     private lateinit var grayNow: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,7 +78,12 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
-        // 3. dawn schedule
+        // 3. tangles: existing phone settings that would fight the chord
+        label("the tangles")
+        tanglesBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(tanglesBox)
+
+        // 4. dawn schedule
         label("gray every dawn")
         caption("around 4:00 each morning, before anyone is awake")
         root.addView(Switch(this).apply {
@@ -87,7 +93,7 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // 4. borrow length
+        // 5. borrow length
         label("the borrow")
         val borrowCaption = caption(borrowText(Gray.borrowMinutes(this)))
         root.addView(SeekBar(this).apply {
@@ -104,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // 5. try it
+        // 6. try it
         grayNow = TextView(this).apply {
             typeface = inter; setTextColor(accent)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
@@ -145,6 +151,97 @@ class MainActivity : AppCompatActivity() {
             "return color"
         } else {
             "go gray now"
+        }
+        refreshTangles()
+    }
+
+    /** Look for existing phone settings that would fight graydawn. */
+    private fun refreshTangles() {
+        val inter = ResourcesCompat.getFont(this, R.font.inter)
+        val inkSoft = ContextCompat.getColor(this, R.color.ink_soft)
+        val accent = ContextCompat.getColor(this, R.color.accent)
+        tanglesBox.removeAllViews()
+
+        fun tangle(text: String, clickable: Boolean = false, onTap: (() -> Unit)? = null) {
+            tanglesBox.addView(TextView(this).apply {
+                this.text = text
+                typeface = inter
+                setTextColor(if (clickable) accent else inkSoft)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                setPadding(0, 0, 0, dp(8))
+                onTap?.let { setOnClickListener { _ -> it() } }
+            })
+        }
+
+        var found = false
+
+        // 1. The phone's own hold-both-volume-keys shortcut. It fires at the
+        // system level, upstream of graydawn — if anything is bound there,
+        // the chord belongs to it, not to us.
+        val chordTarget = Settings.Secure.getString(
+            contentResolver, "accessibility_shortcut_target_service"
+        )?.trim().orEmpty()
+        if (chordTarget.isNotEmpty()) {
+            found = true
+            val what = if (chordTarget.contains("daltonizer", ignoreCase = true)) {
+                "color correction"
+            } else {
+                chordTarget.substringAfterLast('/').substringAfterLast('.')
+                    .ifEmpty { "another shortcut" }
+            }
+            if (Gray.hasPermission(this)) {
+                tangle(
+                    "your phone's own volume-key shortcut is tied to " +
+                        "$what — it grabs the chord before graydawn can.\n" +
+                        "tap here to untie it.",
+                    clickable = true
+                ) {
+                    Settings.Secure.putString(
+                        contentResolver, "accessibility_shortcut_target_service", ""
+                    )
+                    refresh()
+                }
+            } else {
+                tangle(
+                    "your phone's own volume-key shortcut is tied to " +
+                        "$what — it grabs the chord before graydawn can. " +
+                        "untie it in Settings → Accessibility → Shortcuts, " +
+                        "or grant the key above and tap here."
+                )
+            }
+        }
+
+        // 2. Other accessibility services that might also watch the buttons.
+        val others = (Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: "")
+            .split(':')
+            .filter { it.isNotBlank() && !it.startsWith("$packageName/") }
+            .mapNotNull { flat ->
+                android.content.ComponentName.unflattenFromString(flat)?.packageName
+            }
+            .distinct()
+            .map { pkg ->
+                // Package-visibility rules usually hide other apps' labels
+                // from us; the last segment of the package reads fine.
+                runCatching {
+                    packageManager.getApplicationLabel(
+                        packageManager.getApplicationInfo(pkg, 0)
+                    ).toString()
+                }.getOrDefault(pkg.substringAfterLast('.'))
+            }
+        if (others.isNotEmpty()) {
+            found = true
+            tangle(
+                "also listening: ${others.joinToString(", ")}. " +
+                    "if one of these watches the volume buttons or toggles " +
+                    "grayscale on its own, the two of you will fight — " +
+                    "quiet any button rules there."
+            )
+        }
+
+        if (!found) {
+            tangle("no tangles found — the chord is yours alone.")
         }
     }
 
