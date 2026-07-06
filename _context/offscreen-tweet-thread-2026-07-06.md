@@ -47,3 +47,21 @@ Notes:
   frames it as self-control: "it's not restriction — nothing stops working. it's
   just a different default. the color's still yours whenever you want it."
 - Blocked on: the demo video (camera at the physical phone; Brian films).
+
+---
+
+## 10 candidate openers (Brian asked for options, July 6 morning-after)
+
+1. premise straight — "i made a weird little app…" (the original)
+2. tagline-first — "the color lives offscreen."
+3. camera fact — "i made an app that screen recordings can't see."
+4. personal — "my phone has been waking up gray every morning for a few weeks now."
+5. thesis gently — the website's hero line, then the 4am image
+6. traveler-first — "turns out color was doing a lot of the asking."
+7. install story — "i made an app where the website is the installer."
+8. baby photos — the hold gesture as the image
+9. anti-app — "a phone-addiction app that doesn't block anything, track anything, or judge you"
+10. dawn image pure — "you wake up, the screen is gray, and the window next to it is not."
+
+Full text of each in the chat transcript (July 6). Claude's read: 1 safest, 4 most
+human / travels furthest, 10 prettiest but riskiest, 3 is best held as reply-bait.
