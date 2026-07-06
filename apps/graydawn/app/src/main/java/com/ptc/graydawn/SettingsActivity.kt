@@ -64,6 +64,24 @@ class SettingsActivity : AppCompatActivity() {
         root.addView(v); return v
     }
 
+    /** A bordered, unmistakable action — used where a plain line would
+        read as body text and get missed. */
+    private fun actionButton(t: String, onTap: () -> Unit) {
+        root.addView(TextView(this).apply {
+            text = t; typeface = inter; setTextColor(accent)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            setPadding(dp(16), dp(11), dp(16), dp(11))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setStroke(dp(1), ContextCompat.getColor(this@SettingsActivity, R.color.hairline))
+                cornerRadius = dp(10).toFloat()
+            }
+            setOnClickListener { onTap() }
+        }, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = dp(6) })
+    }
+
     private fun build() {
         root.removeAllViews()
 
@@ -151,13 +169,27 @@ class SettingsActivity : AppCompatActivity() {
                 "usual way can leave the phone gray — fixable in Settings → " +
                 "Accessibility → Color correction.)"
         )
-        caption("leave cleanly — return color and uninstall") {
+        actionButton("leave cleanly — return color and uninstall") {
             Gray.endSaturationEarly(this)
             Gray.cancelDawn(this)
             Gray.setGray(this, false)
-            startActivity(
-                Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))
-            )
+            val ok = runCatching {
+                startActivity(
+                    Intent(Intent.ACTION_DELETE, Uri.parse("package:$packageName"))
+                ); true
+            }.getOrDefault(false)
+            if (!ok) {
+                // Fall back to the app's own settings page, where uninstall
+                // also lives — never leave the tap feeling dead.
+                runCatching {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:$packageName")
+                        )
+                    )
+                }
+            }
         }
 
         // ---- footer ----

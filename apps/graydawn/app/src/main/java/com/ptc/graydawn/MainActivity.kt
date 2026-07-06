@@ -98,12 +98,26 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(28), dp(64), dp(28), dp(40))
         }
 
-        root.addView(TextView(this).apply {
+        val titleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        titleRow.addView(TextView(this).apply {
             text = "Graydawn"
             typeface = inter; setTypeface(typeface, Typeface.BOLD)
             setTextColor(ink); setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
             letterSpacing = -0.02f
-        })
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        titleRow.addView(android.widget.ImageView(this).apply {
+            setImageResource(R.drawable.ic_gear)
+            val pad = dp(6)
+            setPadding(pad, pad, pad, pad)
+            contentDescription = "settings"
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+            }
+        }, LinearLayout.LayoutParams(dp(36), dp(36)))
+        root.addView(titleRow)
         root.addView(TextView(this).apply {
             text = "the day begins gray. holding both volume\nbuttons — a half-second — brings the\ncolor back for a while."
             typeface = inter; setTextColor(inkSoft)
@@ -261,17 +275,6 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(28); bottomMargin = dp(12) })
-
-        // The plumbing lives behind one quiet word.
-        root.addView(TextView(this).apply {
-            text = "settings"
-            typeface = inter; setTextColor(inkSoft)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(dp(4), dp(8), dp(4), 0)
-            setOnClickListener {
-                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
-            }
-        })
 
         setContentView(ScrollView(this).apply { addView(root) })
     }
