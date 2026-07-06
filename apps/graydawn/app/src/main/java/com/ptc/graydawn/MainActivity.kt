@@ -120,7 +120,7 @@ class MainActivity : AppCompatActivity() {
         }, LinearLayout.LayoutParams(dp(40), dp(40)))
         root.addView(titleRow)
         root.addView(TextView(this).apply {
-            text = "the day begins gray. holding both volume\nbuttons — a half-second — brings the\ncolor back for a while."
+            text = "the color lives offscreen. holding both\nvolume buttons — a half-second —\nbrings it back for a while."
             typeface = inter; setTextColor(inkSoft)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setPadding(0, dp(6), 0, dp(20))
