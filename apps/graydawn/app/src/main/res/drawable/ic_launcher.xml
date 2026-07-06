@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Brian's icon (apps/greydawn_icon.svg, July 6): the sun mid-transition —
+     orange below, gray above — with rays cycling from color to gray around
+     the dial. Geometry scaled from his 192 viewport to 108. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
@@ -7,27 +10,45 @@
     android:viewportHeight="108">
     <!-- paper ground -->
     <path
-        android:fillColor="#f6f3ec"
+        android:fillColor="#ede9e1"
         android:pathData="M0,0h108v108h-108z" />
-    <!-- the dawn sun, in saturated color: the icon itself grays with the
-         phone, so the launcher is a little litmus too -->
+    <!-- the half-risen sun: orange at the base, gray at the crown -->
     <path
-        android:pathData="M54,34 C68,34 79,45 79,60 L29,60 C29,45 40,34 54,34 Z">
+        android:pathData="M54,35.95 a18.05,18.05 0 1,0 0.002,0 z">
         <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
-                android:startX="34"
-                android:startY="66"
-                android:endX="74"
-                android:endY="36"
-                android:startColor="#ff6b57"
-                android:centerColor="#ffc24b"
-                android:endColor="#6bb6ff" />
+                android:startX="54"
+                android:startY="72.05"
+                android:endX="54"
+                android:endY="35.95"
+                android:startColor="#f6871f"
+                android:endColor="#878787" />
         </aapt:attr>
     </path>
-    <!-- horizon line -->
-    <path
-        android:fillColor="#1a1714"
-        android:fillAlpha="0.75"
-        android:pathData="M18,60 h72 v2.5 h-72 z" />
+    <!-- rays, color cycling: gray up top, tan at the sides, orange below -->
+    <path android:pathData="M54,26.05 L54,17.67"
+        android:strokeColor="#878787" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M34.24,34.24 L28.31,28.31"
+        android:strokeColor="#878787" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M73.76,34.24 L79.69,28.31"
+        android:strokeColor="#878787" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M26.05,54 L17.67,54"
+        android:strokeColor="#c0895b" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M81.95,54 L90.33,54"
+        android:strokeColor="#c0895b" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M54,81.95 L54,90.33"
+        android:strokeColor="#f6871f" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M28.31,79.69 L34.24,73.76"
+        android:strokeColor="#f6871f" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
+    <path android:pathData="M73.76,73.76 L79.69,79.69"
+        android:strokeColor="#f6871f" android:strokeWidth="3.94"
+        android:strokeLineCap="round" />
 </vector>

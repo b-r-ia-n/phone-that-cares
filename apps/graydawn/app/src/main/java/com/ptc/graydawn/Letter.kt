@@ -65,10 +65,13 @@ object Letter {
             ctx, 4, Intent(ctx, LetterActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val dawns = TimeUnit.MILLISECONDS.toDays(
+            System.currentTimeMillis() - installTime(ctx)
+        )
         val note = NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher)
-            .setContentTitle("a letter from graydawn")
-            .setContentText("brian, who made this, wonders whether it works — want to tell him?")
+            .setContentTitle("$dawns gray dawns in...")
+            .setContentText("how's using graydawn going? we're curious")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
