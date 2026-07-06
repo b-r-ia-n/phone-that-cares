@@ -262,6 +262,17 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(28); bottomMargin = dp(12) })
 
+        // The plumbing lives behind one quiet word.
+        root.addView(TextView(this).apply {
+            text = "settings"
+            typeface = inter; setTextColor(inkSoft)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(dp(4), dp(8), dp(4), 0)
+            setOnClickListener {
+                startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+            }
+        })
+
         setContentView(ScrollView(this).apply { addView(root) })
     }
 
@@ -341,7 +352,7 @@ class MainActivity : AppCompatActivity() {
         }
         statusLine.text = when {
             !Gray.hasPermission(this) || !isServiceEnabled() ->
-                "asleep — needs the key and the listener below."
+                "asleep — needs the two permissions below."
             until > now -> {
                 val time = SimpleDateFormat("h:mm", Locale.US).format(Date(until))
                 val left = ((until - now) / 60_000L).coerceAtLeast(1)
@@ -357,166 +368,66 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Setup, sized to its need: while the key or listener is missing (or
-     * something tangles the hold), the full sections explain themselves.
-     * Once everything is healthy it folds into one quiet line — a settled
-     * phone shouldn't keep talking about its organs.
+     * The main page only speaks up about problems: a missing permission
+     * or a conflict that breaks the hold outright. When everything works
+     * it says nothing at all — the plumbing lives in settings.
      */
     private fun refreshSetup() {
         setupBox.removeAllViews()
         val key = Gray.hasPermission(this)
         val enabled = isServiceEnabled()
         val running = enabled && GraydawnService.instance != null
-        val tangles = collectTangles()
 
-        fun quietLine(t: String) = setupBox.addView(TextView(this).apply {
-            text = t
-            typeface = inter; setTextColor(inkSoft)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(0, dp(16), 0, 0)
-        })
-
-        if (key && running && tangles.isEmpty() && !justUntied) {
-            quietLine("the key ✓ · the listener ✓ · the hold is yours alone")
-            return
-        }
-
-        if (!key) {
-            label(setupBox, "the key")
-            caption(
-                setupBox,
-                "not yet — have a friend with a laptop run this once:\n\n" +
-                    "adb shell pm grant com.ptc.graydawn " +
-                    "android.permission.WRITE_SECURE_SETTINGS"
-            )
-        }
-        if (!running) {
-            label(setupBox, "the listener")
-            caption(
-                setupBox,
-                if (enabled) {
-                    // Enabled in settings but the system never rebound it —
-                    // happens after force-stop and OEM battery killers.
-                    "listed as on, but not actually running — tap here,\n" +
-                        "then flip Graydawn off and back on"
-                } else {
-                    "not listening yet — tap here, then enable Graydawn\n" +
-                        "under installed apps"
+        if (!key || !running) {
+            label(setupBox, "permissions")
+            if (!key) {
+                caption(
+                    setupBox,
+                    "system settings access — not yet. have a friend with " +
+                        "a laptop run this once:\n\n" +
+                        "adb shell pm grant com.ptc.graydawn " +
+                        "android.permission.WRITE_SECURE_SETTINGS"
+                )
+            }
+            if (!running) {
+                caption(
+                    setupBox,
+                    if (enabled) {
+                        // Enabled in settings but the system never rebound
+                        // it — happens after force-stop and battery killers.
+                        "volume button listener — listed as on but not " +
+                            "actually running. tap here, then flip Graydawn " +
+                            "off and back on."
+                    } else {
+                        "volume button listener — off. tap here, then " +
+                            "enable Graydawn under installed apps."
+                    }
+                ).setOnClickListener {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 }
-            ).setOnClickListener {
-                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
         }
-        if (key && running) {
-            quietLine("the key ✓ · the listener ✓")
-        }
-        if (tangles.isNotEmpty() || justUntied) {
-            label(setupBox, "the tangles")
-            if (tangles.isEmpty() && justUntied) {
-                caption(setupBox, "untied — the hold is yours now.")
+
+        val blocking = Conflicts.collect(this) {
+            justUntied = true
+            refresh()
+        }.filter { it.blocking }
+        if (blocking.isNotEmpty() || justUntied) {
+            label(setupBox, "a conflict")
+            if (blocking.isEmpty() && justUntied) {
+                caption(setupBox, "cleared — the hold is yours now.")
             }
-            for ((text, onTap) in tangles) {
+            for (c in blocking) {
                 setupBox.addView(TextView(this).apply {
-                    this.text = text
+                    text = c.text
                     typeface = inter
-                    setTextColor(if (onTap != null) accent else inkSoft)
+                    setTextColor(if (c.fix != null) accent else inkSoft)
                     setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
                     setPadding(0, 0, 0, dp(8))
-                    onTap?.let { setOnClickListener { _ -> it() } }
+                    c.fix?.let { setOnClickListener { _ -> it() } }
                 })
             }
         }
-    }
-
-    /** Phone settings that would fight the hold: (text, tap-to-fix or null). */
-    private fun collectTangles(): List<Pair<String, (() -> Unit)?>> {
-        val out = ArrayList<Pair<String, (() -> Unit)?>>()
-
-        // 1. The phone's own hold-both-volume-keys shortcut. It fires at
-        // the system level, upstream of graydawn — if anything is bound
-        // there, the hold belongs to it, not to us.
-        val holdTarget = Settings.Secure.getString(
-            contentResolver, "accessibility_shortcut_target_service"
-        )?.trim().orEmpty()
-        if (holdTarget.isNotEmpty()) {
-            val what = if (holdTarget.contains("daltonizer", ignoreCase = true)) {
-                "color correction"
-            } else {
-                holdTarget.substringAfterLast('/').substringAfterLast('.')
-                    .ifEmpty { "another shortcut" }
-            }
-            if (Gray.hasPermission(this)) {
-                out.add(
-                    ("your phone already uses hold-both-buttons for $what — " +
-                        "it catches the hold before graydawn can.\n" +
-                        "tap here to untie it.") to {
-                        Settings.Secure.putString(
-                            contentResolver,
-                            "accessibility_shortcut_target_service", ""
-                        )
-                        justUntied = true
-                        refresh()
-                    }
-                )
-            } else {
-                out.add(
-                    ("your phone already uses hold-both-buttons for $what — " +
-                        "it catches the hold before graydawn can. " +
-                        "untie it in Settings → Accessibility → Shortcuts, " +
-                        "or grant the key above and tap here.") to null
-                )
-            }
-        }
-
-        // 2. Other accessibility services that might also watch the buttons.
-        val others = (Settings.Secure.getString(
-            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: "")
-            .split(':')
-            .filter { it.isNotBlank() && !it.startsWith("$packageName/") }
-            .mapNotNull { flat ->
-                android.content.ComponentName.unflattenFromString(flat)?.packageName
-            }
-            .distinct()
-            .map { pkg ->
-                // Package-visibility rules usually hide other apps' labels
-                // from us; the last segment of the package reads fine.
-                runCatching {
-                    packageManager.getApplicationLabel(
-                        packageManager.getApplicationInfo(pkg, 0)
-                    ).toString()
-                }.getOrDefault(pkg.substringAfterLast('.'))
-            }
-        if (others.isNotEmpty()) {
-            out.add(
-                ("also listening: ${others.joinToString(", ")}. " +
-                    "if one of these watches the volume buttons or toggles " +
-                    "grayscale on its own, the two of you will fight — " +
-                    "quiet any button rules there.") to null
-            )
-        }
-
-        // 3. OEM battery managers that put unopened apps to sleep —
-        // graydawn is exactly an app you never reopen.
-        when {
-            android.os.Build.MANUFACTURER.equals("samsung", true) -> {
-                out.add(
-                    ("samsung phones put apps to sleep after a few days " +
-                        "unopened, which would silence the dawn. in Settings " +
-                        "→ Battery, set Graydawn to unrestricted and add it " +
-                        "to “never sleeping apps.”") to null
-                )
-            }
-            android.os.Build.MANUFACTURER.equals("motorola", true) -> {
-                out.add(
-                    ("motorola's battery care likes to stop quiet apps, " +
-                        "which would silence the dawn. in Settings → Battery, " +
-                        "set Graydawn to unrestricted.") to null
-                )
-            }
-        }
-
-        return out
     }
 
     private fun isServiceEnabled(): Boolean {

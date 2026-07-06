@@ -55,6 +55,10 @@
             android:name=".LetterActivity"
             android:exported="true" />
 
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false" />
+
         <receiver android:name=".DawnReceiver" android:exported="false" />
         <receiver android:name=".RegrayReceiver" android:exported="false" />
         <receiver android:name=".BootReceiver" android:exported="true">
