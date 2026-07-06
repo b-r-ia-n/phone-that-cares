@@ -110,13 +110,14 @@ class MainActivity : AppCompatActivity() {
         }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         titleRow.addView(android.widget.ImageView(this).apply {
             setImageResource(R.drawable.ic_gear)
-            val pad = dp(6)
-            setPadding(pad, pad, pad, pad)
+            // Generous padding keeps the tap target ~44dp while the glyph
+            // itself stays small and quiet.
+            setPadding(dp(11), dp(11), dp(9), dp(11))
             contentDescription = "settings"
             setOnClickListener {
                 startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
             }
-        }, LinearLayout.LayoutParams(dp(36), dp(36)))
+        }, LinearLayout.LayoutParams(dp(40), dp(40)))
         root.addView(titleRow)
         root.addView(TextView(this).apply {
             text = "the day begins gray. holding both volume\nbuttons — a half-second — brings the\ncolor back for a while."
