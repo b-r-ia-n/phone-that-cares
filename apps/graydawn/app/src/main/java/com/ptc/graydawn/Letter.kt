@@ -155,11 +155,40 @@ object Letter {
             .take(8)
     }
 
+    /**
+     * Day totals from Android's daily buckets — the resolution that lets
+     * settings changes line up against use. Android only keeps daily
+     * granularity for about a week, so this covers the recent stretch;
+     * the weekly table carries the longer arc.
+     */
+    fun dailyTotals(ctx: Context): List<Pair<Long, Long>> {
+        if (!hasUsageAccess(ctx)) return emptyList()
+        val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val install = installTime(ctx)
+        val now = System.currentTimeMillis()
+        val buckets = usm.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY, now - TimeUnit.DAYS.toMillis(10), now
+        ) ?: return emptyList()
+        val pm = ctx.packageManager
+        fun launchable(pkg: String): Boolean =
+            pm.getLaunchIntentForPackage(pkg) != null && pkg != ctx.packageName
+        val perDay = HashMap<Long, Long>()
+        for (b in buckets) {
+            if (b.totalTimeInForeground <= 0L || !launchable(b.packageName)) continue
+            val day = (b.firstTimeStamp - install) / 86_400_000L
+            perDay.merge(day, b.totalTimeInForeground / 60_000L, Long::plus)
+        }
+        // Day 1 = graydawn's first full day; drop anything pre-install.
+        return perDay.entries.filter { it.key >= 0 }.sortedBy { it.key }
+            .map { (it.key + 1) to it.value }
+    }
+
     /** lines == null means the person chose not to attach numbers. */
     fun compose(ctx: Context, lines: List<AppWeeks>?, note: String): String {
         val days = TimeUnit.MILLISECONDS.toDays(
             System.currentTimeMillis() - installTime(ctx)
         )
+        val install = installTime(ctx)
         val sb = StringBuilder()
         sb.append("hi brian —\n\n")
         sb.append("this phone has had graydawn for $days days.\n")
@@ -168,6 +197,38 @@ object Letter {
         val length = Gray.lengthLabel(Gray.saturationMinutes(ctx))
         val touched = if (Gray.minutesTouched(ctx)) "their own choice" else "the default, never moved"
         sb.append("the hold is set to $length ($touched).\n\n")
+        // Settings along the way — the journal, rendered by day. Rides
+        // only with the data offering: they said yes to numbers, this is
+        // a number-shaped thing.
+        val changes = if (lines != null) Gray.journal(ctx) else emptyList()
+        if (changes.isNotEmpty()) {
+            sb.append("settings along the way (day 1 = graydawn's first):\n")
+            for ((ts, what) in changes) {
+                // Clamped: a clock set backwards shouldn't invent day -3.
+                val day = (((ts - install) / 86_400_000L) + 1).coerceAtLeast(1)
+                val words = what.split(' ')
+                val line = when (words.getOrNull(0)) {
+                    "hold" -> "the hold → ${
+                        Gray.lengthLabel(words.getOrNull(1)?.toIntOrNull() ?: continue)
+                    }"
+                    "dawn" -> "gray every dawn → ${words.getOrNull(1)}"
+                    "camera" -> "camera keeps color → ${words.getOrNull(1)}"
+                    else -> what
+                }
+                sb.append("  day $day: $line\n")
+            }
+            sb.append("\n")
+        }
+        if (lines != null) {
+            val daily = dailyTotals(ctx)
+            if (daily.isNotEmpty()) {
+                sb.append("screen time per day, the recent stretch ")
+                sb.append("(android only keeps day-resolution for about a week):\n")
+                sb.append("  ")
+                sb.append(daily.joinToString(" · ") { "day ${it.first}: ${it.second} min" })
+                sb.append("\n\n")
+            }
+        }
         if (lines != null) {
             sb.append("screen time per day, week by week ")
             sb.append("(the → is when graydawn arrived):\n\n")

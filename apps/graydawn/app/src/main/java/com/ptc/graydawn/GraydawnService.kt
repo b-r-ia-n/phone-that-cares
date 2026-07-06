@@ -124,6 +124,17 @@ class GraydawnService : AccessibilityService() {
     private val debugLetterReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             Letter.post(this@GraydawnService)
+            // The full letter, as it would arrive, into logcat — so the
+            // composition is checkable over adb without walking the UI.
+            val ctx2 = this@GraydawnService
+            android.util.Log.i(
+                "Graydawn",
+                Letter.compose(
+                    ctx2,
+                    if (Letter.hasUsageAccess(ctx2)) Letter.compare(ctx2) else null,
+                    "(debug note)"
+                )
+            )
         }
     }
 

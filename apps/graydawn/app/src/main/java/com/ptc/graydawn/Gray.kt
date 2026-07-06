@@ -61,12 +61,36 @@ object Gray {
 
     /** The camera keeps its color: the gray lifts while a camera app is in front. */
     fun cameraKeepsColor(ctx: Context): Boolean = prefs(ctx).getBoolean("camera_color", true)
-    fun setCameraKeepsColor(ctx: Context, v: Boolean) =
+    fun setCameraKeepsColor(ctx: Context, v: Boolean) {
         prefs(ctx).edit().putBoolean("camera_color", v).apply()
+        note(ctx, "camera ${if (v) "on" else "off"}")
+    }
+
+    /**
+     * The settings journal: a local, plaintext line per settings change,
+     * rendered into the day-12 letter so slider positions over time —
+     * the only measurement graydawn takes — ride along with the numbers.
+     * Settings only, never usage; nothing keeps score.
+     */
+    fun note(ctx: Context, what: String) {
+        runCatching {
+            java.io.File(ctx.filesDir, "journal.txt")
+                .appendText("${System.currentTimeMillis()} $what\n")
+        }
+    }
+
+    fun journal(ctx: Context): List<Pair<Long, String>> = runCatching {
+        java.io.File(ctx.filesDir, "journal.txt").readLines().mapNotNull { line ->
+            val sp = line.indexOf(' ')
+            if (sp <= 0) null
+            else line.take(sp).toLongOrNull()?.let { it to line.substring(sp + 1) }
+        }
+    }.getOrDefault(emptyList())
 
     fun dawnEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("dawn_enabled", true)
     fun setDawnEnabled(ctx: Context, v: Boolean) {
         prefs(ctx).edit().putBoolean("dawn_enabled", v).apply()
+        note(ctx, "dawn ${if (v) "on" else "off"}")
         if (v) {
             // Turning the switch on means "starting tomorrow", not
             // "snap gray the next time the screen lights up today."

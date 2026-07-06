@@ -284,7 +284,12 @@ class MainActivity : AppCompatActivity() {
                     saturationCaption.text = saturationText(minutes)
                 }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) {}
+                override fun onStopTrackingTouch(sb: SeekBar?) {
+                    // One journal line per gesture, not per tick of the drag.
+                    sb?.let {
+                        Gray.note(this@MainActivity, "hold ${sliderToMinutes(it.progress)}")
+                    }
+                }
             })
         })
 
