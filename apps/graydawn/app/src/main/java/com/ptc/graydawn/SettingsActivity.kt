@@ -194,7 +194,10 @@ class SettingsActivity : AppCompatActivity() {
 
         // ---- footer ----
         root.addView(TextView(this).apply {
-            text = "Graydawn 0.2 — made by brian"
+            text = "Graydawn ${
+                runCatching { packageManager.getPackageInfo(packageName, 0).versionName }
+                    .getOrNull() ?: "?"
+            } — made by brian"
             typeface = inter; setTextColor(inkSoft)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             setPadding(0, dp(32), 0, dp(2))
