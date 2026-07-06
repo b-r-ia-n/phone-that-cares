@@ -23,8 +23,8 @@ offscreen."** It's the page tagline AND the app subtitle's opening.
 
 ## Current version: 1.0 (versionCode 8), sha fd868cf9…
 
-Hosted at the newest preview; **PROD IS NOT DEPLOYED YET** — waiting on Brian's
-"ship" (`npx vercel deploy --prod` from `/Users/b/Desktop/PhoneThatCares/website`).
+**SHIPPED TO PROD 2026-07-06 (next morning):** live at aphonethatcares.com/offscreen,
+APK sha verified on the live URL, /graydawn meta-refresh redirect working.
 
 ## What shipped today (all emulator- or person-verified)
 
@@ -121,9 +121,9 @@ worth one ask.
 
 ## Open threads, in order
 
-1. **"ship"** → prod deploy → offscreen live at aphonethatcares.com/offscreen.
-2. **Tweet thread rewrite** — name AND install story both changed; draft in the
-   marketing doc is stale on both counts. "the color lives offscreen" is the gift.
+1. ~~"ship"~~ **DONE** — offscreen live at aphonethatcares.com/offscreen.
+2. **Tweet thread** — rewritten in `_context/offscreen-tweet-thread-2026-07-06.md`;
+   awaiting Brian's cut-down pass + the demo video for tweet 1.
 3. **Demo video** — camera at the physical phone (daltonizer invisible to recordings);
    6-shot list in `_context/seeglass-2026-07-05/marketing-graydawn-2026-07-05.md`.
 4. Brian: one page-button press → hardened 1.0 (code 8); then USB debugging off.
