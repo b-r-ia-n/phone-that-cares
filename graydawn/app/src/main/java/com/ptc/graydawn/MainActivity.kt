@@ -498,6 +498,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saturationText(minutes: Int): String =
-        "each hold saturates the screen for $minutes minutes.\n" +
-            "three soft buzzes near the end, then the color\ndrains back."
+        "each hold saturates the screen for $minutes minutes,\n" +
+            "then the color drains back on its own."
 }

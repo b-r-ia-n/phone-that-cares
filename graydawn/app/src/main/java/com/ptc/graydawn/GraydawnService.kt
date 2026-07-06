@@ -33,7 +33,6 @@ class GraydawnService : AccessibilityService() {
     private var downDown = false
     private var fired = false
     private var candidate = false
-    private var warnedFor = 0L
 
     private val holdCheck = Runnable {
         if (upDown && downDown && !fired) {
@@ -45,11 +44,8 @@ class GraydawnService : AccessibilityService() {
         }
     }
 
-    // Belt-and-suspenders behind the alarm — and the timer for the
-    // warning buzz, which deliberately isn't an alarm: a second
-    // allow-while-idle alarm would eat doze throttle budget that the
-    // snap-back needs. If the phone is dozing, nobody is looking at the
-    // screen and the warning has no one to warn anyway.
+    // Belt-and-suspenders behind the alarm. No warning buzz before the
+    // end — the drain announces itself; people notice on their own.
     private val watchdog = object : Runnable {
         override fun run() {
             val until = Gray.saturationUntil(this@GraydawnService)
@@ -59,16 +55,7 @@ class GraydawnService : AccessibilityService() {
                 if (Gray.regrayIfDue(this@GraydawnService)) whisper("gray again.")
                 return
             }
-            if (remaining <= 35_000L && warnedFor != until) {
-                warnedFor = until
-                Gray.vibrate(this@GraydawnService, longArrayOf(0, 30, 120, 30, 120, 30))
-            }
-            val next = if (remaining > 40_000L) {
-                minOf(20_000L, remaining - 32_000L)
-            } else {
-                minOf(5_000L, remaining)
-            }
-            handler.postDelayed(this, next.coerceAtLeast(250L))
+            handler.postDelayed(this, minOf(20_000L, remaining).coerceAtLeast(250L))
         }
     }
 

@@ -69,20 +69,22 @@ object Overlays {
             onPeak(); return
         }
 
+        // A held breath: the bloom rises while the screen still has color,
+        // the snap lands at the top, and the long drain is the show — the
+        // display itself graying the very pixels you're watching.
         bloom.animate()
             .alpha(1f)
-            .setDuration(300L)
+            .setDuration(450L)
             .setInterpolator(DecelerateInterpolator())
             .setListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(a: Animator) {
                     onPeak()
                     Gray.vibrate(svc, longArrayOf(0, 60))
-                    // A held beat at the peak, then the drain.
                     bloom.animate()
                         .alpha(0f)
-                        .setStartDelay(150L)
-                        .setDuration(600L)
-                        .setInterpolator(AccelerateInterpolator())
+                        .setStartDelay(250L)
+                        .setDuration(1100L)
+                        .setInterpolator(AccelerateInterpolator(1.3f))
                         .setListener(object : AnimatorListenerAdapter() {
                             override fun onAnimationEnd(a: Animator) {
                                 runCatching { windowManager.removeView(bloom) }

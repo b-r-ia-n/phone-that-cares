@@ -95,6 +95,19 @@ Notes on the thread:
 > if it misbehaves on yours, that's exactly the kind of letter i'd love to get. *(update this
 > line once the compat research lands.)*
 
+**Section — on an iphone? (decided July 6: include this — good-faith availability, nobody excluded)**
+> the iphone version is not an app — apple doesn't let apps touch the display's color or
+> hear the volume buttons. but your iphone already knows how to do most of this; here's the
+> incantation:
+> 1. *gray by default:* Settings → Accessibility → Display & Text Size → Color Filters →
+>    Grayscale
+> 2. *gray every dawn:* Shortcuts → Automation → 4:00 AM daily → "Set Color Filters" On →
+>    Run Immediately (it runs silently)
+> 3. *the hold:* set the Accessibility Shortcut to Color Filters, and triple-click the side
+>    button for color. different gesture, same muscle.
+> what you don't get: the 20 minutes. color stays until you triple-click again or dawn
+> comes back around. about 80% of the thing, zero downloads.
+
 ---
 
 ## 3. Demo video shot list (camera at the physical phone — always)

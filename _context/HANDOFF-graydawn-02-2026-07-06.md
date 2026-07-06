@@ -48,5 +48,7 @@ Written ~11pm July 5 by the overnight instance. Branch `worktree-seeglass-overni
 - Brian feel-tests 0.2: the hold, near-miss buzz, splash timing, whispers, notification ask.
 - Namecheap forward (above), then a real end-to-end letter test.
 - Release-signed migration for the Pixel (whenever).
+- **Decided (July 6, Brian):** the download page includes the iPhone 80/20 recipe (see marketing doc, new section) — good-faith availability, nobody excluded.
+- **Feedback applied July 6:** hold window 400→550ms; warn buzzes removed (the drain announces itself); splash slowed (450ms rise, 250ms peak, 1100ms drain). Email forwarding to b@aphonethatcares.com confirmed working.
 - Demo video is CAMERA footage of the physical phone (screen recordings show nothing — still true, still a good line).
 - Backlog unchanged: X-login retry confirm, YouTube Custom-Tab auth, TikTok stub, download page build, tip jar, Play-listing pass.
