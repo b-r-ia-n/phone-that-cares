@@ -81,12 +81,14 @@ class SettingsActivity : AppCompatActivity() {
             letterSpacing = -0.02f
         })
 
-        // ---- permissions ----
+        // ---- permissions (each with its way back out) ----
         label("permissions")
         caption(
             if (Gray.hasPermission(this)) {
                 "system settings access — granted. this is what lets " +
-                    "graydawn flip the phone's color switch."
+                    "graydawn flip the phone's color switch. to take it " +
+                    "back, from a computer:\n\nadb shell pm revoke " +
+                    "com.ptc.graydawn android.permission.WRITE_SECURE_SETTINGS"
             } else {
                 "system settings access — not granted. from a computer, " +
                     "once:\n\nadb shell pm grant com.ptc.graydawn " +
@@ -98,7 +100,8 @@ class SettingsActivity : AppCompatActivity() {
         caption(
             when {
                 running -> "volume button listener — on. it watches for both " +
-                    "volume buttons held together, and nothing else. tap to manage."
+                    "volume buttons held together, and nothing else. " +
+                    "tap to manage or turn off."
                 enabled -> "volume button listener — listed as on but not " +
                     "actually running (this happens after a force-stop). " +
                     "tap, then flip Graydawn off and back on."
@@ -106,6 +109,30 @@ class SettingsActivity : AppCompatActivity() {
                     "Graydawn under installed apps."
             }
         ) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
+        caption(
+            if (Letter.hasUsageAccess(this)) {
+                "usage access — on. only ever read to write the letter " +
+                    "you send yourself. tap to turn off."
+            } else {
+                "usage access — off. only asked for if you choose to put " +
+                    "screen-time numbers in the letter. tap to manage."
+            }
+        ) { startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }
+        val nm = getSystemService(android.app.NotificationManager::class.java)
+        caption(
+            if (nm.areNotificationsEnabled()) {
+                "notifications — on. graydawn sends one, ever: the " +
+                    "check-in around day 12. tap to change."
+            } else {
+                "notifications — off. the day-12 check-in will wait in " +
+                    "the app instead. tap to change."
+            }
+        ) {
+            startActivity(
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                    .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+            )
+        }
 
         // ---- potential conflicts ----
         label("potential conflicts")
