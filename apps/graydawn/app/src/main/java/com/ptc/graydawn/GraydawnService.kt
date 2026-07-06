@@ -39,10 +39,25 @@ class GraydawnService : AccessibilityService() {
     private val holdCheck = Runnable {
         if (upDown && downDown && !fired) {
             fired = true
-            if (Gray.saturate(this)) {
-                whisper("color! ${Gray.saturationMinutes(this)} minutes of it.")
-                armWatchdog()
-            }
+            onHold()
+        }
+    }
+
+    /**
+     * The hold is a switch in both directions: gray brings color for a
+     * while; holding again during the color lets it drain back now.
+     * One continuous hold can only fire once (`fired` re-arms on release).
+     */
+    private fun onHold() {
+        if (Gray.saturationUntil(this) > System.currentTimeMillis()) {
+            Gray.endSaturationEarly(this)
+            handler.removeCallbacks(watchdog)
+            // One firm buzz — the double buzz means color; this is its echo.
+            Gray.vibrate(this, longArrayOf(0, 40))
+            splashThenGray()
+        } else if (Gray.saturate(this)) {
+            whisper("color! ${Gray.saturationMinutes(this)} minutes of it.")
+            armWatchdog()
         }
     }
 
@@ -73,12 +88,11 @@ class GraydawnService : AccessibilityService() {
         }
     }
 
+    // Mirrors the chord exactly (including the end-early direction), so
+    // the whole hold behavior is exercisable over adb.
     private val debugReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
-            if (Gray.saturate(this@GraydawnService)) {
-                whisper("color! ${Gray.saturationMinutes(this@GraydawnService)} minutes of it.")
-                armWatchdog()
-            }
+            onHold()
         }
     }
 

@@ -71,7 +71,7 @@ object Letter {
         val note = NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle("$dawns gray dawns in...")
-            .setContentText("how's using graydawn going? we're curious")
+            .setContentText("how's using graydawn going? i'm curious")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
