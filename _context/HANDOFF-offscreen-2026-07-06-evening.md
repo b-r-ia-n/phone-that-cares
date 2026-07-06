@@ -26,6 +26,23 @@ offscreen."** It's the page tagline AND the app subtitle's opening.
 **SHIPPED TO PROD 2026-07-06 (next morning):** live at aphonethatcares.com/offscreen,
 APK sha verified on the live URL, /graydawn meta-refresh redirect working.
 
+**Afternoon iteration round (Brian live + Louis Arge feedback), all deployed:**
+thesis line moved to hero + "this should be happening on this page right about now";
+page drain now 8s in / 4400ms fade; sat palette warmed (#f8e9cb bg, #3f2a13 text);
+`--text-muted` var fixed low-contrast fine print; **animated phone mock in the hero**
+(9s CSS loop: squeeze → buzz → color rise 450ms → drain; pauses offscreen; honest
+"simulated" caption) — desktop shows it side-by-side [text|phone], Louis's layout;
+install section on an elevated `gd-card`; will-it-work + iphone sections are
+collapsed `gd-fold`s; **UA model detection** (local only) auto-opens the right fold
+with a samsung/pixel/moto note, iphone fold for iphones. Mobile now shows the
+install button disabled: "run this on a computer, phone plugged in".
+**Tweet demo assets** (Brian's LED strip is broken, so no camera video for now):
+`_context/offscreen-demo-2026-07-06/` — offscreen-demo.mp4 (use this) + .gif +
+tweet-mock.html source. Tweet opener candidates (2 rounds) in
+`_context/offscreen-tweet-thread-2026-07-06.md`; thread not yet posted.
+Louis idea parked for later: installer knows the device name once plugged in —
+could personalize desktop flow too.
+
 ## What shipped today (all emulator- or person-verified)
 
 **The installer is the website.** `aphonethatcares.com/offscreen` (once prod) runs
