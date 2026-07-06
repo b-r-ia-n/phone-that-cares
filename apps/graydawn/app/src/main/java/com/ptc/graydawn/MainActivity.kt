@@ -246,14 +246,15 @@ class MainActivity : AppCompatActivity() {
         label(root, "the saturation")
         saturationCaption = caption(root, saturationText(Gray.saturationMinutes(this)))
         root.addView(SeekBar(this).apply {
-            max = 11 // 5..60 in 5-min steps
-            progress = (Gray.saturationMinutes(this@MainActivity) - 5) / 5
+            // 0..59 → 1..60 minutes, then four cliffs: 2h, 4h, 8h, until dawn.
+            max = 63
+            progress = minutesToSlider(Gray.saturationMinutes(this@MainActivity))
             progressTintList = android.content.res.ColorStateList.valueOf(accent)
             thumbTintList = android.content.res.ColorStateList.valueOf(accent)
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(sb: SeekBar?, p: Int, fromUser: Boolean) {
-                    val minutes = 5 + p * 5
-                    Gray.setSaturationMinutes(this@MainActivity, minutes)
+                    val minutes = sliderToMinutes(p)
+                    Gray.setSaturationMinutes(this@MainActivity, minutes, byUser = fromUser)
                     saturationCaption.text = saturationText(minutes)
                 }
                 override fun onStartTrackingTouch(sb: SeekBar?) {}
@@ -357,10 +358,13 @@ class MainActivity : AppCompatActivity() {
         statusLine.text = when {
             !Gray.hasPermission(this) || !isServiceEnabled() ->
                 "asleep — needs the two permissions below."
+            until == Gray.UNTIL_DAWN_MS ->
+                "in color until dawn."
             until > now -> {
                 val time = SimpleDateFormat("h:mm", Locale.US).format(Date(until))
                 val left = ((until - now) / 60_000L).coerceAtLeast(1)
-                "saturated until $time — $left min left"
+                val leftText = if (left >= 90) "${left / 60}h ${left % 60}m" else "$left min"
+                "saturated until $time — $leftText left"
             }
             Gray.isGray(this) ->
                 "gray now. the hold brings the color back."
@@ -442,6 +446,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun saturationText(minutes: Int): String =
-        "each hold saturates the screen for $minutes minutes,\n" +
-            "then the color drains back on its own."
+        if (minutes == Gray.UNTIL_DAWN)
+            "each hold saturates the screen until dawn —\n" +
+                "the gray returns tomorrow morning."
+        else
+            "each hold saturates the screen for ${Gray.lengthLabel(minutes)},\n" +
+                "then the color drains back on its own."
+
+    // The slider's shape: sixty one-minute steps, then four cliffs.
+    private fun sliderToMinutes(p: Int): Int = when (p) {
+        in 0..59 -> p + 1
+        60 -> 120
+        61 -> 240
+        62 -> 480
+        else -> Gray.UNTIL_DAWN
+    }
+
+    private fun minutesToSlider(minutes: Int): Int = when {
+        minutes == Gray.UNTIL_DAWN -> 63
+        minutes >= 480 -> 62
+        minutes >= 240 -> 61
+        minutes >= 120 -> 60
+        else -> (minutes - 1).coerceIn(0, 59)
+    }
 }

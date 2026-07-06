@@ -19,6 +19,7 @@ class GraydawnService : AccessibilityService() {
         const val DEBUG_ACTION = "com.ptc.graydawn.DEBUG_BORROW"
         const val DEBUG_SPLASH = "com.ptc.graydawn.DEBUG_SPLASH"
         const val DEBUG_LETTER = "com.ptc.graydawn.DEBUG_LETTER"
+        const val DEBUG_DAWN = "com.ptc.graydawn.DEBUG_DAWN"
 
         /**
          * The activity and receivers run in this same process; a direct
@@ -56,7 +57,11 @@ class GraydawnService : AccessibilityService() {
             Gray.vibrate(this, longArrayOf(0, 40))
             splashThenGray()
         } else if (Gray.saturate(this)) {
-            whisper("color! ${Gray.saturationMinutes(this)} minutes of it.")
+            val minutes = Gray.saturationMinutes(this)
+            whisper(
+                if (minutes == Gray.UNTIL_DAWN) "color! yours until dawn."
+                else "color! ${Gray.lengthLabel(minutes)} of it."
+            )
             armWatchdog()
         }
     }
@@ -66,7 +71,8 @@ class GraydawnService : AccessibilityService() {
     private val watchdog = object : Runnable {
         override fun run() {
             val until = Gray.saturationUntil(this@GraydawnService)
-            if (until == 0L) return
+            // Nothing to watch for until-dawn: dawn itself ends it.
+            if (until == 0L || until == Gray.UNTIL_DAWN_MS) return
             val remaining = until - System.currentTimeMillis()
             if (remaining <= 0L) {
                 if (Gray.regrayIfDue(this@GraydawnService)) whisper("gray again.")
@@ -89,10 +95,20 @@ class GraydawnService : AccessibilityService() {
     }
 
     // Mirrors the chord exactly (including the end-early direction), so
-    // the whole hold behavior is exercisable over adb.
+    // the whole hold behavior is exercisable over adb. An optional
+    // `--ei minutes N` extra sets the length first (-1 = until dawn).
     private val debugReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
+            val minutes = intent.getIntExtra("minutes", Int.MIN_VALUE)
+            if (minutes != Int.MIN_VALUE) Gray.setSaturationMinutes(ctx, minutes)
             onHold()
+        }
+    }
+
+    // Lands a dawn on demand — same code path as the real 4am broadcast.
+    private val debugDawnReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            ctx.sendBroadcast(Intent(ctx, DawnReceiver::class.java))
         }
     }
 
@@ -133,6 +149,9 @@ class GraydawnService : AccessibilityService() {
             registerReceiver(
                 debugLetterReceiver, IntentFilter(DEBUG_LETTER), Context.RECEIVER_EXPORTED
             )
+            registerReceiver(
+                debugDawnReceiver, IntentFilter(DEBUG_DAWN), Context.RECEIVER_EXPORTED
+            )
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(debugReceiver, IntentFilter(DEBUG_ACTION))
@@ -140,6 +159,8 @@ class GraydawnService : AccessibilityService() {
             registerReceiver(debugSplashReceiver, IntentFilter(DEBUG_SPLASH))
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(debugLetterReceiver, IntentFilter(DEBUG_LETTER))
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(debugDawnReceiver, IntentFilter(DEBUG_DAWN))
         }
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         // If the dawn schedule is on, make sure the alarm exists.
@@ -156,6 +177,7 @@ class GraydawnService : AccessibilityService() {
         runCatching { unregisterReceiver(debugReceiver) }
         runCatching { unregisterReceiver(debugSplashReceiver) }
         runCatching { unregisterReceiver(debugLetterReceiver) }
+        runCatching { unregisterReceiver(debugDawnReceiver) }
         runCatching { unregisterReceiver(screenOnReceiver) }
         handler.removeCallbacks(watchdog)
         super.onDestroy()

@@ -162,7 +162,12 @@ object Letter {
         )
         val sb = StringBuilder()
         sb.append("hi brian —\n\n")
-        sb.append("this phone has had graydawn for $days days.\n\n")
+        sb.append("this phone has had graydawn for $days days.\n")
+        // The one setting worth reporting: where they put the slider is
+        // the only measurement of where the right default actually is.
+        val length = Gray.lengthLabel(Gray.saturationMinutes(ctx))
+        val touched = if (Gray.minutesTouched(ctx)) "their own choice" else "the default, never moved"
+        sb.append("the hold is set to $length ($touched).\n\n")
         if (lines != null) {
             sb.append("screen time per day, week by week ")
             sb.append("(the → is when graydawn arrived):\n\n")

@@ -5,14 +5,20 @@ import android.content.Context
 import android.content.Intent
 
 /**
- * Dawn: the day begins gray. An active saturation is honored — the hold
- * bought its minutes outright, so dawn waits for the snap-back alarm
- * rather than taking them back mid-scroll.
+ * Dawn: the day begins gray. A finite saturation is honored — the hold
+ * got its minutes outright, so dawn waits for the snap-back alarm rather
+ * than taking them back mid-scroll. An until-dawn saturation ends here;
+ * that was its deal from the start.
  */
 class DawnReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Gray.markDawnDone(ctx)
-        if (Gray.saturationUntil(ctx) > System.currentTimeMillis()) return
+        val until = Gray.saturationUntil(ctx)
+        if (until == Gray.UNTIL_DAWN_MS) {
+            Gray.endSaturationEarly(ctx)
+        } else if (until > System.currentTimeMillis()) {
+            return
+        }
         Gray.setGray(ctx, true)
         Letter.postIfDue(ctx)
     }

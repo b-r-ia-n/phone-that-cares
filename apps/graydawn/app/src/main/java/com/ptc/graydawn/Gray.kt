@@ -19,6 +19,10 @@ object Gray {
 
     const val DAWN_HOUR = 4
 
+    /** Slider sentinel: the hold's color lasts until the next dawn. */
+    const val UNTIL_DAWN = -1
+    const val UNTIL_DAWN_MS = Long.MAX_VALUE
+
     // Pref keys keep their original names ("borrow_*") so an installed
     // phone upgrades without losing state; only the language changed.
     fun prefs(ctx: Context): SharedPreferences =
@@ -38,8 +42,22 @@ object Gray {
     }.isSuccess
 
     fun saturationMinutes(ctx: Context): Int = prefs(ctx).getInt("borrow_minutes", 20)
-    fun setSaturationMinutes(ctx: Context, v: Int) =
-        prefs(ctx).edit().putInt("borrow_minutes", v).apply()
+    fun setSaturationMinutes(ctx: Context, v: Int, byUser: Boolean = false) {
+        val edit = prefs(ctx).edit().putInt("borrow_minutes", v)
+        // The letter reports whether the length is our default or their
+        // choice — the slider position is the only measurement we take.
+        if (byUser && v != saturationMinutes(ctx)) edit.putBoolean("minutes_touched", true)
+        edit.apply()
+    }
+    fun minutesTouched(ctx: Context): Boolean = prefs(ctx).getBoolean("minutes_touched", false)
+
+    /** "7 minutes" / "2 hours" / "until dawn" — one voice everywhere. */
+    fun lengthLabel(minutes: Int): String = when {
+        minutes == UNTIL_DAWN -> "until dawn"
+        minutes >= 120 -> "${minutes / 60} hours"
+        minutes == 1 -> "1 minute"
+        else -> "$minutes minutes"
+    }
 
     fun dawnEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("dawn_enabled", true)
     fun setDawnEnabled(ctx: Context, v: Boolean) {
@@ -71,15 +89,21 @@ object Gray {
     fun saturate(ctx: Context): Boolean {
         if (!setGray(ctx, false)) return false
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val ms = saturationMinutes(ctx) * 60_000L
-        val until = System.currentTimeMillis() + ms
-        prefs(ctx).edit().putLong("borrow_until", until).apply()
-        // Exact + allow-while-idle: Doze may defer a plain setWindow alarm
-        // for hours on real hardware, so the snap-back must punch through.
-        am.setExactAndAllowWhileIdle(
-            AlarmManager.RTC_WAKEUP, until,
-            pending(ctx, RegrayReceiver::class.java, 2)
-        )
+        val minutes = saturationMinutes(ctx)
+        if (minutes == UNTIL_DAWN) {
+            // No snap-back at all — tomorrow's dawn is what ends this one.
+            prefs(ctx).edit().putLong("borrow_until", UNTIL_DAWN_MS).apply()
+            am.cancel(pending(ctx, RegrayReceiver::class.java, 2))
+        } else {
+            val until = System.currentTimeMillis() + minutes * 60_000L
+            prefs(ctx).edit().putLong("borrow_until", until).apply()
+            // Exact + allow-while-idle: Doze may defer a plain setWindow alarm
+            // for hours on real hardware, so the snap-back must punch through.
+            am.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, until,
+                pending(ctx, RegrayReceiver::class.java, 2)
+            )
+        }
         vibrate(ctx, longArrayOf(0, 40, 80, 40))
         return true
     }
@@ -133,7 +157,10 @@ object Gray {
         }
         if (!dawnEnabled(ctx) || dawnDoneToday(ctx) || !pastDawnToday()) return false
         markDawnDone(ctx)
-        if (saturationUntil(ctx) > System.currentTimeMillis()) return false
+        // An until-dawn saturation ends here — that's the deal it was made
+        // under. A finite one is honored; its own alarm brings the gray.
+        if (saturationUntil(ctx) == UNTIL_DAWN_MS) endSaturationEarly(ctx)
+        else if (saturationUntil(ctx) > System.currentTimeMillis()) return false
         return setGray(ctx, true)
     }
 
