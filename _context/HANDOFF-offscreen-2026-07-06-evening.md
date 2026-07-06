@@ -104,8 +104,11 @@ worth one ask.
 ## The rig (unchanged facts + new ones)
 
 - Build: `cd apps/graydawn && JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home ./gradlew assembleRelease`
-  — check gradle's real exit; keystore `keys/ptc-release.keystore` (cert fc9190db…);
-  **STILL NOT BACKED UP — most urgent non-feature task.**
+  — check gradle's real exit; keystore `keys/ptc-release.keystore` (cert fc9190db…, alias ptc, password in
+  `ptc-release-password.txt` beside it). **BACKED UP 2026-07-06** to iCloud Drive:
+  `~/Library/Mobile Documents/com~apple~CloudDocs/PhoneThatCares-keys-backup/`
+  (keystore + password + README, checksum-verified). If the laptop copy is lost,
+  restore from there — without this file no existing install can ever update.
 - Website source of truth: `/Users/b/Desktop/PhoneThatCares/website` (nested repo,
   deploys from folder via `npx vercel deploy [--prod]`, git intentionally stale).
   Worktree working copy: `.claude/worktrees/seeglass-overnight/website/website-work/`
@@ -119,13 +122,12 @@ worth one ask.
 ## Open threads, in order
 
 1. **"ship"** → prod deploy → offscreen live at aphonethatcares.com/offscreen.
-2. **Keystore backup** (2 min, existential).
-3. **Tweet thread rewrite** — name AND install story both changed; draft in the
+2. **Tweet thread rewrite** — name AND install story both changed; draft in the
    marketing doc is stale on both counts. "the color lives offscreen" is the gift.
-4. **Demo video** — camera at the physical phone (daltonizer invisible to recordings);
+3. **Demo video** — camera at the physical phone (daltonizer invisible to recordings);
    6-shot list in `_context/seeglass-2026-07-05/marketing-graydawn-2026-07-05.md`.
-5. Brian: one page-button press → hardened 1.0 (code 8); then USB debugging off.
-6. Flagged, unvetoed: notification title "N gray dawns in..."; the cut
+4. Brian: one page-button press → hardened 1.0 (code 8); then USB debugging off.
+5. Flagged, unvetoed: notification title "N gray dawns in..."; the cut
    "wake the screen before holding" fact now lives nowhere on the page.
-7. Samsung guinea pig when one appears; Kasra's iPhone recipe if he builds it.
-8. Cosmetic someday: rename `apps/graydawn/` folder; regenerate copyedit doc.
+6. Samsung guinea pig when one appears; Kasra's iPhone recipe if he builds it.
+7. Cosmetic someday: rename `apps/graydawn/` folder; regenerate copyedit doc.
