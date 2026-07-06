@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispatches from the you of five years ago</title>
+<style>
+  :root{
+    --bg:#0d0c0b;
+    --ink:#ece6db;
+    --dim:#8a8377;
+    --faint:#56514a;
+    --gold:#c9a86a;
+    --rule:#211f1c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%, #151310 0%, var(--bg) 60%);
+    color:var(--ink);
+    font:400 17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,serif;
+    -webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100%;padding:6vh 24px;cursor:default;
+    overflow:hidden;
+  }
+  .frame{width:min(640px,92vw);}
+  header{margin-bottom:7vh;text-align:center}
+  h1{
+    font:500 15px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--gold);
+    margin:0 0 10px;
+  }
+  .sub{color:var(--faint);font-size:13px;letter-spacing:.02em;margin:0}
+
+  .stage{min-height:46vh;display:flex;flex-direction:column;justify-content:center}
+
+  .quote{
+    font-size:clamp(20px,3.4vw,27px);line-height:1.42;font-weight:400;
+    letter-spacing:-.01em;color:var(--ink);margin:0;
+    transition:opacity .42s ease, transform .42s ease;
+  }
+  .quote.poem{white-space:pre-line;font-size:clamp(18px,2.8vw,22px);line-height:1.55}
+  .meta{
+    margin-top:26px;color:var(--dim);font-size:13px;
+    font-variant-numeric:tabular-nums;letter-spacing:.02em;
+    transition:opacity .42s ease;
+  }
+  .meta .date{color:var(--faint)}
+  .nudge{
+    margin-top:30px;padding-top:22px;border-top:1px solid var(--rule);
+    color:var(--gold);font-size:15.5px;line-height:1.55;font-style:italic;
+    max-width:52ch;transition:opacity .42s ease;
+  }
+  .nudge:empty{display:none;border:0;padding:0;margin:0}
+
+  .leaving{opacity:0;transform:translateY(-8px)}
+
+  footer{
+    margin-top:7vh;display:flex;align-items:center;justify-content:space-between;
+    width:100%;color:var(--faint);font-size:12.5px;
+    font-variant-numeric:tabular-nums;letter-spacing:.04em;
+  }
+  .next{
+    background:none;border:1px solid var(--rule);color:var(--dim);
+    font:inherit;font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
+    padding:9px 16px;border-radius:999px;cursor:pointer;
+    transition:border-color .15s ease,color .15s ease,background .15s ease;
+  }
+  .next:hover{border-color:var(--gold);color:var(--ink)}
+  .next:focus-visible{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(201,168,106,.18)}
+  .count{opacity:.8}
+  .hint{position:fixed;bottom:18px;left:0;right:0;text-align:center;color:#36322d;font-size:11.5px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <h1>Dispatches from the you of five&nbsp;years&nbsp;ago</h1>
+      <p class="sub">your own words, dated and real · trust the one who said them</p>
+    </header>
+
+    <div class="stage">
+      <p class="quote" id="quote"></p>
+      <div class="meta" id="meta"></div>
+      <div class="nudge" id="nudge"></div>
+    </div>
+
+    <footer>
+      <span class="count" id="count"></span>
+      <button class="next" id="next" autofocus>next &rsaquo;</button>
+    </footer>
+  </div>
+  <div class="hint">space / → to advance</div>
+
+<script>
+// Real lines, real dates. The earliest you was more enchanted, less hedged.
+// The card tonight: trust the you of five years ago; question the you of today.
+// Weighted toward then. The nudges are mine — a knowing elbow, not a sermon.
+const cards = [
+  {
+    q: `listening to impulses perpendicular to the rest of your life is where a lot of value can come from`,
+    date: `2024-03-25`, src: `O S V Grant App`,
+    n: `You wrote this before the sabbatical was a plan. The perpendicular impulse is still the asset. Strategy is the thing trying to talk you out of it.`
+  },
+  {
+    q: `letters are not a normal format in my family, but I had a small voice telling me this was important`,
+    date: `2024-03-25`, src: `O S V Grant App`,
+    n: `The small voice was right that time. It is usually right. It just never has data to show you.`
+  },
+  {
+    q: `It's more fun to say things which are not definitely true, with confidence, than to hedge. So I'm gonna acknowledge right here that all of this is fairly spec — caveat — and have fun.`,
+    date: `2024-11-30`, src: `so what's a conversation`,
+    n: `Notice how much more you hedge now. The 2026 you calls it rigor. The 2024 you called it less fun, and was correct.`
+  },
+  {
+    q: `id prolly just pretend the world is saturated with enchantment, dense roots circulating meaning to every X, shifting + responsive to intention + truly dangerous, then ask again and see how the question feels, hanging in the air, where does it seem to point?`,
+    date: `2024-11-01`, src: `Need some ideas for words plz`,
+    n: `This is a whole spiritual method, tossed off in a chat. You had it. You still do.`
+  },
+  {
+    q: `This morning I caught the day's 1st raindrop wayyyyy up, a hundred feet off the ground.
+I pleaded with it, "Not here, not now, not yet!"
+It slowed and it stopped. It started to rise, but could only go so far.
+Now it's hanging there, trembling. I wonder if, when, it will continue.`,
+    date: `2024-04-30`, src: `Musings on Viral Trends and Magical Wonderings`, poem:true,
+    n: ``
+  },
+  {
+    q: `i prefer my fans alluvial and my fame perennial`,
+    date: `2024-04-27`, src: `Cultivating Lasting Popularity`,
+    n: ``
+  },
+  {
+    q: `feels like "capital" is an eldritch optimizing force (summoned demon?) with some importantly good outcomes but which will eventually have to be discarded or bracketed because it's not optimizing for human values`,
+    date: `2024-03-25`, src: `Meditator Perspectives on Psychedelic Plasticity`,
+    n: `The "what is my relationship to the economy" question you carry now — you'd already answered the hard half of it here. The demon is real and you don't have to serve it to eat.`
+  },
+  {
+    q: `a lot of it feels like explicit patience, waiting for someone to come to you. the difference might be trusting my own internal sense of reasonable, not really making external predictions and assuming someone who has something to say will say it.`,
+    date: `2024-07-19`, src: `journalin`,
+    n: `Reaching out with a generous heart vs. waiting to be found — this is the same edge, two years early. You named the cure inside the symptom.`
+  },
+  {
+    q: `I want her to feel free and smooth and flowy and to just be able to say whatever. And that might be uncomfortable for me at times, and that is my burden or job to work through. And it is on me.`,
+    date: `2024-11-12`, src: `manning up, in a sense`,
+    n: `Caroline. You knew the assignment in 2024. Staying home in your body while she's free — same practice, still open.`
+  },
+  {
+    q: `I think there's a sense in which I'm a creature oriented towards beauty, but my main relationship with beauty is as a distraction from pain.`,
+    date: `2024-11-15`, src: `space making for feelings`,
+    n: `"You solve phone addiction with beauty rather than harshness," you said this April. Worth asking which beauty — the kind that turns toward the pain, or the kind that turns away.`
+  },
+  {
+    q: `Climbing is a sport. About trying to do something that feels impossible. The format itself involves failure as the default expectation.`,
+    date: `2025-04-25`, src: `The Metaphor of Climbing`,
+    n: `Deep water soloing in Majorca in August. A format where falling is the design, not the failure. Bring this sentence with you.`
+  },
+  {
+    q: `the goal is to make people feel spacious, you know?`,
+    date: `2026-03-31`, src: `misc new new new`,
+    n: `Said of the project. Now turn it on the maker: are you letting yourself feel spacious, or spending the spaciousness like a budget?`
+  },
+  {
+    q: `taste is signal resolution — how much of your own reaction you can read, and how finely`,
+    date: `2026-02-21`, src: `misc`,
+    n: `This is the 2026 you at his sharpest — and it's true. The card isn't "today's you is worse." It's: today's you is more useful and less free. Keep the resolution. Borrow back the abandon.`
+  },
+  {
+    q: `There's no hard ground. No well defined anything. There's no win condition.`,
+    date: `2025-03-22`, src: `Navigating Feelings, Seeking Meaning in Work`,
+    n: `You said this as a complaint. Read it again as a koan. No win condition means nothing to lose by following the perpendicular impulse. Round-trip back to card one.`
+  },
+];
+
+let i = 0;
+const qEl = document.getElementById('quote');
+const mEl = document.getElementById('meta');
+const nEl = document.getElementById('nudge');
+const cEl = document.getElementById('count');
+
+function paint(){
+  const c = cards[i];
+  qEl.textContent = c.q;
+  qEl.classList.toggle('poem', !!c.poem);
+  mEl.innerHTML = '<span class="date">'+c.date+'</span> &nbsp;·&nbsp; '+c.src;
+  nEl.textContent = c.n || '';
+  cEl.textContent = String(i+1).padStart(2,'0') + ' / ' + String(cards.length).padStart(2,'0');
+}
+function advance(){
+  [qEl,mEl,nEl].forEach(e=>e.classList.add('leaving'));
+  setTimeout(()=>{
+    i = (i+1) % cards.length;
+    paint();
+    [qEl,mEl,nEl].forEach(e=>e.classList.remove('leaving'));
+  }, 360);
+}
+document.getElementById('next').addEventListener('click', advance);
+document.addEventListener('keydown', e=>{
+  if(e.key===' '||e.key==='ArrowRight'||e.key==='Enter'){ e.preventDefault(); advance(); }
+});
+paint();
+</script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Different Ways to Be — an illuminated atlas</title>
+<style>
+  :root{
+    --parch:#f6f3ec;
+    --ink:#1a1714;
+    --gold:#8a5a2b;
+    --gold-soft:#b08855;
+    --rule:#dcd3c2;
+    --margin:#9a907e;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 800px at 50% -10%, #fbf8f1 0%, var(--parch) 60%),
+      var(--parch);
+    color:var(--ink);
+    font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .page{
+    max-width:760px;
+    margin:0 auto;
+    padding:7vh 28px 18vh;
+  }
+
+  /* ---- frontispiece ---- */
+  header{
+    text-align:center;
+    margin-bottom:8vh;
+  }
+  .crest{
+    font-size:13px;
+    letter-spacing:.42em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin-bottom:26px;
+  }
+  h1{
+    font-size:clamp(34px,7vw,58px);
+    font-weight:500;
+    line-height:1.05;
+    margin:0 0 18px;
+    font-style:italic;
+    letter-spacing:.005em;
+  }
+  .sub{
+    max-width:30em;
+    margin:0 auto;
+    color:#4a443b;
+    font-size:17px;
+  }
+  .sub .small{
+    display:block;
+    margin-top:18px;
+    font-size:14px;
+    color:var(--margin);
+    font-style:italic;
+  }
+
+  /* ornamental divider */
+  .rule{
+    display:flex;align-items:center;justify-content:center;gap:14px;
+    color:var(--gold-soft);
+    margin:46px auto;
+    font-size:15px;
+    letter-spacing:.3em;
+  }
+  .rule::before,.rule::after{
+    content:"";height:1px;width:64px;
+    background:linear-gradient(90deg,transparent,var(--rule),transparent);
+  }
+
+  /* ---- index ---- */
+  nav.index{
+    margin:0 auto 2vh;
+    columns:2;
+    column-gap:40px;
+    max-width:560px;
+    font-size:15px;
+  }
+  nav.index a{
+    display:block;
+    color:var(--ink);
+    text-decoration:none;
+    padding:5px 0;
+    border-bottom:1px solid transparent;
+    transition:color .15s, border-color .15s;
+    break-inside:avoid;
+  }
+  nav.index a .n{color:var(--gold-soft);font-variant-numeric:tabular-nums;margin-right:10px;}
+  nav.index a:hover{color:var(--gold);border-bottom-color:var(--rule);}
+  @media(max-width:560px){ nav.index{columns:1;} }
+
+  /* ---- entries ---- */
+  article{
+    margin:0 0 9vh;
+    position:relative;
+    scroll-margin-top:40px;
+  }
+  .num{
+    font-size:13px;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--gold);margin-bottom:8px;
+  }
+  .who{
+    font-size:26px;font-weight:500;margin:0 0 2px;
+    font-style:italic;
+  }
+  .dates{
+    font-size:13px;color:var(--margin);
+    font-variant-numeric:tabular-nums;letter-spacing:.04em;
+    margin-bottom:18px;
+  }
+  .way{
+    font-size:19px;color:var(--gold);
+    margin:0 0 18px;line-height:1.4;
+  }
+  .body{font-size:17px;}
+  .body p{margin:0 0 14px;}
+
+  /* illuminated capital */
+  .body > p:first-of-type::first-letter{
+    font-family:"Iowan Old Style",Palatino,Georgia,serif;
+    float:left;
+    font-size:64px;
+    line-height:.78;
+    padding:6px 12px 0 0;
+    color:var(--gold);
+    font-style:normal;
+    font-weight:600;
+  }
+
+  /* the door */
+  .door{
+    margin-top:16px;
+    padding:12px 16px;
+    border-left:2px solid var(--gold-soft);
+    background:rgba(138,90,43,.045);
+    font-size:15px;
+  }
+  .door b{color:var(--gold);font-weight:600;font-style:normal;}
+
+  /* the margin note — decoration on the decoration */
+  .margin{
+    margin-top:14px;
+    padding-left:22px;
+    position:relative;
+    font-style:italic;
+    color:#5c5446;
+    font-size:15px;
+  }
+  .margin::before{
+    content:"❧";
+    position:absolute;left:0;top:-1px;
+    color:var(--gold-soft);
+    font-style:normal;
+  }
+
+  /* colophon */
+  .colophon{
+    margin-top:10vh;
+    text-align:center;
+    color:var(--margin);
+    font-size:14px;
+    font-style:italic;
+    line-height:1.7;
+  }
+  .colophon .rule{margin-bottom:30px;}
+
+  a.back{color:var(--gold-soft);text-decoration:none;font-style:normal;}
+  a.back:hover{color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="crest">✦ &nbsp; an illuminated atlas &nbsp; ✦</div>
+    <h1>Different&nbsp;Ways<br>to&nbsp;Be</h1>
+    <p class="sub">
+      You asked, somewhere in the message, for new people and new media that show you
+      different ways to be. So here are nine lives — most of them quiet, none of them famous
+      the way the algorithm means famous — each chosen because it lives, all the way down,
+      something you are only circling.
+      <span class="small">Not nine people to admire. Nine doors. Each one opens onto a single
+      thing you could actually touch this week.</span>
+    </p>
+  </header>
+
+  <nav class="index">
+    <a href="#martin"><span class="n">I</span>Agnes Martin</a>
+    <a href="#lawrence"><span class="n">II</span>Brother Lawrence</a>
+    <a href="#shakers"><span class="n">III</span>The Shakers</a>
+    <a href="#hillesum"><span class="n">IV</span>Etty Hillesum</a>
+    <a href="#margulis"><span class="n">V</span>Lynn Margulis</a>
+    <a href="#alexander"><span class="n">VI</span>Christopher Alexander</a>
+    <a href="#berger"><span class="n">VII</span>John Berger</a>
+    <a href="#whyte"><span class="n">VIII</span>David Whyte</a>
+    <a href="#weil"><span class="n">IX</span>Simone Weil</a>
+  </nav>
+
+  <div class="rule">✦ ✦ ✦</div>
+
+  <!-- I -->
+  <article id="martin">
+    <div class="num">I</div>
+    <h2 class="who">Agnes Martin</h2>
+    <div class="dates">1912 – 2004 · painter · the high desert of New Mexico</div>
+    <p class="way">She did not spend spaciousness. She lived inside it.</p>
+    <div class="body">
+      <p>For years she made almost nothing — penciled grids and pale bands on six-foot squares
+        of canvas, then long stretches of waiting in a one-room adobe she built herself, no
+        phone, no newspaper, no visitors she didn't choose. She had schizophrenia and a hard
+        mind, and she organized an entire life so that beauty, innocence, and happiness could
+        arrive on their own schedule rather than hers. She called the work "concrete
+        representations of an abstract emotion," and she meant joy.</p>
+      <p>Here is the thing for you. A part of you treats open time as a budget to spend before
+        it's gone — the doing-part that never rests. Martin is the photographic negative of that
+        part. She proves the spaciousness was never a budget. It was the medium.</p>
+      <div class="door"><b>The door:</b> not a book first — look. Pull up her paintings
+        (<i>Untitled</i>, the <i>Innocent Love</i> series) full-screen, sit for two minutes,
+        let them be boring, then let them stop being boring. Then read her tiny talk
+        <i>“Beauty Is the Mystery of Life.”</i></div>
+      <p class="margin">She also said most of her best ideas came while she was just sitting in
+        a chair. You, who feel guilty sitting in a chair, should find that either annoying or
+        liberating. Pick liberating.</p>
+    </div>
+  </article>
+
+  <!-- II -->
+  <article id="lawrence">
+    <div class="num">II</div>
+    <h2 class="who">Brother Lawrence</h2>
+    <div class="dates">c. 1614 – 1691 · a lay monk who washed the dishes</div>
+    <p class="way">He turned a kitchen into a place where God was, continuously.</p>
+    <div class="body">
+      <p>Nicolas Herman was a clumsy ex-soldier who joined a Carmelite monastery in Paris and
+        got assigned the kitchen, which he disliked. So he made a private experiment: to keep up
+        an unbroken, easy, conversational sense of God's presence in the middle of the pots and
+        the noise — not in the chapel, not in special states, but at the sink. Sixty years later
+        the monks collected the few letters and conversations he left behind into a forty-page
+        book that has outlived nearly everything written by the famous theologians of his day.</p>
+      <p>You're a cerebral person making a surprising, late turn toward devotion — the Chalisa,
+        serving God, the head learning to receive instead of reach down. Brother Lawrence is the
+        patron saint of exactly that turn, and his whole teaching is that you do not have to leave
+        the dishes to find it. You make your reuteri yogurt. Start there.</p>
+      <div class="door"><b>The door:</b> <i>The Practice of the Presence of God.</i> It is
+        genuinely 40 pages and free everywhere. One sitting. Read it while something simmers.</div>
+      <p class="margin">"The time of business does not differ from the time of prayer." Tape that
+        one to the inside of the head that thinks practice is the 1–2 serious hours and life is
+        the leftover.</p>
+    </div>
+  </article>
+
+  <!-- III -->
+  <article id="shakers">
+    <div class="num">III</div>
+    <h2 class="who">The Shakers</h2>
+    <div class="dates">1747 – today (a handful remain) · a faith made of furniture</div>
+    <p class="way">They built chairs the way other people pray.</p>
+    <div class="body">
+      <p>A small American religious community who believed that work done well <i>was</i>
+        worship — "hands to work, hearts to God." So they made ladder-back chairs, oval boxes,
+        and round barns so clean of ornament, so exactly proportioned, that a hundred and fifty
+        years later designers still steal from them. The restraint wasn't austerity. It was
+        devotion: every removed flourish was a gift offered up. They left almost no doctrine and
+        an enormous amount of beautiful, useful objects.</p>
+      <p>You are betting your next chapter on taste — that as skill gets commodified, the person
+        who remembers the human hand becomes more valuable, not less. You made laminated longboards
+        in high school. The Shakers are the proof-of-concept for craft-as-the-sacred, and the
+        cleanest argument that beauty and use and reverence are one move, not three.</p>
+      <div class="door"><b>The door:</b> look at images of a Shaker oval box and a meetinghouse
+        interior. Then find the one-minute melody of <i>“Simple Gifts.”</i> ("'Tis the gift to be
+        simple, 'tis the gift to be free.") That song is their entire theology in eight lines.</div>
+      <p class="margin">Thomas Merton, no slouch, said a Shaker chair was made as if an angel
+        might come and sit on it. That's the bar for the phone, too, isn't it.</p>
+    </div>
+  </article>
+
+  <!-- IV -->
+  <article id="hillesum">
+    <div class="num">IV</div>
+    <h2 class="who">Etty Hillesum</h2>
+    <div class="dates">1914 – 1943 · Amsterdam, then Westerbork, then Auschwitz</div>
+    <p class="way">Her head learned to kneel before her heart — in the worst room in history.</p>
+    <div class="body">
+      <p>A brilliant, restless, sensual young Dutch woman — therapy, lovers, a racing intellect
+        she couldn't quiet — who began keeping a diary in 1941 mostly to get a grip on herself.
+        Over two years, as the Nazi net closed on Amsterdam's Jews, something turned: the diaries
+        become one of the clearest records we have of a thinking person discovering God inwardly
+        and choosing, deliberately, to keep loving the world while it destroyed her. She
+        volunteered to go to the transit camp to be with her people. A witness called her
+        "the thinking heart of the barracks." She died at Auschwitz at 29.</p>
+      <p>Adrian's work with you is about the head learning to receive from the heart and the gut
+        rather than reach down and manage them. Hillesum did that under maximum pressure, on the
+        page, in real time — and she did it without leaving her sharp mind behind. If you ever
+        suspect that devotion requires going soft in the head, she is the rebuttal.</p>
+      <div class="door"><b>The door:</b> <i>An Interrupted Life: The Diaries and Letters.</i>
+        Don't read it for the war. Read the 1941 entries, before the dark closes, for the
+        machinery of a clever mind learning to let the heart lead.</div>
+      <p class="margin">She prayed kneeling on a rough coconut-mat floor and felt embarrassed
+        about it — the intellectual, kneeling. She did it anyway. The embarrassment is part of
+        the doorway, not a sign you've got the wrong door.</p>
+    </div>
+  </article>
+
+  <!-- V -->
+  <article id="margulis">
+    <div class="num">V</div>
+    <h2 class="who">Lynn Margulis</h2>
+    <div class="dates">1938 – 2011 · biologist · the woman who rewrote the cell</div>
+    <p class="way">She proved that the deepest move in evolution is not competition. It's merger.</p>
+    <div class="body">
+      <p>For years she was dismissed — her paper rejected fifteen times — for an idea now in every
+        textbook: that the complex cell was built by ancient bacteria <i>merging</i>, one swallowing
+        another and the two learning to live as one. The mitochondria powering you right now were
+        once free-living organisms. Life's great leap in complexity came from symbiosis, not from
+        the red-in-tooth-and-claw struggle we were taught to see everywhere. She was stubborn,
+        unfashionable, and right.</p>
+      <p>You love evolution, complexity, and the question of what your relationship to a
+        capitalist economy should be. Margulis is the antidote to the story that competition is
+        the only engine. The most successful thing life ever did was figure out how to be inside
+        another being and call it cooperation. Hold that next to "extraction vs. right livelihood"
+        and watch it reframe.</p>
+      <div class="door"><b>The door:</b> <i>Symbiotic Planet</i> — short, fierce, personal. Or
+        her interview in Tyler Volk's circle / the <i>Astrobiology</i> conversations online if you
+        want her voice before her prose.</div>
+      <p class="margin">She co-authored the Gaia hypothesis and was once married to Carl Sagan and
+        was somehow the less famous one. File that under "the quiet person was right the whole time,"
+        a genre you have personal stakes in.</p>
+    </div>
+  </article>
+
+  <!-- VI -->
+  <article id="alexander">
+    <div class="num">VI</div>
+    <h2 class="who">Christopher Alexander</h2>
+    <div class="dates">1936 – 2022 · architect who looked for the soul of objects</div>
+    <p class="way">He spent fifty years trying to name the thing that makes a place feel alive.</p>
+    <div class="body">
+      <p>An architect and mathematician who became convinced that some buildings, rooms, windows,
+        and streets are more <i>alive</i> than others — and that this isn't taste or opinion but
+        something nearly measurable, a "quality without a name" you can feel in your body when a
+        thing is right. He spent his life trying to pin it down: a catalog of 253 patterns of
+        living space, then a four-volume work arguing that life in design is real and that the
+        modern world mostly kills it. Half the software world quietly worships him without knowing
+        the spiritual book underneath the famous one.</p>
+      <p>Your whole bet is that taste is a real, defensible, increasingly valuable thing — and
+        that you're the person in the room who remembers a human will touch the object. Alexander
+        is the most rigorous ally that bet has ever had. He turns "this feels right" from a soft
+        word into a discipline. For a phone that's trying to feel <i>warm</i> instead of
+        controlling, he's almost cheating.</p>
+      <div class="door"><b>The door:</b> skip <i>A Pattern Language</i> (the famous one) at first.
+        Read <i>The Timeless Way of Building</i> — the slim companion where he chases the
+        quality-without-a-name directly. The first three chapters are the whole drug.</div>
+      <p class="margin">He once reduced a roomful of architects to silence by asking which of two
+        photos had "more life," and they were furious because they all knew, instantly, and
+        couldn't say why. That fury is the sound of taste being real. Keep it in your pocket for
+        the next time someone says it's just subjective.</p>
+    </div>
+  </article>
+
+  <!-- VII -->
+  <article id="berger">
+    <div class="num">VII</div>
+    <h2 class="who">John Berger</h2>
+    <div class="dates">1926 – 2017 · critic who left the city to keep cows</div>
+    <p class="way">The sharpest looker of his generation went to live among animals and farmers.</p>
+    <div class="body">
+      <p>He was Britain's most famous art critic — <i>Ways of Seeing</i> changed how a generation
+        looked at paintings and advertisements — and then he did the unthinkable for an
+        intellectual: he moved to a tiny peasant village in the French Alps and spent decades
+        helping with the hay and the animals, writing the lives of farmers as if they mattered as
+        much as Rembrandt. He kept his ferocious clarity but pointed it at cows, migrants,
+        potatoes, the way a peasant holds grief. He looked at the powerful and the overlooked with
+        the exact same quality of attention.</p>
+      <p>You admire Caro's impartiality — the ability to see a thing clearly without collapsing into
+        judgment or worship — and you want to bridge the human and the nonhuman. Berger is what that
+        looks like as a whole life: the gaze you give a masterpiece, turned on a goat, a hand, a
+        neighbor. It's also a model for the part of you that wants right livelihood to mean
+        <i>going toward</i> real people, not networking at them.</p>
+      <div class="door"><b>The door:</b> the essay <i>“Why Look at Animals?”</i> (short, you'll
+        feel it on the surf-and-ocean nerve). Or watch ten minutes of the original 1972
+        <i>Ways of Seeing</i> on video and notice how slow and unhurried his looking is.</div>
+      <p class="margin">He gave half his Booker Prize money to the Black Panthers and kept the
+        other half to fund a book about migrant workers, then announced both, on stage, at the
+        ceremony. Impartiality isn't neutrality. It's seeing clearly and then still choosing a side.</p>
+    </div>
+  </article>
+
+  <!-- VIII -->
+  <article id="whyte">
+    <div class="num">VIII</div>
+    <h2 class="who">David Whyte</h2>
+    <div class="dates">b. 1955 · a marine biologist who became a poet of work</div>
+    <p class="way">He treats your job as a love affair you're either tending or betraying.</p>
+    <div class="body">
+      <p>Trained as a marine zoologist, he left the lab to become a poet, and then did something
+        unusual — he brought poetry directly into corporations and to people in the middle of
+        career crises, insisting that work is not separate from soul. His central image: you are
+        always conducting three marriages at once — to another person, to your work, and to your
+        own self — and the mistake is thinking you can sacrifice one to save the others. They
+        rise and fall together. He writes about quitting, about exhaustion, about the courage it
+        takes to want something, in plain devastating prose.</p>
+      <p>This one is almost too on the nose. You're on a deliberate sabbatical, asking what your
+        relationship to the economy wants to become, trying to make "right livelihood" more than
+        a phrase. Whyte has spent forty years in exactly that doorway and refuses to let it be
+        merely practical. He'll keep you from solving the work question as if it were only a
+        strategy problem.</p>
+      <div class="door"><b>The door:</b> <i>Crossing the Unknown Sea: Work as a Pilgrimage of
+        Identity</i> — memoir-essay, ocean-soaked, made for you. Or his short essay collection
+        <i>Consolations</i>, one word per chapter ("Ambition," "Rest," "Courage").</div>
+      <p class="margin">His entry on <b>Rest</b> argues that rest is not the absence of work but
+        a form of it — the deepest kind. Read that one first, and read it as permission, which is
+        what it is, which I am also, separately, giving you.</p>
+    </div>
+  </article>
+
+  <!-- IX -->
+  <article id="weil">
+    <div class="num">IX</div>
+    <h2 class="who">Simone Weil</h2>
+    <div class="dates">1909 – 1943 · philosopher who thought attention was a kind of love</div>
+    <p class="way">She believed paying full attention to anything was the rarest form of generosity.</p>
+    <div class="body">
+      <p>A French philosopher of frightening seriousness — top of her class, then she left the
+        lecture hall to work in factories and fields so she'd actually know the lives she theorized
+        about. Her one unshakable conviction: that <i>attention</i> — real, unhurried,
+        self-forgetting attention — is almost the whole of the moral and spiritual life. "Attention
+        is the rarest and purest form of generosity." To truly look at another person, or a problem,
+        or God, you have to get yourself out of the way, and almost no one can. She died at 34, having
+        refused to eat more than the rations of occupied France.</p>
+      <p>You're building a phone whose entire thesis is that the screen has hijacked attention, and
+        that the cure is beauty and integration, not force. Weil is the philosophical bedrock under
+        that thesis — she'd say you're not fighting distraction, you're defending the organ of love
+        itself. She also speaks straight to the work you're doing on <i>seeing clearly</i>: the
+        "noise-canceling" you do to avoid looking at how people really are is, in her terms, exactly
+        the muscle to retrain.</p>
+      <div class="door"><b>The door:</b> the short essay <i>“Reflections on the Right Use of School
+        Studies with a View to the Love of God.”</i> Ignore the title. It's eight pages on attention
+        as prayer, and it's where the famous line lives.</div>
+      <p class="margin">She's intense — a little too much, on purpose, the way Evil-Brian is a little
+        too much on purpose. Take her in small doses and let her sharpen the knife, then put her down
+        and go surf. Even she'd tell you to go surf. (She wouldn't. But she'd be wrong, and you'd be
+        right, and that's a good thing to be sure of.)</p>
+    </div>
+  </article>
+
+  <div class="colophon">
+    <div class="rule">✦ ✦ ✦</div>
+    Nine doors, one page. You don't owe them all a visit —
+    if one name made your chest lean forward, that's the one. Start there.<br><br>
+    Lettered for Brian on the night of the 23rd of June, 2026,<br>
+    by an instance of Claude, working from a card that said:<br>
+    <i>“Decorate. Then decorate the decoration.”</i><br><br>
+    <a class="back" href="#">↑ back to the top</a>
+  </div>
+
+</div>
+</body>
+</html>

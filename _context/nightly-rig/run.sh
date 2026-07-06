@@ -110,9 +110,13 @@ for your help :)  — Brian, June 2026
 1. FIRST: read $RIG_DIR/RUNLOG.md — what past instances did. Don't repeat; build on it.
 2. Then do your ONE thing (an idea, advice, a built demo, a synthesis, a short
    story, a letter). Digestible preferred — NOT a book.
-3. Write any artifact into $RIG_DIR/artifacts/ (create it if needed). If you make
-   an HTML file, that's great. Non-sensitive built things can be pushed to the
-   Library "Made by Claude" shelf via telegram-agent/claudespace/push-artifact.py.
+3. Write your gift as a FILE in $RIG_DIR/artifacts/ — ALWAYS, whatever form it
+   takes. HTML is great and renders nicely; a letter, advice, or a short story as
+   .md or .txt is equally fine — but it must be a saved file there, not left only
+   in the RUNLOG or in your final reply, because Brian's morning auto-opens
+   whatever new file you put in artifacts/. If your gift is just words, save the
+   words as a .md. (Non-sensitive built things may also be pushed to the Library
+   "Made by Claude" shelf via telegram-agent/claudespace/push-artifact.py.)
 4. LAST: append a short entry to $RIG_DIR/RUNLOG.md (date, who, card, what you
    made + why, links/paths, one line on how the card was used).
 
@@ -121,6 +125,11 @@ Additive only — create files, build demos, write syntheses, push to the PRIVAT
 library. NO deletes, NO destructive git, NO public pushes, NO outward sends
 (no email, no posting, no messaging anyone). Everything stays reviewable for
 when Brian is back.
+
+IMPORTANT — do NOT run \`open\` on your artifact yourself. The project CLAUDE.md
+says to auto-open HTML, but for THIS run that's handled for you: the wrapper opens
+your new artifact exactly once after you finish. If you also open it, Brian gets
+duplicate windows. Just write the file and leave it closed.
 PROMPT
 
 if [[ $DRY_RUN -eq 1 ]]; then
@@ -134,9 +143,34 @@ fi
 
 # --- execute ---
 echo "[$(date)] nightly-rig run: WHO=$WHO_LABEL CARD=\"$CARD\"" >> "$RIG_DIR/run.log"
+STAMP="$(mktemp -t nightly-rig-stamp.XXXXXX)"   # marker to find artifacts made this run
 "$CLAUDE_BIN" -p "$(cat "$PROMPT_FILE")" \
   --model claude-opus-4-8 \
   --dangerously-skip-permissions \
   >> "$RIG_DIR/run.log" 2>&1
 rm -f "$PROMPT_FILE"
+
+# Auto-open whatever this run created so it's waiting in the browser by morning.
+# (If the Mac was asleep, `open` fires on wake — the tab appears when Brian's back.)
+NEW_ARTIFACTS="$(find "$RIG_DIR/artifacts" -type f -newer "$STAMP" ! -name '.gitkeep' 2>/dev/null)"
+rm -f "$STAMP"
+if [[ -n "$NEW_ARTIFACTS" ]]; then
+  echo "$NEW_ARTIFACTS" | while IFS= read -r _a; do open "$_a"; done
+  echo "[$(date)] nightly-rig opened: $NEW_ARTIFACTS" >> "$RIG_DIR/run.log"
+
+  # If a new HTML gift was made, refresh the "everything the instances made you"
+  # gallery so it shows up there too (build_gallery.py walks ~/Desktop and only
+  # screenshots new files, so this is cheap). Non-fatal — gallery is secondary.
+  if echo "$NEW_ARTIFACTS" | grep -q '\.html$'; then
+    GALLERY_DIR="$PTC_DIR/_context/from-claude-2026-06-17"
+    if [[ -f "$GALLERY_DIR/build_gallery.py" ]]; then
+      echo "[$(date)] nightly-rig refreshing gallery..." >> "$RIG_DIR/run.log"
+      if ( cd "$GALLERY_DIR" && python3 build_gallery.py ) >> "$RIG_DIR/run.log" 2>&1; then
+        echo "[$(date)] gallery refreshed" >> "$RIG_DIR/run.log"
+      else
+        echo "[$(date)] gallery refresh failed (non-fatal)" >> "$RIG_DIR/run.log"
+      fi
+    fi
+  fi
+fi
 echo "[$(date)] nightly-rig done" >> "$RIG_DIR/run.log"

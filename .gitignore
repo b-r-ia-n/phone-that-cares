@@ -64,3 +64,6 @@ words/extracts.bak/
 # overnight build artifacts — large binaries, kept locally
 _context/android-build-2026-05-16/downloads/
 _context/android-build-2026-05-16/artifacts/*.png
+
+# release signing material — never commit
+/keys/

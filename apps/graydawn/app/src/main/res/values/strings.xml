@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="service_description">Watches for both volume buttons held together, so the hold can bring color back for a while. Nothing else is read or recorded.</string>
+</resources>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seeglass v2 — overnight brief</title>
+<style>
+  :root {
+    --paper: #f6f3ec; --ink: #1a1714; --soft: #6b645c;
+    --accent: #8a5a2b; --hairline: #e3ddd1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11', 'tnum';
+    line-height: 1.55; padding: 64px 24px 96px;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -0.02em; }
+  .sub { color: var(--soft); font-size: 15px; margin: 6px 0 40px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); margin: 44px 0 12px; font-weight: 600;
+  }
+  p { margin: 10px 0; font-size: 15px; }
+  .quiet { color: var(--soft); font-size: 14px; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px;
+    background: #efeadf; border-radius: 4px;
+  }
+  code { padding: 1px 5px; }
+  pre { padding: 14px 16px; overflow-x: auto; margin: 10px 0; line-height: 1.6; }
+  .shots { display: flex; gap: 12px; margin: 16px 0; overflow-x: auto; }
+  .shots figure { flex: 0 0 180px; }
+  .shots img { width: 100%; border-radius: 10px; border: 1px solid var(--hairline); display: block; }
+  .shots figcaption { font-size: 12px; color: var(--soft); margin-top: 6px; text-align: center; }
+  ul { padding-left: 20px; }
+  li { font-size: 15px; margin: 6px 0; }
+  hr { border: none; border-top: 1px solid var(--hairline); margin: 36px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Seeglass v2</h1>
+  <div class="sub">built from your bedtime notes · night of July 5–6 · all verified on emulator</div>
+
+  <h2>What changed</h2>
+  <ul>
+    <li><b>Per-place settings</b> — your mock, realized: settings → tap any place → its own
+      page: <i>on the shelf</i> (off = archived), <i>the ramp</i> (slider, leftmost = no ramp —
+      for when the phone's already gray), <i>break cards</i> on/off, <i>trims</i>
+      (Shorts shelf and Explore are now independent, per your ask).</li>
+    <li><b>Archive</b> — long-press any shelf row → "send to the archive." It disappears
+      from the shelf and waits in settings. Restore with the on-the-shelf switch.</li>
+    <li><b>Tie yourself to the mast</b> — bottom of settings. Locks everything (ramps,
+      trims, cards, archive changes) for <i>an hour / until morning / three days / a week</i>.
+      While lashed, settings show but won't move, with "the knots hold" and the release
+      date. Demo mode stays available (it only speeds the gray up). No escape hatch —
+      by design. The knots do hold.</li>
+    <li><b>X login fix attempt</b> — X now gets the WebView's <i>truthful</i> user-agent
+      instead of my Chrome spoof. Theory: X's bot check caught the UA contradicting the
+      browser's client hints (the others don't check). <b>Please try logging in again</b> —
+      if it still fails, tell me what the failure looks like (error message? silent loop?
+      button does nothing?) and I'll go deeper.</li>
+    <li><b>Ramp stays linear</b> — eased curve built, then reverted per your note.</li>
+    <li>Break cards were already on everywhere; now they're per-place switches.
+      First card ~40% into your ramp, then every ~30% — on a 20-min ramp: ~min 8, then ~every 6.</li>
+  </ul>
+
+  <div class="shots">
+    <figure><img src="settings_v2.png" alt="Settings v2"><figcaption>settings + places</figcaption></figure>
+    <figure><img src="placesettings_v2.png" alt="Per-place settings"><figcaption>per-place page</figcaption></figure>
+    <figure><img src="mast_locked.png" alt="Masted"><figcaption>lashed to the mast</figcaption></figure>
+  </div>
+
+  <h2>Update the phone</h2>
+  <pre>cd ~/Desktop/PhoneThatCares/.claude/worktrees/seeglass-overnight/_context/seeglass-2026-07-05
+adb install -r seeglass.apk</pre>
+  <p class="quiet">Logins and settings survive the update (<code>-r</code> keeps app data).
+  Graydawn is unchanged tonight.</p>
+
+  <h2>Defaults I chose (flag anything wrong)</h2>
+  <ul>
+    <li>Mast locks <i>everything</i> including loosening AND tightening — simplest honest rule for v1.</li>
+    <li>Ramp slider's leftmost stop = "no color ramp here"; break cards and spacing still
+      run on the default clock when the ramp is off.</li>
+    <li>Archiving from the shelf works even while masted (it's a tightening move);
+      un-archiving needs settings, which the mast holds shut.</li>
+    <li>Mast durations: hour / morning (7am) / 3 days / week.</li>
+  </ul>
+
+  <h2>Still open</h2>
+  <ul>
+    <li>X login — fix attempt shipped, needs your retry to confirm.</li>
+    <li>Didn't hear how the Graydawn chord felt on real hardware — curious.</li>
+    <li>Backlog unchanged: Custom-Tab Google auth, tip jar, Play-listing pass.</li>
+  </ul>
+
+  <hr>
+  <p class="quiet">Verified tonight: build green · settings + per-place pages render ·
+  mast locks and labels correctly · archive removes/restores · ramp still drains
+  (saturation 0.12 → 0.006 in demo run) · no crashes in logcat.</p>
+</main>
+</body>
+</html>

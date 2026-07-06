@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- exact snap-back alarms that Doze can't defer (fine for sideload;
+         revisit if this ever goes to Play) -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- the day-12 letter arrives as a notification; people may never
+         reopen the app -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- usage access is a switch the person flips only if they say yes to
+         the letter; no INTERNET here, ever -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <!-- turns package names into readable app names in the letter the
+         person reads before sending -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <application
+        android:label="Graydawn"
+        android:icon="@drawable/ic_launcher"
+        android:theme="@style/Theme.Graydawn"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".GraydawnService"
+            android:exported="false"
+            android:label="Graydawn"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/graydawn_service" />
+        </service>
+
+        <!-- exported so `adb shell am start` can open it for testing; it
+             shows nothing and sends nothing without the person's taps -->
+        <activity
+            android:name=".LetterActivity"
+            android:exported="true" />
+
+        <receiver android:name=".DawnReceiver" android:exported="false" />
+        <receiver android:name=".RegrayReceiver" android:exported="false" />
+        <receiver android:name=".BootReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

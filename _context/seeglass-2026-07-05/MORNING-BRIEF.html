@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Morning brief — Seeglass + Graydawn</title>
+<style>
+  :root {
+    --paper: #f6f3ec; --ink: #1a1714; --soft: #6b645c;
+    --accent: #8a5a2b; --hairline: #e3ddd1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+    font-feature-settings: 'ss01', 'cv11', 'tnum';
+    line-height: 1.55; padding: 64px 24px 96px;
+  }
+  main { max-width: 680px; margin: 0 auto; }
+  h1 { font-size: 28px; letter-spacing: -0.02em; }
+  .sub { color: var(--soft); font-size: 15px; margin: 6px 0 40px; }
+  h2 {
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--accent); margin: 44px 0 12px; font-weight: 600;
+  }
+  p { margin: 10px 0; font-size: 15px; }
+  .quiet { color: var(--soft); font-size: 14px; }
+  hr { border: none; border-top: 1px solid var(--hairline); margin: 36px 0; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px;
+    background: #efeadf; border-radius: 4px;
+  }
+  code { padding: 1px 5px; }
+  pre { padding: 14px 16px; overflow-x: auto; margin: 10px 0; line-height: 1.6; }
+  .shots { display: flex; gap: 12px; margin: 16px 0; overflow-x: auto; }
+  .shots figure { flex: 0 0 180px; }
+  .shots img {
+    width: 100%; border-radius: 10px; border: 1px solid var(--hairline); display: block;
+  }
+  .shots figcaption { font-size: 12px; color: var(--soft); margin-top: 6px; text-align: center; }
+  ul { padding-left: 20px; }
+  li { font-size: 15px; margin: 6px 0; }
+  .apk {
+    display: inline-block; margin: 4px 8px 4px 0; padding: 8px 14px;
+    border: 1px solid var(--hairline); border-radius: 8px;
+    color: var(--accent); text-decoration: none; font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Two apps by morning</h1>
+  <div class="sub">overnight build · July 4–5, 2026 · both verified on the emulator</div>
+
+  <h2>Seeglass</h2>
+  <p>Your places, behind softer glass. Eight places on the shelf (X, YouTube, Reddit,
+  Instagram, Facebook, Substack, LinkedIn, TikTok-experimental), each in its own
+  WebView with persistent login. The care engine drives injected CSS: color drains
+  smoothly over your ramp (default 20&nbsp;min), space between posts grows, ASCII
+  break cards surface gently. Nothing is removed by default — trims (YouTube Shorts
+  shelf, IG Explore) are opt-in in settings. Demo mode previews the ramp at 20×.</p>
+
+  <div class="shots">
+    <figure><img src="shelf.png" alt="Seeglass shelf"><figcaption>the shelf</figcaption></figure>
+    <figure><img src="reddit_t0.png" alt="Reddit, minute one"><figcaption>minute one — full color</figcaption></figure>
+    <figure><img src="reddit_t75.png" alt="Reddit at ramp's end"><figcaption>ramp's end + break card</figcaption></figure>
+  </div>
+
+  <h2>Graydawn</h2>
+  <p>The day begins gray. Around 4:00 each morning the whole phone goes grayscale
+  (system daltonizer — every app, every pixel). Hold both volume buttons and color
+  comes back for 20 minutes; a soft double-buzz warns 30 seconds before the tide
+  returns. Verified end-to-end: dawn alarm scheduled, borrow flips color on, warning
+  haptic fires, snap-back returns the gray.</p>
+
+  <div class="shots">
+    <figure><img src="graydawn_main.png" alt="Graydawn setup"><figcaption>setup screen</figcaption></figure>
+  </div>
+
+  <h2>Put them on the Pixel</h2>
+  <p class="quiet">Phone plugged in, USB debugging on:</p>
+  <pre>cd ~/Desktop/PhoneThatCares/.claude/worktrees/seeglass-overnight/_context/seeglass-2026-07-05
+adb install seeglass.apk
+adb install graydawn.apk
+adb shell pm grant com.ptc.graydawn android.permission.WRITE_SECURE_SETTINGS</pre>
+  <p class="quiet">Then open Graydawn once — it walks you through enabling the
+  accessibility listener (Settings → Accessibility → Graydawn). That's the whole setup.
+  The volume-chord needs real hardware keys, so it meets its first true test in your hands.</p>
+
+  <h2>What fought back (worth knowing)</h2>
+  <ul>
+    <li><b>The gradual system ramp is truly impossible without root</b> — tested live,
+      not just researched. Android 14's color-correction intensity setting exists but is
+      ignored (SurfaceFlinger's matrix stays full-grayscale at every level), and the
+      root-only backdoor (<code>service call SurfaceFlinger 1015</code>) returns
+      <i>operation not permitted</i> from shell. Graydawn snaps; Seeglass ramps. Your
+      moves-ladder held exactly.</li>
+    <li><b>Screenshots don't capture the daltonizer</b> — if you screenshot a gray phone,
+      the picture is in color. Slightly delightful, mostly a demo-video gotcha.</li>
+    <li><b>"Sign in with Google" is blocked inside WebViews</b> — X/Reddit via email
+      login are fine; YouTube stays logged-out for now (still browsable). A Custom-Tab
+      auth bounce is the known fix, backlogged.</li>
+    <li><b>X shows its logged-out door first</b> — sign in once and cookies persist.</li>
+    <li><b>Instagram/TikTok</b> load but got the least testing (no test accounts).
+      File-upload + fullscreen-video + popup-link support all landed, so posting and
+      video should work — first real session will tell.</li>
+  </ul>
+
+  <h2>Where things live</h2>
+  <ul>
+    <li><code>seeglass/</code> and <code>graydawn/</code> — full Kotlin projects at the repo root (worktree branch)</li>
+    <li><code>./gradlew assembleDebug</code> in either builds it (JDK 17 + Gradle now installed)</li>
+    <li>Emulator <code>ptc-test</code> has both installed and configured if you want to poke first</li>
+  </ul>
+
+  <h2>Backlog (not tonight, easy nexts)</h2>
+  <ul>
+    <li>Custom-Tab Google auth for YouTube login</li>
+    <li>Per-place ramp overrides; time-away reset tuning (30&nbsp;min now)</li>
+    <li>Graydawn: user-selectable chord + dawn time (fixed both-volume / 4:00 in v1)</li>
+    <li>The pay-Brian tip jar (needs your Play Console for real billing)</li>
+    <li>Play-listing pass: privacy policy, accessibility-use declaration, store copy</li>
+  </ul>
+
+  <hr>
+  <p class="quiet">Seeglass — an addictive-shiny thing, tumbled soft. The name held up
+  all night; it was a good choice.</p>
+</main>
+</body>
+</html>

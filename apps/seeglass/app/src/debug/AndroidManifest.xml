@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <!-- debug builds only: allow launching places directly from adb for testing -->
+        <activity
+            android:name=".PlaceActivity"
+            android:exported="true"
+            tools:node="merge"
+            tools:replace="android:exported" />
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="true"
+            tools:node="merge"
+            tools:replace="android:exported" />
+        <activity
+            android:name=".PlaceSettingsActivity"
+            android:exported="true"
+            tools:node="merge"
+            tools:replace="android:exported" />
+    </application>
+</manifest>

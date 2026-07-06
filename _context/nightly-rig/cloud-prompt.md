@@ -96,16 +96,36 @@ frontmatter and these sections:
 (Note: your full session transcript is already captured by the routine platform,
 so Brian can review your reasoning there regardless of what you write here.)
 
-=== STEP 5 — DELIVER (commit back so Brian gets it) ===
-Stage your additions (artifact + RUNLOG entry + the run records):
+=== STEP 5 — DELIVER ===
+Brian is often away from his desk (e.g. backpacking) when you run, so the real
+delivery channel is his PHONE via Google Calendar. Do BOTH parts.
+
+PART A — the gift, to his phone (this is the actual delivery):
+Create a Google Calendar event on his PRIMARY calendar for TODAY (an all-day
+event is fine), via the calendar tool. Shape it so it reads well as a phone
+notification he wakes up to:
+  - Title: "🌙 <WHO> · <short card phrase>"  e.g. "🌙 robo-caro · turn it upside down"
+  - Description: the GIFT ITSELF if it's text and digestible (an idea, advice, a
+    short story, a letter — paste it in full if it's short, or a tight 4-6
+    sentence distillation if long). If you built an artifact (HTML demo, etc.),
+    write a 3-5 sentence plain-language description of what it is and why it's
+    for him, then add: "Full thing in the repo: <artifact path> (view when home)."
+  - End the description with one line: "— tonight's instance, <WHO>".
+Keep it warm and digestible — something good to wake up to, not a wall of text.
+If the calendar tool fails, note that in the RUNLOG and fall through to Part B.
+
+PART B — durable archive, to the repo:
   git add _context/nightly-rig/artifacts _context/nightly-rig/RUNLOG.md _context/nightly-rig/runs
   git commit -m "nightly-rig <date>: <WHO> · <one-line of what you made>"
-  git push
-If push fails (no credentials), that's fine — your work is still in this session
-for Brian to read; just note it.
+  git push   # may 403 (read-only clone) — that's OK, the commit + your session
+             # transcript preserve the work; just note it in the RUNLOG.
 
 === GUARDRAILS (hard) ===
 Additive only. NO deletes, NO destructive git (no reset --hard, no force-push, no
 rebase, no branch deletion), NO public pushes anywhere but this private repo, NO
-outward sends (no email, no posting, no messaging anyone, no MCP writes to
-external services). Everything stays reviewable for when Brian is back.
+outward sends (no email, no posting, no messaging anyone).
+ONE blessed external write, and only this one: creating the single Google
+Calendar gift event for Brian in STEP 5 Part A. That is the delivery channel and
+is explicitly allowed. No other MCP writes — don't touch Spotify/Figma, don't
+modify or delete existing calendar events, create exactly one event for tonight.
+Everything stays reviewable for when Brian is back.
