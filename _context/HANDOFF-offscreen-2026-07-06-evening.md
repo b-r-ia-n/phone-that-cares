@@ -43,6 +43,19 @@ tweet-mock.html source. Tweet opener candidates (2 rounds) in
 Louis idea parked for later: installer knows the device name once plugged in —
 could personalize desktop flow too.
 
+**Evening hero-polish round (Brian live), all deployed:** hero = real app
+screenshot (Brian's Pixel, settled state, `public/offscreen/app-1.0.png`) in a
+simple CSS phone frame that **desaturates with the page** (screen wrapper carries
+the grayscale filter). Overlaid on the screenshot is a **live twin of the app's
+button** (`#gd-ph-btn`, position 6.9%/51.3%): label follows page state ("go gray
+now" ↔ "return color", the app's real strings), a **fingertip dot presses it at
+7.3s** just before the initial drain, and **it's clickable** — wired to the same
+saturate() toggle as the secret sun. Hero is 800px wide (breaks out of the 640
+column, centered), icon 106px white-tile no-ring, h1 "Offscreen" capital O,
+hints are two paragraphs wrapping after "beauty" (max-width 408px). Rose-gold
+photo-mockup version rejected (didn't drain) — asset at
+`_context/offscreen-demo-2026-07-06/` with the animated tweet mp4/gif.
+
 ## What shipped today (all emulator- or person-verified)
 
 **The installer is the website.** `aphonethatcares.com/offscreen` (once prod) runs
