@@ -103,7 +103,7 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         titleRow.addView(TextView(this).apply {
-            text = "Graydawn"
+            text = "Offscreen"
             typeface = inter; setTypeface(typeface, Typeface.BOLD)
             setTextColor(ink); setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
             letterSpacing = -0.02f
@@ -184,7 +184,7 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         letterCard.addView(TextView(this).apply {
-            text = "how's using graydawn going?\nbrian, who made it, is curious."
+            text = "how's using offscreen going?\nbrian, who made it, is curious."
             typeface = inter; setTextColor(ink)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setLineSpacing(0f, 1.25f)
@@ -409,11 +409,11 @@ class MainActivity : AppCompatActivity() {
                         // Enabled in settings but the system never rebound
                         // it — happens after force-stop and battery killers.
                         "volume button listener — listed as on but not " +
-                            "actually running. tap here, then flip Graydawn " +
+                            "actually running. tap here, then flip Offscreen " +
                             "off and back on."
                     } else {
                         "volume button listener — off. tap here, then " +
-                            "enable Graydawn under installed apps."
+                            "enable Offscreen under installed apps."
                     }
                 ).setOnClickListener {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))

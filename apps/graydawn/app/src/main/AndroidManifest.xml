@@ -22,7 +22,7 @@
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
-        android:label="Graydawn"
+        android:label="Offscreen"
         android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Graydawn"
         android:supportsRtl="true">
@@ -39,7 +39,7 @@
         <service
             android:name=".GraydawnService"
             android:exported="false"
-            android:label="Graydawn"
+            android:label="Offscreen"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

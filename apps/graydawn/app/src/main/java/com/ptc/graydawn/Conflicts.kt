@@ -33,7 +33,7 @@ object Conflicts {
             if (Gray.hasPermission(ctx)) {
                 out.add(Item(
                     "your phone already uses hold-both-buttons for $what — " +
-                        "it catches the hold before graydawn can. " +
+                        "it catches the hold before offscreen can. " +
                         "tap here to clear it.",
                     blocking = true,
                     fix = {
@@ -47,7 +47,7 @@ object Conflicts {
             } else {
                 out.add(Item(
                     "your phone already uses hold-both-buttons for $what — " +
-                        "it catches the hold before graydawn can. clear it in " +
+                        "it catches the hold before offscreen can. clear it in " +
                         "Settings → Accessibility → Shortcuts, or grant " +
                         "system settings access first and tap here.",
                     blocking = true, fix = null
@@ -90,14 +90,14 @@ object Conflicts {
             Build.MANUFACTURER.equals("samsung", true) -> out.add(Item(
                 "samsung phones put apps to sleep after a few days unopened, " +
                     "which would silence the dawn. in Settings → Battery, set " +
-                    "Graydawn to unrestricted and add it to " +
+                    "Offscreen to unrestricted and add it to " +
                     "“never sleeping apps.”",
                 blocking = false, fix = null
             ))
             Build.MANUFACTURER.equals("motorola", true) -> out.add(Item(
                 "motorola's battery care likes to stop quiet apps, which " +
                     "would silence the dawn. in Settings → Battery, set " +
-                    "Graydawn to unrestricted.",
+                    "Offscreen to unrestricted.",
                 blocking = false, fix = null
             ))
         }

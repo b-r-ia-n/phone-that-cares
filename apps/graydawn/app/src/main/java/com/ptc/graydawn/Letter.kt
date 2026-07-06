@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * The day-12 letter: a consented before/after note the phone writes and
- * the person sends themselves. Graydawn has no internet permission — the
+ * the person sends themselves. Offscreen has no internet permission — the
  * letter only leaves because someone reads it and taps send.
  */
 object Letter {
@@ -71,7 +71,7 @@ object Letter {
         val note = NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle("$dawns gray dawns in...")
-            .setContentText("how's using graydawn going? i'm curious")
+            .setContentText("how's using offscreen going? i'm curious")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
@@ -191,7 +191,7 @@ object Letter {
         val install = installTime(ctx)
         val sb = StringBuilder()
         sb.append("hi brian —\n\n")
-        sb.append("this phone has had graydawn for $days days.\n")
+        sb.append("this phone has had offscreen for $days days.\n")
         // The one setting worth reporting: where they put the slider is
         // the only measurement of where the right default actually is.
         val length = Gray.lengthLabel(Gray.saturationMinutes(ctx))
@@ -202,7 +202,7 @@ object Letter {
         // a number-shaped thing.
         val changes = if (lines != null) Gray.journal(ctx) else emptyList()
         if (changes.isNotEmpty()) {
-            sb.append("settings along the way (day 1 = graydawn's first):\n")
+            sb.append("settings along the way (day 1 = offscreen's first):\n")
             for ((ts, what) in changes) {
                 // Clamped: a clock set backwards shouldn't invent day -3.
                 val day = (((ts - install) / 86_400_000L) + 1).coerceAtLeast(1)
@@ -231,7 +231,7 @@ object Letter {
         }
         if (lines != null) {
             sb.append("screen time per day, week by week ")
-            sb.append("(the → is when graydawn arrived):\n\n")
+            sb.append("(the → is when offscreen arrived):\n\n")
             if (lines.isEmpty()) {
                 sb.append("  (not enough full weeks to compare yet)\n")
             } else {
@@ -252,7 +252,7 @@ object Letter {
         return sb.toString()
     }
 
-    private const val SUBJECT = "a graydawn letter"
+    private const val SUBJECT = "an offscreen letter"
 
     /**
      * Prefilled email to Brian. Gmail ignores EXTRA_TEXT on mailto

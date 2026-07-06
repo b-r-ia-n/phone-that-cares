@@ -133,7 +133,7 @@ class LetterActivity : AppCompatActivity() {
 
         spacer(24)
         caption(
-            "hey there! i'm brian, i made graydawn. i'm wondering whether " +
+            "hey there! i'm brian, i made offscreen. i'm wondering whether " +
                 "it works — whether it changed anything about the way you " +
                 "use your phone."
         )
@@ -276,14 +276,14 @@ class LetterActivity : AppCompatActivity() {
         caption(
             "android keeps a screen-time counter on every phone — that's " +
                 "where the cold hard data lives.\n\n" +
-                "for graydawn to read it, you flip one switch: the screen " +
-                "that opens next lists your apps; find Graydawn and allow " +
+                "for offscreen to read it, you flip one switch: the screen " +
+                "that opens next lists your apps; find Offscreen and allow " +
                 "usage access.\n\n" +
-                "graydawn reads only the per-app screen time that goes into " +
+                "offscreen reads only the per-app screen time that goes into " +
                 "the letter, and you'll read the letter before anything is " +
                 "sent. if that sounds okay:"
         )
-        addButton(button("give graydawn usage access") {
+        addButton(button("give offscreen usage access") {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         }, topMargin = 24)
         addButton(button("actually, never mind") {

@@ -106,7 +106,7 @@ class SettingsActivity : AppCompatActivity() {
         caption(
             if (Gray.hasPermission(this)) {
                 "system settings access — granted. this is what lets " +
-                    "graydawn flip the phone's color switch. to take it " +
+                    "offscreen flip the phone's color switch. to take it " +
                     "back, from a computer:\n\nadb shell pm revoke " +
                     "com.ptc.graydawn android.permission.WRITE_SECURE_SETTINGS"
             } else {
@@ -125,9 +125,9 @@ class SettingsActivity : AppCompatActivity() {
                     "nothing recorded. tap to manage or turn off."
                 enabled -> "volume button listener — listed as on but not " +
                     "actually running (this happens after a force-stop). " +
-                    "tap, then flip Graydawn off and back on."
+                    "tap, then flip Offscreen off and back on."
                 else -> "volume button listener — off. tap, then enable " +
-                    "Graydawn under installed apps."
+                    "Offscreen under installed apps."
             }
         ) { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) }
         caption(
@@ -142,7 +142,7 @@ class SettingsActivity : AppCompatActivity() {
         val nm = getSystemService(android.app.NotificationManager::class.java)
         caption(
             if (nm.areNotificationsEnabled()) {
-                "notifications — on. graydawn sends one, ever: the " +
+                "notifications — on. offscreen sends one, ever: the " +
                     "check-in around day 12. tap to change."
             } else {
                 "notifications — off. the day-12 check-in will wait in " +
@@ -231,7 +231,7 @@ class SettingsActivity : AppCompatActivity() {
 
         // ---- footer ----
         root.addView(TextView(this).apply {
-            text = "Graydawn ${
+            text = "Offscreen ${
                 runCatching { packageManager.getPackageInfo(packageName, 0).versionName }
                     .getOrNull() ?: "?"
             } — made by brian"
