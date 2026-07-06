@@ -5,4 +5,5 @@
     <color name="accent">#8a5a2b</color>
     <color name="ink_soft">#6b645c</color>
     <color name="hairline">#e3ddd1</color>
+    <color name="ic_launcher_background">#ffffff</color>
 </resources>

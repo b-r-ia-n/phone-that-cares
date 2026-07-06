@@ -23,7 +23,7 @@
 
     <application
         android:label="Graydawn"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_launcher"
         android:theme="@style/Theme.Graydawn"
         android:supportsRtl="true">
 
