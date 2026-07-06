@@ -163,6 +163,15 @@ class GraydawnService : AccessibilityService() {
             registerReceiver(debugDawnReceiver, IntentFilter(DEBUG_DAWN))
         }
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
+        cameraPkgs = resolveCameraPackages()
+        // A camera pass that outlived a service restart: take the safe side
+        // (re-gray); the next window change re-lifts it if they're still there.
+        if (Gray.prefs(this).getBoolean("camera_pass", false)) {
+            Gray.prefs(this).edit().putBoolean("camera_pass", false).apply()
+            if (Gray.saturationUntil(this) <= System.currentTimeMillis()) {
+                Gray.setGray(this, true)
+            }
+        }
         // If the dawn schedule is on, make sure the alarm exists.
         if (Gray.dawnEnabled(this)) Gray.scheduleDawn(this)
         // A dawn may have slipped past while nothing was awake to land it.
@@ -225,6 +234,53 @@ class GraydawnService : AccessibilityService() {
         return upDown && downDown
     }
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+    // ---- the camera pass ---------------------------------------------------
+    // The one app where gray breaks the task instead of de-juicing it: you
+    // compose blind to color (the photo saves in color either way). While a
+    // camera app is in front, the gray lifts; leaving brings it back.
+
+    private var cameraPkgs: Set<String> = emptySet()
+    private var cameraPass = false
+
+    private fun resolveCameraPackages(): Set<String> {
+        val actions = listOf(
+            android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA,
+            android.provider.MediaStore.ACTION_IMAGE_CAPTURE,
+            android.provider.MediaStore.INTENT_ACTION_VIDEO_CAMERA,
+        )
+        val out = mutableSetOf<String>()
+        for (a in actions) {
+            packageManager.queryIntentActivities(
+                Intent(a), android.content.pm.PackageManager.MATCH_ALL
+            ).forEach { out.add(it.activityInfo.packageName) }
+        }
+        return out
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
+        val pkg = event.packageName?.toString() ?: return
+        // Our own overlays and the system chrome (shade, keyboard) aren't
+        // "leaving the camera" — only a real app coming forward is.
+        if (pkg == packageName || pkg == "com.android.systemui") return
+        if (pkg in cameraPkgs) {
+            if (!cameraPass && Gray.cameraKeepsColor(this) &&
+                Gray.hasPermission(this) && Gray.isGray(this)
+            ) {
+                cameraPass = true
+                Gray.prefs(this).edit().putBoolean("camera_pass", true).apply()
+                Gray.setGray(this, false)
+            }
+        } else if (cameraPass) {
+            cameraPass = false
+            Gray.prefs(this).edit().putBoolean("camera_pass", false).apply()
+            // Restore the gray we lifted — unless a saturation started
+            // inside the camera; that one keeps its own promise.
+            if (Gray.saturationUntil(this) <= System.currentTimeMillis()) {
+                Gray.setGray(this, true)
+            }
+        }
+    }
+
     override fun onInterrupt() {}
 }

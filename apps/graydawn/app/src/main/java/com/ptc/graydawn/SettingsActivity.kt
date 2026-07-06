@@ -118,8 +118,9 @@ class SettingsActivity : AppCompatActivity() {
         caption(
             when {
                 running -> "volume button listener — on. it watches for both " +
-                    "volume buttons held together, and nothing else. " +
-                    "tap to manage or turn off."
+                    "volume buttons held together, and notices when the camera " +
+                    "comes to the front so it can keep its color. nothing else, " +
+                    "nothing recorded. tap to manage or turn off."
                 enabled -> "volume button listener — listed as on but not " +
                     "actually running (this happens after a force-stop). " +
                     "tap, then flip Graydawn off and back on."

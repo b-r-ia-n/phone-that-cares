@@ -59,6 +59,11 @@ object Gray {
         else -> "$minutes minutes"
     }
 
+    /** The camera keeps its color: the gray lifts while a camera app is in front. */
+    fun cameraKeepsColor(ctx: Context): Boolean = prefs(ctx).getBoolean("camera_color", true)
+    fun setCameraKeepsColor(ctx: Context, v: Boolean) =
+        prefs(ctx).edit().putBoolean("camera_color", v).apply()
+
     fun dawnEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("dawn_enabled", true)
     fun setDawnEnabled(ctx: Context, v: Boolean) {
         prefs(ctx).edit().putBoolean("dawn_enabled", v).apply()
