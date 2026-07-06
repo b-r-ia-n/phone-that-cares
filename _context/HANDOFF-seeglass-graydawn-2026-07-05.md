@@ -31,20 +31,24 @@ Both apps installed (debug-signed). Graydawn: key granted, service enabled, syst
 
 ## The next build: Graydawn "tweet-level public" release
 
-Brian's direction (July 5 voice notes): before sharing with anyone, Graydawn needs to be legible to strangers. Not production — "me tweeting about this to people on twitter" level. Wanted:
+Brian's direction (July 5 voice notes + evening discussion): before sharing with anyone, Graydawn needs to be legible to strangers. Not production — "me tweeting about this to people on twitter" level. Design-pass findings: `_context/seeglass-2026-07-05/design-pass-graydawn-2026-07-05.md` (litmus chip, first-try card, copy table, last-splash overlay). Scope:
 
-1. **Copy clarity pass** — "the key / the listener / the borrow" are lovely but opaque to someone who didn't build it. Keep warmth, add legibility.
-2. **Current-status element** — always-answerable "is it on? am I in a borrow? when does gray come back?"
-3. **Chord discoverability + first-try moment** — in-app practice so people get muscle memory (service can detect the chord live while the app is open).
-4. **A felt going-gray moment** — screen can't fade (binary snap), but the a11y service can draw TYPE_ACCESSIBILITY_OVERLAY windows with no extra permission: brief color wash / card / countdown are all available primitives.
-5. Release signing before sharing APKs.
-6. A fresh-eyes design pass ran July 5 (designer subagent) — findings should be synthesized into the build plan (see session transcript / Brian's notes).
+1. **Rename "the borrow" — Brian's call, philosophy not just clarity.** "Borrow" implies the color isn't yours (debt/restriction frame). He wants: the user has color the whole time; gray is *just a different default*. Candidates offered (poetic, ritual-shaped, ownership-preserving): **the waking** (recommended — color sleeps by default, the hold wakes it for 20 min, it dozes off again; collapses borrow/tide/dawn into ONE sleep-cycle metaphor that matches the app name), **the kindling** (light it like a candle, banks to embers), **the bloom** (opens, then folds at dusk). AWAITING BRIAN'S PICK — build the copy pass around it.
+2. **Copy clarity pass** — keep poetic names as headers, make every caption's first clause literal; one word for the gesture everywhere ("the hold", drop "chord"). Full table in the design-pass doc.
+3. **Litmus chip + status line** — chip filled with saturated dawn gradient; daltonizer grays the chip itself, so the indicator physically can't lie. Status states with real times. Requires fixing: manual "go gray now" during an active borrow must cancel the borrow (stale `borrow_until` bug).
+4. **First-try moment** — one-time card once key+listener are true: tap go-gray (watch chip drain) → hold both buttons a half-second until the buzz → "that's it." Optional near-miss buzz (both keys down+up without firing).
+5. **A felt going-gray moment** — screen can't fade (binary snap), but the a11y service can draw TYPE_ACCESSIBILITY_OVERLAY with no extra permission. "Last splash": color bloom fades in BEFORE the daltonizer snap, then the bloom (now rendered gray by the display itself) dissolves. End-of-borrow mid-scroll: quieter — triple buzz + 1.5s whisper. Untie needs a receipt line.
+6. **The day-12 letter (consented before/after study) — Brian wants this.** ~Day 12–13 after install (NOT week 3: weekly UsageStats buckets only go back 4 weeks; daily only 7 days), a card/notification: "the maker of graydawn wonders whether it's changed anything — want to help?" On yes: request Usage Access (Settings toggle), read weekly per-app screen time ~2 weeks before vs ~2 weeks after install, compose a HUMAN-READABLE letter + free-text feedback box, send via share sheet / email draft addressed to Brian. **No INTERNET permission — the user reads and sends the letter themselves.** Needs POST_NOTIFICATIONS asked during setup (people may never reopen the app). Brian's take on rigor: 20–30 users with a visible drop = decision-grade signal; that's the bar.
+7. **Device compatibility research — US market only.** Targets: Samsung One UI (Galaxy S *and* A series — A-series is a huge share of US Samsung), recent Pixels (covered), Motorola (near-stock, ~10% US Android, low risk). Ignore anything <5% US share (Xiaomi/LG/etc. irrelevant). Research Samsung's own volume-key accessibility shortcuts / One UI settings that would tangle; extend the tangles section if needed. Known open risks: some OEMs don't deliver key events to a11y services with screen off; aggressive battery killers.
+8. **Marketing/framing instance** — a separate thinking pass tonight on how to frame/advertise: tweet thread, download page on aphonethatcares.com, the honest-friction framing ("you'll need a friend with a laptop for one command. it's that kind of app"). NOTE: demo footage must be CAMERA video of the physical phone — screen recordings capture pre-daltonizer surfaces and show no change at all (verified fact, and a fun line in itself).
+9. Release signing before sharing APKs (both apps).
 
-## Open decisions (Brian's, not made)
+## Open decisions
 
-- Combine Graydawn + Seeglass into one app? Leaning **no** (different install friction, different metaphors, and an app holding WRITE_SECURE_SETTINGS + a11y service should stay tiny and auditable) — but revisit as "siblings under one PTC landing page."
-- Data tracking / analytics for the public release? Leaning none or local-only; undecided.
-- Distribution / how to advertise: tweet thread + download page on aphonethatcares.com is the natural path; the "gradual ramp is impossible, so here's what I did instead" finding is the hook.
+- Combine Graydawn + Seeglass into one app? **Decided: no** (all three of Brian/me/design-pass agreed — different install friction, different trust asks; the a11y+secure-settings app must stay tiny and auditable). Siblings under one PTC landing page / tweet thread.
+- Analytics: **decided — no telemetry, no INTERNET permission.** The day-12 consented letter (see scope #6) is the whole data story.
+- "The borrow" rename: candidates offered, awaiting Brian's pick (scope #1).
+- Configurable chord gesture: explicitly deprioritized by Brian ("as long as the standard one works").
 
 ## Backlog (acknowledged, unscheduled)
 
