@@ -1,0 +1,132 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8e9cb;
+    font-family: Inter, -apple-system, system-ui, sans-serif;
+  }
+  .stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 34px;
+  }
+  .ph {
+    position: relative;
+    width: 270px;
+    height: 572px;
+    background: #26221d;
+    border-radius: 47px;
+    padding: 9px;
+    box-shadow: 0 25px 65px rgba(44, 42, 39, 0.24);
+    animation: buzz 9s linear infinite;
+  }
+  .vol {
+    position: absolute;
+    right: -5px;
+    width: 5px;
+    border-radius: 3px;
+    background: #26221d;
+    animation: press 9s linear infinite;
+  }
+  .vol-up { top: 151px; height: 47px; }
+  .vol-dn { top: 209px; height: 47px; }
+  .screen {
+    width: 100%;
+    height: 100%;
+    border-radius: 38px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(165deg, #fec89a 0%, #f9a875 38%, #c98bb9 72%, #7d6bb0 100%);
+    filter: grayscale(1);
+    animation: colorize 9s linear infinite;
+  }
+  .clock {
+    margin-top: 61px;
+    font-size: 43px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: rgba(255, 251, 244, 0.95);
+  }
+  .apps {
+    margin-top: auto;
+    display: grid;
+    grid-template-columns: repeat(4, 43px);
+    gap: 20px;
+    padding-bottom: 29px;
+  }
+  .apps span, .dock span {
+    width: 43px;
+    height: 43px;
+    border-radius: 13px;
+    display: block;
+  }
+  .dock {
+    display: grid;
+    grid-template-columns: repeat(4, 43px);
+    gap: 20px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    border-radius: 27px;
+    background: rgba(255, 251, 244, 0.22);
+  }
+  .cap {
+    font-size: 19px;
+    color: rgba(154, 74, 20, 0.88);
+    letter-spacing: 0.01em;
+  }
+  @keyframes colorize {
+    0%, 28% { filter: grayscale(1); }
+    33%, 72% { filter: grayscale(0); }
+    89%, 100% { filter: grayscale(1); }
+  }
+  @keyframes press {
+    0%, 21% { transform: none; }
+    23%, 27% { transform: translateX(-4px); }
+    29%, 100% { transform: none; }
+  }
+  @keyframes buzz {
+    0%, 27.6% { transform: none; }
+    28% { transform: translateX(-3px); }
+    28.4% { transform: translateX(3px); }
+    28.8% { transform: translateX(-2px); }
+    29.2% { transform: translateX(1px); }
+    29.6%, 100% { transform: none; }
+  }
+</style>
+<body>
+  <div class="stage">
+    <div class="ph">
+      <span class="vol vol-up"></span>
+      <span class="vol vol-dn"></span>
+      <div class="screen">
+        <span class="clock">4:07</span>
+        <div class="apps">
+          <span style="background:#e8590c"></span>
+          <span style="background:#37b24d"></span>
+          <span style="background:#1c7ed6"></span>
+          <span style="background:#fab005"></span>
+          <span style="background:#e64980"></span>
+          <span style="background:#7048e8"></span>
+          <span style="background:#12b886"></span>
+          <span style="background:#f03e3e"></span>
+        </div>
+        <div class="dock">
+          <span style="background:#fd7e14"></span>
+          <span style="background:#228be6"></span>
+          <span style="background:#40c057"></span>
+          <span style="background:#be4bdb"></span>
+        </div>
+      </div>
+    </div>
+    <div class="cap">hold both volume buttons — color comes back for a while</div>
+  </div>
+</body>
