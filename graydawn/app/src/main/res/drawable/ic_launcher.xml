@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
@@ -8,13 +9,25 @@
     <path
         android:fillColor="#f6f3ec"
         android:pathData="M0,0h108v108h-108z" />
-    <!-- gray sun at the horizon -->
+    <!-- the dawn sun, in saturated color: the icon itself grays with the
+         phone, so the launcher is a little litmus too -->
     <path
-        android:fillColor="#8f8a83"
-        android:pathData="M54,42 C64,42 72,50 72,60 L36,60 C36,50 44,42 54,42 Z" />
+        android:pathData="M54,34 C68,34 79,45 79,60 L29,60 C29,45 40,34 54,34 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="34"
+                android:startY="66"
+                android:endX="74"
+                android:endY="36"
+                android:startColor="#ff6b57"
+                android:centerColor="#ffc24b"
+                android:endColor="#6bb6ff" />
+        </aapt:attr>
+    </path>
     <!-- horizon line -->
     <path
         android:fillColor="#1a1714"
-        android:fillAlpha="0.7"
-        android:pathData="M20,60 h68 v2 h-68 z" />
+        android:fillAlpha="0.75"
+        android:pathData="M18,60 h72 v2.5 h-72 z" />
 </vector>

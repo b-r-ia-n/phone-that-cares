@@ -17,6 +17,8 @@ class GraydawnService : AccessibilityService() {
         // A full, felt half-second — 400ms read as "instant" in practice.
         private const val HOLD_MS = 550L
         const val DEBUG_ACTION = "com.ptc.graydawn.DEBUG_BORROW"
+        const val DEBUG_SPLASH = "com.ptc.graydawn.DEBUG_SPLASH"
+        const val DEBUG_LETTER = "com.ptc.graydawn.DEBUG_LETTER"
 
         /**
          * The activity and receivers run in this same process; a direct
@@ -38,7 +40,7 @@ class GraydawnService : AccessibilityService() {
         if (upDown && downDown && !fired) {
             fired = true
             if (Gray.saturate(this)) {
-                whisper("${Gray.saturationMinutes(this)} minutes of color")
+                whisper("color! ${Gray.saturationMinutes(this)} minutes of it.")
                 armWatchdog()
             }
         }
@@ -74,9 +76,24 @@ class GraydawnService : AccessibilityService() {
     private val debugReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
             if (Gray.saturate(this@GraydawnService)) {
-                whisper("${Gray.saturationMinutes(this@GraydawnService)} minutes of color")
+                whisper("color! ${Gray.saturationMinutes(this@GraydawnService)} minutes of it.")
                 armWatchdog()
             }
+        }
+    }
+
+    // Taste-testing hook: return color silently, then run the full
+    // splash-to-gray ceremony a beat later.
+    private val debugSplashReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            Gray.setGray(this@GraydawnService, false)
+            handler.postDelayed({ splashThenGray() }, 700L)
+        }
+    }
+
+    private val debugLetterReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            Letter.post(this@GraydawnService)
         }
     }
 
@@ -96,9 +113,19 @@ class GraydawnService : AccessibilityService() {
             registerReceiver(
                 debugReceiver, IntentFilter(DEBUG_ACTION), Context.RECEIVER_EXPORTED
             )
+            registerReceiver(
+                debugSplashReceiver, IntentFilter(DEBUG_SPLASH), Context.RECEIVER_EXPORTED
+            )
+            registerReceiver(
+                debugLetterReceiver, IntentFilter(DEBUG_LETTER), Context.RECEIVER_EXPORTED
+            )
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(debugReceiver, IntentFilter(DEBUG_ACTION))
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(debugSplashReceiver, IntentFilter(DEBUG_SPLASH))
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(debugLetterReceiver, IntentFilter(DEBUG_LETTER))
         }
         registerReceiver(screenOnReceiver, IntentFilter(Intent.ACTION_SCREEN_ON))
         // If the dawn schedule is on, make sure the alarm exists.
@@ -113,6 +140,8 @@ class GraydawnService : AccessibilityService() {
     override fun onDestroy() {
         instance = null
         runCatching { unregisterReceiver(debugReceiver) }
+        runCatching { unregisterReceiver(debugSplashReceiver) }
+        runCatching { unregisterReceiver(debugLetterReceiver) }
         runCatching { unregisterReceiver(screenOnReceiver) }
         handler.removeCallbacks(watchdog)
         super.onDestroy()

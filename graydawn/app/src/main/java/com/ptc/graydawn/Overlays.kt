@@ -47,7 +47,7 @@ object Overlays {
      * the same bloom — the display now rendering it gray — drains away.
      * You watch the color leave the very pixels announcing it.
      *
-     * onPeak runs exactly once, at full bloom. ~1s total, non-touchable.
+     * onPeak runs exactly once, at full bloom. ~1.8s total, non-touchable.
      */
     fun splash(svc: AccessibilityService, onPeak: () -> Unit) {
         if (!interactive(svc)) { onPeak(); return }

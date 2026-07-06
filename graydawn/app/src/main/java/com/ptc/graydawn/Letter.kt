@@ -48,8 +48,15 @@ object Letter {
     fun postIfDue(ctx: Context) {
         if (!due(ctx) || answered(ctx)) return
         if (Gray.prefs(ctx).getBoolean("letter_notified", false)) return
+        if (post(ctx)) {
+            Gray.prefs(ctx).edit().putBoolean("letter_notified", true).apply()
+        }
+    }
+
+    /** Posts the letter notification unconditionally (debug + due path). */
+    fun post(ctx: Context): Boolean {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!nm.areNotificationsEnabled()) return
+        if (!nm.areNotificationsEnabled()) return false
 
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL, "a letter", NotificationManager.IMPORTANCE_DEFAULT)
@@ -61,12 +68,11 @@ object Letter {
         val note = NotificationCompat.Builder(ctx, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher)
             .setContentTitle("a letter from graydawn")
-            .setContentText("the maker wonders whether it's changed anything — want to help?")
+            .setContentText("brian, who made this, wonders whether it works — want to tell him?")
             .setContentIntent(open)
             .setAutoCancel(true)
             .build()
-        runCatching { nm.notify(4, note) }
-        Gray.prefs(ctx).edit().putBoolean("letter_notified", true).apply()
+        return runCatching { nm.notify(4, note) }.isSuccess
     }
 
     // ---- usage comparison --------------------------------------------------
@@ -89,51 +95,41 @@ object Letter {
         return mode == android.app.AppOpsManager.MODE_ALLOWED
     }
 
-    data class AppLine(val label: String, val beforeMinPerDay: Long, val afterMinPerDay: Long)
+    data class AppWeeks(val label: String, val before: List<Long>, val after: List<Long>)
 
     /**
-     * Weekly buckets, ~2 weeks either side of the install. The bucket
-     * that straddles install day is dropped from both sides so the
-     * comparison is honest full-weeks vs full-weeks.
+     * Weekly buckets, up to ~4 weeks back (all Android keeps at weekly
+     * granularity). Each value is that app's min/day for one full week;
+     * the week straddling install day is dropped so the sides compare
+     * honestly. Lists run oldest → newest.
      */
-    fun compare(ctx: Context): List<AppLine> {
+    fun compare(ctx: Context): List<AppWeeks> {
         val usm = ctx.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val install = installTime(ctx)
         val now = System.currentTimeMillis()
-        val begin = install - TimeUnit.DAYS.toMillis(16)
+        val begin = install - TimeUnit.DAYS.toMillis(30)
 
         val buckets = usm.queryUsageStats(UsageStatsManager.INTERVAL_WEEKLY, begin, now)
             ?: return emptyList()
 
-        val beforeMs = HashMap<String, Long>()
-        val afterMs = HashMap<String, Long>()
-        var beforeSpanMs = 0L
-        var afterSpanMs = 0L
-        val beforeSpans = HashSet<Long>()
-        val afterSpans = HashSet<Long>()
-
+        // weekStart(epoch-day) -> pkg -> min/day in that week
+        data class Week(val start: Long, val days: Double, val perApp: HashMap<String, Long>)
+        val weeks = HashMap<Long, Week>()
         for (b in buckets) {
-            val side = when {
-                b.lastTimeStamp <= install -> beforeMs
-                b.firstTimeStamp >= install -> afterMs
-                else -> continue // straddles the install; drop it
-            }
             if (b.totalTimeInForeground <= 0L) continue
-            side.merge(b.packageName, b.totalTimeInForeground, Long::plus)
-            // Count each bucket window once per side (keyed by start time).
-            if (side === beforeMs) {
-                if (beforeSpans.add(b.firstTimeStamp)) {
-                    beforeSpanMs += b.lastTimeStamp - b.firstTimeStamp
-                }
-            } else {
-                if (afterSpans.add(b.firstTimeStamp)) {
-                    afterSpanMs += b.lastTimeStamp - b.firstTimeStamp
-                }
-            }
+            if (b.firstTimeStamp < install && b.lastTimeStamp > install) continue // straddle
+            val key = b.firstTimeStamp / 86_400_000L
+            val days = ((b.lastTimeStamp - b.firstTimeStamp) / 86_400_000.0)
+                .coerceAtLeast(1.0)
+            val w = weeks.getOrPut(key) { Week(b.firstTimeStamp, days, HashMap()) }
+            w.perApp.merge(
+                b.packageName, (b.totalTimeInForeground / 60_000.0 / days).toLong(), Long::plus
+            )
         }
 
-        val beforeDays = (beforeSpanMs / 86_400_000.0).coerceAtLeast(1.0)
-        val afterDays = (afterSpanMs / 86_400_000.0).coerceAtLeast(1.0)
+        val ordered = weeks.values.sortedBy { it.start }
+        val beforeWeeks = ordered.filter { it.start < install }
+        val afterWeeks = ordered.filter { it.start >= install }
 
         val pm = ctx.packageManager
         fun launchable(pkg: String): Boolean =
@@ -142,67 +138,74 @@ object Letter {
             pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString().lowercase()
         }.getOrDefault(pkg.substringAfterLast('.'))
 
-        return (beforeMs.keys + afterMs.keys)
+        return ordered.flatMap { it.perApp.keys }.distinct()
             .filter(::launchable)
             .map { pkg ->
-                AppLine(
+                AppWeeks(
                     label(pkg),
-                    ((beforeMs[pkg] ?: 0L) / 60_000.0 / beforeDays).toLong(),
-                    ((afterMs[pkg] ?: 0L) / 60_000.0 / afterDays).toLong()
+                    beforeWeeks.map { it.perApp[pkg] ?: 0L },
+                    afterWeeks.map { it.perApp[pkg] ?: 0L }
                 )
             }
-            .filter { it.beforeMinPerDay >= 5 || it.afterMinPerDay >= 5 }
-            .sortedByDescending { maxOf(it.beforeMinPerDay, it.afterMinPerDay) }
+            .filter { (it.before + it.after).any { v -> v >= 5 } }
+            .sortedByDescending { (it.before + it.after).maxOrNull() ?: 0L }
             .take(8)
     }
 
-    fun compose(ctx: Context, lines: List<AppLine>, note: String): String {
+    /** lines == null means the person chose not to attach numbers. */
+    fun compose(ctx: Context, lines: List<AppWeeks>?, note: String): String {
         val days = TimeUnit.MILLISECONDS.toDays(
             System.currentTimeMillis() - installTime(ctx)
         )
         val sb = StringBuilder()
         sb.append("hi brian —\n\n")
-        sb.append("this phone has had graydawn for $days days. ")
-        sb.append("here's what its own usage counter says, screen time per day, ")
-        sb.append("the weeks before the gray vs the weeks after:\n\n")
-        if (lines.isEmpty()) {
-            sb.append("  (the phone wouldn't share its numbers — usage access ")
-            sb.append("may have been declined. that's fine; the note below still counts.)\n")
-        } else {
-            for (l in lines) {
-                sb.append("  ${l.label} — ${l.beforeMinPerDay} min/day before, ")
-                sb.append("${l.afterMinPerDay} after\n")
+        sb.append("this phone has had graydawn for $days days.\n\n")
+        if (lines != null) {
+            sb.append("screen time per day, week by week ")
+            sb.append("(the → is when graydawn arrived):\n\n")
+            if (lines.isEmpty()) {
+                sb.append("  (not enough full weeks to compare yet)\n")
+            } else {
+                for (l in lines) {
+                    val before = if (l.before.isEmpty()) "(no data)"
+                        else l.before.joinToString(", ") + " min/day"
+                    val after = if (l.after.isEmpty()) "(no full week yet)"
+                        else l.after.joinToString(", ") + " min/day"
+                    sb.append("  ${l.label} — $before → $after\n")
+                }
             }
+            sb.append("\nthe week it arrived straddles the line, so it's left out. ")
+            sb.append("rough numbers from one phone, not a study.\n\n")
         }
-        sb.append("\nthe week the app arrived straddles the line, so it's left out ")
-        sb.append("of both sides. rough numbers from one phone, not a study.\n\n")
         sb.append("from the person:\n")
         sb.append(if (note.isBlank()) "  (they left it blank)" else "  $note")
-        sb.append("\n\n(written on this phone by graydawn, which has no internet — ")
-        sb.append("it only left because someone tapped send.)\n")
+        sb.append("\n")
         return sb.toString()
     }
 
-    /** mailto first (prefilled recipient); plain share sheet as fallback. */
-    fun send(ctx: Context, body: String) {
-        val subject = "a graydawn letter"
+    private const val SUBJECT = "a graydawn letter"
+
+    /** Prefilled email to Brian. Returns false if no mail app answers. */
+    fun sendEmail(ctx: Context, body: String): Boolean {
         val mailto = Intent(Intent.ACTION_SENDTO).apply {
             data = android.net.Uri.parse("mailto:$ADDRESS")
-            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_SUBJECT, SUBJECT)
             putExtra(Intent.EXTRA_TEXT, body)
         }
-        val ok = runCatching {
+        return runCatching {
             if (mailto.resolveActivity(ctx.packageManager) != null) {
                 ctx.startActivity(mailto); true
             } else false
         }.getOrDefault(false)
-        if (!ok) {
-            val share = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, subject)
-                putExtra(Intent.EXTRA_TEXT, "to: $ADDRESS\n\n$body")
-            }
-            runCatching { ctx.startActivity(Intent.createChooser(share, "send the letter")) }
+    }
+
+    /** Any-app share sheet — their messenger, their notes, their call. */
+    fun sendShare(ctx: Context, body: String) {
+        val share = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, SUBJECT)
+            putExtra(Intent.EXTRA_TEXT, "to: $ADDRESS\n\n$body")
         }
+        runCatching { ctx.startActivity(Intent.createChooser(share, "send the letter")) }
     }
 }
