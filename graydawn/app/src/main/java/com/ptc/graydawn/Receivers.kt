@@ -4,25 +4,26 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 
-/** Dawn: the day begins gray. */
+/**
+ * Dawn: the day begins gray. An active saturation is honored — the hold
+ * bought its minutes outright, so dawn waits for the snap-back alarm
+ * rather than taking them back mid-scroll.
+ */
 class DawnReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
+        Gray.markDawnDone(ctx)
+        if (Gray.saturationUntil(ctx) > System.currentTimeMillis()) return
         Gray.setGray(ctx, true)
+        Letter.postIfDue(ctx)
     }
 }
 
-/** A soft word before the color leaves. */
-class WarnReceiver : BroadcastReceiver() {
-    override fun onReceive(ctx: Context, intent: Intent) {
-        Gray.vibrate(ctx, longArrayOf(0, 30, 120, 30, 120, 30))
-    }
-}
-
-/** The borrow ends; the tide comes back in. */
+/** The saturation drains back; the day is gray again. */
 class RegrayReceiver : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         Gray.prefs(ctx).edit().putLong("borrow_until", 0L).apply()
         Gray.setGray(ctx, true)
+        GraydawnService.instance?.whisper("gray again.")
     }
 }
 

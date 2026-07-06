@@ -11,13 +11,32 @@ android {
         applicationId = "com.ptc.graydawn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = 2
+        versionName = "0.2"
+    }
+
+    // Shared PTC release key. Lives outside the repo (keys/ is gitignored);
+    // builds stay unsigned-release-capable on machines without it.
+    val ptcKeystore =
+        file(System.getProperty("user.home") + "/Desktop/PhoneThatCares/keys/ptc-release.keystore")
+    signingConfigs {
+        if (ptcKeystore.exists()) {
+            create("ptcRelease") {
+                val pw = ptcKeystore.resolveSibling("ptc-release-password.txt").readText().trim()
+                storeFile = ptcKeystore
+                storePassword = pw
+                keyAlias = "ptc"
+                keyPassword = pw
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            if (ptcKeystore.exists()) {
+                signingConfig = signingConfigs.getByName("ptcRelease")
+            }
         }
     }
     compileOptions {

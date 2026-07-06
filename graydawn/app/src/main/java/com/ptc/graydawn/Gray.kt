@@ -17,6 +17,10 @@ object Gray {
     private const val DALTONIZER = "accessibility_display_daltonizer"
     private const val MODE_GRAYSCALE = 0
 
+    const val DAWN_HOUR = 4
+
+    // Pref keys keep their original names ("borrow_*") so an installed
+    // phone upgrades without losing state; only the language changed.
     fun prefs(ctx: Context): SharedPreferences =
         ctx.getSharedPreferences("graydawn", Context.MODE_PRIVATE)
 
@@ -33,17 +37,24 @@ object Gray {
         Settings.Secure.putInt(ctx.contentResolver, DALTONIZER_ENABLED, if (on) 1 else 0)
     }.isSuccess
 
-    fun borrowMinutes(ctx: Context): Int = prefs(ctx).getInt("borrow_minutes", 20)
-    fun setBorrowMinutes(ctx: Context, v: Int) =
+    fun saturationMinutes(ctx: Context): Int = prefs(ctx).getInt("borrow_minutes", 20)
+    fun setSaturationMinutes(ctx: Context, v: Int) =
         prefs(ctx).edit().putInt("borrow_minutes", v).apply()
 
     fun dawnEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("dawn_enabled", true)
     fun setDawnEnabled(ctx: Context, v: Boolean) {
         prefs(ctx).edit().putBoolean("dawn_enabled", v).apply()
-        if (v) scheduleDawn(ctx) else cancelDawn(ctx)
+        if (v) {
+            // Turning the switch on means "starting tomorrow", not
+            // "snap gray the next time the screen lights up today."
+            markDawnDone(ctx)
+            scheduleDawn(ctx)
+        } else {
+            cancelDawn(ctx)
+        }
     }
 
-    fun borrowUntil(ctx: Context): Long = prefs(ctx).getLong("borrow_until", 0L)
+    fun saturationUntil(ctx: Context): Long = prefs(ctx).getLong("borrow_until", 0L)
 
     private fun pending(ctx: Context, cls: Class<*>, code: Int): PendingIntent =
         PendingIntent.getBroadcast(
@@ -51,19 +62,18 @@ object Gray {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-    /** Borrow color: gray off now; warn haptic near the end; gray returns after. */
-    fun borrow(ctx: Context): Boolean {
+    /**
+     * The hold: color now, gray again after the saturation runs out.
+     * The warning buzz near the end is timed by the service watchdog,
+     * not an alarm — a second allow-while-idle alarm would trade doze
+     * throttle budget away from the snap-back, which must not slip.
+     */
+    fun saturate(ctx: Context): Boolean {
         if (!setGray(ctx, false)) return false
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val ms = borrowMinutes(ctx) * 60_000L
+        val ms = saturationMinutes(ctx) * 60_000L
         val until = System.currentTimeMillis() + ms
         prefs(ctx).edit().putLong("borrow_until", until).apply()
-        if (ms > 45_000L) {
-            am.setWindow(
-                AlarmManager.RTC_WAKEUP, until - 30_000L, 10_000L,
-                pending(ctx, WarnReceiver::class.java, 1)
-            )
-        }
         // Exact + allow-while-idle: Doze may defer a plain setWindow alarm
         // for hours on real hardware, so the snap-back must punch through.
         am.setExactAndAllowWhileIdle(
@@ -74,20 +84,64 @@ object Gray {
         return true
     }
 
-    /** Watchdog: if a borrow has run out, end it now. True if it regrayed. */
+    /**
+     * Going gray by hand while a saturation is live ends the saturation —
+     * otherwise a stale borrow_until leaves the status line lying.
+     */
+    fun endSaturationEarly(ctx: Context) {
+        prefs(ctx).edit().putLong("borrow_until", 0L).apply()
+        val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        am.cancel(pending(ctx, RegrayReceiver::class.java, 2))
+    }
+
+    /** Watchdog: if a saturation has run out, end it now. True if it regrayed. */
     fun regrayIfDue(ctx: Context): Boolean {
-        val until = borrowUntil(ctx)
+        val until = saturationUntil(ctx)
         if (until == 0L || System.currentTimeMillis() < until) return false
         prefs(ctx).edit().putLong("borrow_until", 0L).apply()
         setGray(ctx, true)
         return true
     }
 
+    // ---- dawn bookkeeping -------------------------------------------------
+
+    private fun today(): Long = System.currentTimeMillis() / 86_400_000L
+
+    fun markDawnDone(ctx: Context) =
+        prefs(ctx).edit().putLong("last_dawn_day", today()).apply()
+
+    private fun dawnDoneToday(ctx: Context): Boolean =
+        prefs(ctx).getLong("last_dawn_day", 0L) >= today()
+
+    private fun pastDawnToday(): Boolean =
+        Calendar.getInstance().get(Calendar.HOUR_OF_DAY) >= DAWN_HOUR
+
+    /**
+     * The dawn alarm is deliberately inexact, so a deep-dozing phone can
+     * sleep through 4:00. Called on screen-on and service connect: if
+     * today's dawn hasn't landed yet and it's past the hour, land it now.
+     * An active saturation is honored — nothing is taken back early; the
+     * snap-back alarm will bring the gray when the saturation ends.
+     */
+    fun dawnCatchUpIfDue(ctx: Context): Boolean {
+        if (!hasPermission(ctx)) return false
+        // First run: the phone's first gray should be the first-try tap or
+        // the first real dawn — never an ambush at install time.
+        if (prefs(ctx).getLong("last_dawn_day", 0L) == 0L) {
+            markDawnDone(ctx)
+            return false
+        }
+        if (!dawnEnabled(ctx) || dawnDoneToday(ctx) || !pastDawnToday()) return false
+        markDawnDone(ctx)
+        if (saturationUntil(ctx) > System.currentTimeMillis()) return false
+        return setGray(ctx, true)
+    }
+
     /** Daily inexact alarm around the dawn hour (default 4:00). */
     fun scheduleDawn(ctx: Context) {
         val am = ctx.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val cal = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 4)
+            set(Calendar.HOUR_OF_DAY, DAWN_HOUR)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
             if (timeInMillis <= System.currentTimeMillis()) {
