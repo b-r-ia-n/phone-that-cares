@@ -33,15 +33,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusLine: TextView
     private lateinit var firstTryCard: TextView
     private lateinit var letterCard: LinearLayout
-    private lateinit var permStatus: TextView
-    private lateinit var listenerStatus: TextView
-    private lateinit var tanglesBox: LinearLayout
+    private lateinit var setupBox: LinearLayout
     private lateinit var saturationCaption: TextView
     private lateinit var grayNow: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private var justUntied = false
     private var firstTryDoneThisVisit = false
+
+    private val inter get() = ResourcesCompat.getFont(this, R.font.inter)
+    private val ink get() = ContextCompat.getColor(this, R.color.ink)
+    private val inkSoft get() = ContextCompat.getColor(this, R.color.ink_soft)
+    private val accent get() = ContextCompat.getColor(this, R.color.accent)
+    private val hairline get() = ContextCompat.getColor(this, R.color.hairline)
 
     // The status line carries real minutes; tick it once a minute while
     // visible. The first-try card polls faster, only while it's showing.
@@ -68,14 +72,26 @@ class MainActivity : AppCompatActivity() {
     private fun prefs() = Gray.prefs(this)
     private fun firstTryDone() = prefs().getBoolean("first_try_done", false)
 
+    private fun label(parent: LinearLayout, t: String) = parent.addView(
+        TextView(this).apply {
+            text = t; typeface = inter; setTextColor(ink)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setPadding(0, dp(20), 0, dp(4))
+        }
+    )
+
+    private fun caption(parent: LinearLayout, t: String): TextView {
+        val v = TextView(this).apply {
+            text = t; typeface = inter; setTextColor(inkSoft)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setTextIsSelectable(true)
+            setPadding(0, 0, 0, dp(8))
+        }
+        parent.addView(v); return v
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val inter = ResourcesCompat.getFont(this, R.font.inter)
-        val ink = ContextCompat.getColor(this, R.color.ink)
-        val inkSoft = ContextCompat.getColor(this, R.color.ink_soft)
-        val accent = ContextCompat.getColor(this, R.color.accent)
-        val hairline = ContextCompat.getColor(this, R.color.hairline)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -153,7 +169,7 @@ class MainActivity : AppCompatActivity() {
             visibility = View.GONE
         }
         letterCard.addView(TextView(this).apply {
-            text = "the maker of graydawn wonders whether\nit's changed anything — want to help?"
+            text = "how's using graydawn going?\nbrian, who made it, is curious."
             typeface = inter; setTextColor(ink)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             setLineSpacing(0f, 1.25f)
@@ -176,44 +192,26 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { topMargin = dp(20) })
 
-        fun label(t: String) = root.addView(TextView(this).apply {
-            text = t; typeface = inter; setTextColor(ink)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-            setPadding(0, dp(20), 0, dp(4))
-        })
-        fun caption(t: String): TextView {
-            val v = TextView(this).apply {
-                text = t; typeface = inter; setTextColor(inkSoft)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                setTextIsSelectable(true)
-                setPadding(0, 0, 0, dp(8))
-            }
-            root.addView(v); return v
-        }
+        // Setup area: full sections while anything needs a person's hand,
+        // one quiet line once the machinery is healthy.
+        setupBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(setupBox)
 
-        // 1. system permission
-        label("the key")
-        permStatus = caption("")
-
-        // 2. accessibility listener
-        label("the listener")
-        listenerStatus = caption("")
-        listenerStatus.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
-
-        // 3. tangles: existing phone settings that would fight the hold
-        label("the tangles")
-        tanglesBox = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        root.addView(tanglesBox)
-
-        // 4. dawn schedule
-        label("gray every dawn")
-        caption("around 4:00 each morning, before anyone is awake")
+        // Dawn schedule — label and switch share the row.
         val checkedStates = arrayOf(
             intArrayOf(android.R.attr.state_checked), intArrayOf()
         )
-        root.addView(Switch(this).apply {
+        val dawnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(20), 0, dp(4))
+        }
+        dawnRow.addView(TextView(this).apply {
+            text = "gray every dawn"
+            typeface = inter; setTextColor(ink)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        dawnRow.addView(Switch(this).apply {
             isChecked = Gray.dawnEnabled(this@MainActivity)
             thumbTintList = android.content.res.ColorStateList(
                 checkedStates, intArrayOf(accent, Color.parseColor("#b8b0a4"))
@@ -226,10 +224,12 @@ class MainActivity : AppCompatActivity() {
                 refreshStatus()
             }
         })
+        root.addView(dawnRow)
+        caption(root, "around 4:00 each morning, before anyone is awake")
 
-        // 5. saturation length
-        label("the saturation")
-        saturationCaption = caption(saturationText(Gray.saturationMinutes(this)))
+        // Saturation length.
+        label(root, "the saturation")
+        saturationCaption = caption(root, saturationText(Gray.saturationMinutes(this)))
         root.addView(SeekBar(this).apply {
             max = 11 // 5..60 in 5-min steps
             progress = (Gray.saturationMinutes(this@MainActivity) - 5) / 5
@@ -246,7 +246,7 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // 6. try it
+        // Try it.
         grayNow = TextView(this).apply {
             typeface = inter; setTextColor(accent)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
@@ -278,7 +278,7 @@ class MainActivity : AppCompatActivity() {
             if (svc != null) {
                 svc.splashThenGray()
                 // The snap lands at the bloom's peak; refresh just after.
-                handler.postDelayed({ refresh() }, 450L)
+                handler.postDelayed({ refresh() }, 600L)
             } else {
                 Gray.setGray(this, true)
                 refresh()
@@ -312,30 +312,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        permStatus.text = if (Gray.hasPermission(this)) {
-            "granted — graydawn can flip the phone's color switch"
-        } else {
-            "not yet — have a friend with a laptop run this once:\n\n" +
-                "adb shell pm grant com.ptc.graydawn " +
-                "android.permission.WRITE_SECURE_SETTINGS"
-        }
-        listenerStatus.text = if (isServiceEnabled()) {
-            if (GraydawnService.instance == null) {
-                // Enabled in settings but the system never rebound it —
-                // happens after force-stop and OEM battery killers.
-                "listed as on, but not actually running — tap here,\n" +
-                    "then flip Graydawn off and back on"
-            } else {
-                "on — watching for both volume buttons held together"
-            }
-        } else {
-            "not listening yet — tap here, then enable Graydawn\nunder installed apps"
-        }
+        refreshSetup()
         refreshFirstTry()
         letterCard.visibility =
             if (Letter.due(this) && !Letter.answered(this)) View.VISIBLE else View.GONE
         refreshStatus()
-        refreshTangles()
     }
 
     private fun refreshFirstTry() {
@@ -375,34 +356,89 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Look for existing phone settings that would fight the hold. */
-    private fun refreshTangles() {
-        val inter = ResourcesCompat.getFont(this, R.font.inter)
-        val inkSoft = ContextCompat.getColor(this, R.color.ink_soft)
-        val accent = ContextCompat.getColor(this, R.color.accent)
-        tanglesBox.removeAllViews()
+    /**
+     * Setup, sized to its need: while the key or listener is missing (or
+     * something tangles the hold), the full sections explain themselves.
+     * Once everything is healthy it folds into one quiet line — a settled
+     * phone shouldn't keep talking about its organs.
+     */
+    private fun refreshSetup() {
+        setupBox.removeAllViews()
+        val key = Gray.hasPermission(this)
+        val enabled = isServiceEnabled()
+        val running = enabled && GraydawnService.instance != null
+        val tangles = collectTangles()
 
-        fun tangle(text: String, clickable: Boolean = false, onTap: (() -> Unit)? = null) {
-            tanglesBox.addView(TextView(this).apply {
-                this.text = text
-                typeface = inter
-                setTextColor(if (clickable) accent else inkSoft)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                setPadding(0, 0, 0, dp(8))
-                onTap?.let { setOnClickListener { _ -> it() } }
-            })
+        fun quietLine(t: String) = setupBox.addView(TextView(this).apply {
+            text = t
+            typeface = inter; setTextColor(inkSoft)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setPadding(0, dp(16), 0, 0)
+        })
+
+        if (key && running && tangles.isEmpty() && !justUntied) {
+            quietLine("the key ✓ · the listener ✓ · the hold is yours alone")
+            return
         }
 
-        var found = false
+        if (!key) {
+            label(setupBox, "the key")
+            caption(
+                setupBox,
+                "not yet — have a friend with a laptop run this once:\n\n" +
+                    "adb shell pm grant com.ptc.graydawn " +
+                    "android.permission.WRITE_SECURE_SETTINGS"
+            )
+        }
+        if (!running) {
+            label(setupBox, "the listener")
+            caption(
+                setupBox,
+                if (enabled) {
+                    // Enabled in settings but the system never rebound it —
+                    // happens after force-stop and OEM battery killers.
+                    "listed as on, but not actually running — tap here,\n" +
+                        "then flip Graydawn off and back on"
+                } else {
+                    "not listening yet — tap here, then enable Graydawn\n" +
+                        "under installed apps"
+                }
+            ).setOnClickListener {
+                startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            }
+        }
+        if (key && running) {
+            quietLine("the key ✓ · the listener ✓")
+        }
+        if (tangles.isNotEmpty() || justUntied) {
+            label(setupBox, "the tangles")
+            if (tangles.isEmpty() && justUntied) {
+                caption(setupBox, "untied — the hold is yours now.")
+            }
+            for ((text, onTap) in tangles) {
+                setupBox.addView(TextView(this).apply {
+                    this.text = text
+                    typeface = inter
+                    setTextColor(if (onTap != null) accent else inkSoft)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    setPadding(0, 0, 0, dp(8))
+                    onTap?.let { setOnClickListener { _ -> it() } }
+                })
+            }
+        }
+    }
 
-        // 1. The phone's own hold-both-volume-keys shortcut. It fires at the
-        // system level, upstream of graydawn — if anything is bound there,
-        // the hold belongs to it, not to us.
+    /** Phone settings that would fight the hold: (text, tap-to-fix or null). */
+    private fun collectTangles(): List<Pair<String, (() -> Unit)?>> {
+        val out = ArrayList<Pair<String, (() -> Unit)?>>()
+
+        // 1. The phone's own hold-both-volume-keys shortcut. It fires at
+        // the system level, upstream of graydawn — if anything is bound
+        // there, the hold belongs to it, not to us.
         val holdTarget = Settings.Secure.getString(
             contentResolver, "accessibility_shortcut_target_service"
         )?.trim().orEmpty()
         if (holdTarget.isNotEmpty()) {
-            found = true
             val what = if (holdTarget.contains("daltonizer", ignoreCase = true)) {
                 "color correction"
             } else {
@@ -410,28 +446,26 @@ class MainActivity : AppCompatActivity() {
                     .ifEmpty { "another shortcut" }
             }
             if (Gray.hasPermission(this)) {
-                tangle(
-                    "your phone already uses hold-both-buttons for $what — " +
+                out.add(
+                    ("your phone already uses hold-both-buttons for $what — " +
                         "it catches the hold before graydawn can.\n" +
-                        "tap here to untie it.",
-                    clickable = true
-                ) {
-                    Settings.Secure.putString(
-                        contentResolver, "accessibility_shortcut_target_service", ""
-                    )
-                    justUntied = true
-                    refresh()
-                }
+                        "tap here to untie it.") to {
+                        Settings.Secure.putString(
+                            contentResolver,
+                            "accessibility_shortcut_target_service", ""
+                        )
+                        justUntied = true
+                        refresh()
+                    }
+                )
             } else {
-                tangle(
-                    "your phone already uses hold-both-buttons for $what — " +
+                out.add(
+                    ("your phone already uses hold-both-buttons for $what — " +
                         "it catches the hold before graydawn can. " +
                         "untie it in Settings → Accessibility → Shortcuts, " +
-                        "or grant the key above and tap here."
+                        "or grant the key above and tap here.") to null
                 )
             }
-        } else if (justUntied) {
-            tangle("untied — the hold is yours now.")
         }
 
         // 2. Other accessibility services that might also watch the buttons.
@@ -454,12 +488,11 @@ class MainActivity : AppCompatActivity() {
                 }.getOrDefault(pkg.substringAfterLast('.'))
             }
         if (others.isNotEmpty()) {
-            found = true
-            tangle(
-                "also listening: ${others.joinToString(", ")}. " +
+            out.add(
+                ("also listening: ${others.joinToString(", ")}. " +
                     "if one of these watches the volume buttons or toggles " +
                     "grayscale on its own, the two of you will fight — " +
-                    "quiet any button rules there."
+                    "quiet any button rules there.") to null
             )
         }
 
@@ -467,27 +500,23 @@ class MainActivity : AppCompatActivity() {
         // graydawn is exactly an app you never reopen.
         when {
             android.os.Build.MANUFACTURER.equals("samsung", true) -> {
-                found = true
-                tangle(
-                    "samsung phones put apps to sleep after a few days " +
+                out.add(
+                    ("samsung phones put apps to sleep after a few days " +
                         "unopened, which would silence the dawn. in Settings " +
                         "→ Battery, set Graydawn to unrestricted and add it " +
-                        "to “never sleeping apps.”"
+                        "to “never sleeping apps.”") to null
                 )
             }
             android.os.Build.MANUFACTURER.equals("motorola", true) -> {
-                found = true
-                tangle(
-                    "motorola's battery care likes to stop quiet apps, " +
+                out.add(
+                    ("motorola's battery care likes to stop quiet apps, " +
                         "which would silence the dawn. in Settings → Battery, " +
-                        "set Graydawn to unrestricted."
+                        "set Graydawn to unrestricted.") to null
                 )
             }
         }
 
-        if (!found && !justUntied) {
-            tangle("no tangles — the hold is yours alone.")
-        }
+        return out
     }
 
     private fun isServiceEnabled(): Boolean {
