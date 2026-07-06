@@ -242,32 +242,6 @@ class MainActivity : AppCompatActivity() {
         root.addView(dawnRow)
         caption(root, "around 4:00 each morning, before anyone is awake")
 
-        // The camera pass — label and switch share the row, like dawn.
-        val cameraRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(0, dp(20), 0, dp(4))
-        }
-        cameraRow.addView(TextView(this).apply {
-            text = "the camera keeps its color"
-            typeface = inter; setTextColor(ink)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
-        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-        cameraRow.addView(Switch(this).apply {
-            isChecked = Gray.cameraKeepsColor(this@MainActivity)
-            thumbTintList = android.content.res.ColorStateList(
-                checkedStates, intArrayOf(accent, Color.parseColor("#b8b0a4"))
-            )
-            trackTintList = android.content.res.ColorStateList(
-                checkedStates, intArrayOf(Color.parseColor("#d9c4a8"), hairline)
-            )
-            setOnCheckedChangeListener { _, checked ->
-                Gray.setCameraKeepsColor(this@MainActivity, checked)
-            }
-        })
-        root.addView(cameraRow)
-        caption(root, "the gray lifts while the camera is open — photos were always in color anyway")
-
         // Saturation length.
         label(root, "the saturation")
         saturationCaption = caption(root, saturationText(Gray.saturationMinutes(this)))

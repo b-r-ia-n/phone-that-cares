@@ -6,8 +6,10 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.TypedValue
+import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.Switch
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -152,6 +154,40 @@ class SettingsActivity : AppCompatActivity() {
                     .putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
             )
         }
+
+        // ---- the camera ----
+        val camRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(0, dp(22), 0, dp(4))
+        }
+        camRow.addView(TextView(this).apply {
+            text = "the camera keeps its color"
+            typeface = inter; setTextColor(ink)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        val checkedStates = arrayOf(
+            intArrayOf(android.R.attr.state_checked), intArrayOf()
+        )
+        camRow.addView(Switch(this).apply {
+            isChecked = Gray.cameraKeepsColor(this@SettingsActivity)
+            thumbTintList = android.content.res.ColorStateList(
+                checkedStates,
+                intArrayOf(accent, android.graphics.Color.parseColor("#b8b0a4"))
+            )
+            trackTintList = android.content.res.ColorStateList(
+                checkedStates,
+                intArrayOf(
+                    android.graphics.Color.parseColor("#d9c4a8"),
+                    ContextCompat.getColor(this@SettingsActivity, R.color.hairline)
+                )
+            )
+            setOnCheckedChangeListener { _, checked ->
+                Gray.setCameraKeepsColor(this@SettingsActivity, checked)
+            }
+        })
+        root.addView(camRow)
+        caption("the gray lifts while a camera app is open — photos were always in color anyway.")
 
         // ---- potential conflicts ----
         label("potential conflicts")
