@@ -43,6 +43,41 @@ Written ~11pm July 5 by the overnight instance. Branch `worktree-seeglass-overni
 
 **What iOS can't do: the saturation.** There's no reliable "color came back → 20 minutes → gray returns" — no state-change trigger in Shortcuts, and long background Waits get killed. Triple-click color lasts until you triple-click again or the 4am automation. Also unavailable: the buzz vocabulary, litmus chip, tangles, and the day-12 letter. Verdict: a "graydawn for iPhone" *setup guide page* on the site would cost an evening, needs no App Store, and is very tweetable ("the iphone version is not an app. your phone already knows how; here's the incantation"). Could live beside the download page.
 
+## Night-cap round (~1am, after Brian's last feedback — built, committed, NOT yet on the phone; cable dropped. Morning: `adb install -r _context/seeglass-2026-07-05/graydawn.apk`)
+
+- Gmail mailto bug fixed — body now rides URL-encoded inside the mailto URI (Gmail ignores EXTRA_TEXT); "email it to brian" will populate.
+- Bullets tightened: lead-in + bullets + CTA read as one visual paragraph (6dp between items, hanging indent).
+- Back arrow on the letter's main page now goes to the app's homepage (MainActivity), not to nowhere; main-page "never mind" removed (back arrow is the exit; explicit decline stays on the day-12 card's "no thanks"). The access page keeps its "actually, never mind."
+
+## Naming the thing that isn't a letter (Brian: pick one)
+
+The notification + screen currently say "a letter from graydawn." Brian doesn't want "letter." Options, each with the notification line it implies:
+
+1. **the postcard** — short, personal, has a picture on it (his cartoon!). "a postcard from brian — he wonders whether graydawn works. want to write back?"
+2. **checking in** — no object-noun at all, just the act. "brian, who made graydawn, is checking in — did it change anything?"
+3. **write back** — frames the install itself as the first message; this is the reply. "graydawn was a note from brian. want to write back?"
+4. **day 12** — names the moment, not the artifact; a bit mysterious. "day 12 — brian wonders whether graydawn changed anything. want to tell him?"
+
+My take: **the postcard** — it's honest about the size of the ask (small, informal, optional), the cartoon literally makes it a postcard, and "write back" can be the send button's verb regardless of which name wins.
+
+## What's left before public release (morning conversation agenda)
+
+Blocking:
+1. Name the postcard/letter thing (above) + Brian reviews the two new icons (launcher: Graydawn = dawn-gradient sun that grays with the phone; Seeglass = tumbled pebble).
+2. One real end-to-end send: Brian emails himself the letter from the phone, confirms it lands at b@aphonethatcares.com formatted right.
+3. Move Brian's Pixel to the release-signed build (uninstall → graydawn-release.apk → re-grant key → re-enable listener) and live with it a day or two — the public artifact, not the debug twin.
+4. Download page on aphonethatcares.com — copy already written (marketing doc), needs: page build, APK hosted (the release one), the iPhone-recipe section, and the compat caveat updated from the research doc.
+5. Demo video — camera at the physical phone; 6-shot list in the marketing doc.
+6. Tweet thread — draft exists; needs Brian's voice pass.
+
+Worth doing, not blocking:
+7. A Samsung test if any friend has one (biggest compat unknown: chord + battery sleeping). Or ship honestly as "lived-with on Pixel."
+8. /security-review skim of graydawn (~800 lines; a11y + WRITE_SECURE_SETTINGS app should get one look before strangers install it).
+9. Decide: letter notification quiet (current) vs heads-up; raw-data zip attachment (design project, can ship without).
+10. Dawn-time and hold-gesture stay fixed (Brian deprioritized configurability) — just confirm that's still true for v-public.
+
+Explicitly NOT blocking: Seeglass anything (separate release), TikTok stub, YouTube login, tip jar, Play listing.
+
 ## Open / next
 
 - Brian feel-tests 0.2: the hold, near-miss buzz, splash timing, whispers, notification ask.

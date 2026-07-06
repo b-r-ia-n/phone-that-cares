@@ -185,10 +185,17 @@ object Letter {
 
     private const val SUBJECT = "a graydawn letter"
 
-    /** Prefilled email to Brian. Returns false if no mail app answers. */
+    /**
+     * Prefilled email to Brian. Gmail ignores EXTRA_TEXT on mailto
+     * intents, so subject and body ride inside the URI, URL-encoded.
+     * Returns false if no mail app answers.
+     */
     fun sendEmail(ctx: Context, body: String): Boolean {
+        val uri = "mailto:$ADDRESS" +
+            "?subject=${android.net.Uri.encode(SUBJECT)}" +
+            "&body=${android.net.Uri.encode(body)}"
         val mailto = Intent(Intent.ACTION_SENDTO).apply {
-            data = android.net.Uri.parse("mailto:$ADDRESS")
+            data = android.net.Uri.parse(uri)
             putExtra(Intent.EXTRA_SUBJECT, SUBJECT)
             putExtra(Intent.EXTRA_TEXT, body)
         }

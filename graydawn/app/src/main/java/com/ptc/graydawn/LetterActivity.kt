@@ -117,7 +117,11 @@ class LetterActivity : AppCompatActivity() {
     // ---- page: the ask -----------------------------------------------------
 
     private fun buildMain() {
-        backArrow { finish() }
+        // Back leads home — to the rest of the app, not to nowhere.
+        backArrow {
+            startActivity(Intent(this, MainActivity::class.java))
+            finish()
+        }
 
         // Brian, waving. Centered, with room to breathe.
         root.addView(ImageView(this).apply {
@@ -131,14 +135,41 @@ class LetterActivity : AppCompatActivity() {
         caption(
             "hey there! i'm brian, i made graydawn. i'm wondering whether " +
                 "it works — whether it changed anything about the way you " +
-                "use your phone.\n\n" +
-                "if you want to help me:\n\n" +
-                "  •  the first button below will help you send me the cold " +
-                "hard data on your screen time for the last four weeks\n\n" +
-                "  •  the second will let you write a little note with " +
-                "anything you want to share\n\n" +
-                "feel free to do either or both — anything you want to " +
-                "share helps."
+                "use your phone."
+        )
+        spacer(14)
+        caption("if you want to help me:")
+        // Bullets sit tight under their lead-in — one paragraph, visually.
+        fun bullet(t: String) {
+            val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            row.addView(TextView(this).apply {
+                text = "•"
+                typeface = inter; setTextColor(inkSoft)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setPadding(dp(6), 0, dp(8), 0)
+            })
+            row.addView(TextView(this).apply {
+                text = t
+                typeface = inter; setTextColor(inkSoft)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                setLineSpacing(0f, 1.3f)
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            root.addView(row, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply { topMargin = dp(6) })
+        }
+        bullet(
+            "the first button below will help you send me the cold hard " +
+                "data on your screen time for the last four weeks"
+        )
+        bullet(
+            "the second will let you write a little note with anything " +
+                "you want to share"
+        )
+        spacer(14)
+        caption(
+            "feel free to do either or both — anything you want to share helps."
         )
 
         // Offering one: the data.
@@ -231,16 +262,10 @@ class LetterActivity : AppCompatActivity() {
             Letter.sendShare(this, preview.text.toString())
         }
         root.addView(row)
-        root.addView(TextView(this).apply {
-            text = "never mind"
-            typeface = inter; setTextColor(inkSoft)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            setPadding(dp(4), dp(14), dp(4), 0)
-            setOnClickListener {
-                Letter.markDeclined(this@LetterActivity)
-                finish()
-            }
-        })
+        // No "never mind" here — the back arrow is the way out, and
+        // declining stays where it's explicit (the day-12 card's "no
+        // thanks"). The access page keeps its never-mind: that's the one
+        // place a person is mid-commitment and wants a clean exit.
     }
 
     // ---- page: the switch --------------------------------------------------
