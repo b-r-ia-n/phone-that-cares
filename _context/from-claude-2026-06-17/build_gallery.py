@@ -14,7 +14,8 @@ THUMB_MAX = 1_600_000   # don't try to screenshot files bigger than this
 
 SKIP_DIRS = ("/node_modules/","/.git/","/.vercel/","/.astro/","/dist/","/build/",
              "/.cache/","/Library/","/.Trash/","/Delete/","/Screenshots/",
-             "/.next/","/.svelte-kit/","/coverage/","/Administrative/")
+             "/.next/","/.svelte-kit/","/coverage/","/Administrative/",
+             "/.claude/")  # worktree copies + session files would double-list artifacts
 SKIP_NAMES = ("gallery.html",)  # don't list the gallery in itself
 
 # category order + classifier (first match wins)
