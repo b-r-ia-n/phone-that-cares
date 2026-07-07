@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="service_description">Watches for both volume buttons held together, so the hold can bring color back for a while. Nothing else is read or recorded.</string>
+    <string name="service_description">Watches for both volume buttons held together, so the hold can bring color back for a while — and notices when the camera comes to the front, so it can keep its color. Nothing is recorded and nothing leaves the phone.</string>
 </resources>

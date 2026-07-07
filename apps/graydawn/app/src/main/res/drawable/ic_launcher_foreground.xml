@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive-icon foreground: Brian's sun, geometry matched to the
+     b.notebook icon spec (~/Desktop/Projects/corpus/scripts/gen-icons.mjs):
+     sun spans ~58% of the visible masked circle — disc r = ½ ray-tip
+     radius, rays from 0.78×tip to tip, stroke 0.15×tip. On this 108
+     canvas the mask shows the center ~72dp, so: tips 20.8, disc 10.4,
+     stroke 3.1. Colors are graydawn's own, not the spec's. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- the half-risen sun: orange at the base, gray at the crown -->
+    <path
+        android:pathData="M54,43.6 a10.4,10.4 0 1,0 0.002,0 z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="54"
+                android:startY="64.4"
+                android:endX="54"
+                android:endY="43.6"
+                android:startColor="#f6871f"
+                android:endColor="#878787" />
+        </aapt:attr>
+    </path>
+    <!-- rays, color cycling: gray up top, tan at the sides, orange below -->
+    <path android:pathData="M54,37.7 L54,33.2"
+        android:strokeColor="#878787" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M42.47,42.47 L39.29,39.29"
+        android:strokeColor="#878787" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M65.53,42.47 L68.71,39.29"
+        android:strokeColor="#878787" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M37.7,54 L33.2,54"
+        android:strokeColor="#c0895b" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M70.3,54 L74.8,54"
+        android:strokeColor="#c0895b" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M54,70.3 L54,74.8"
+        android:strokeColor="#f6871f" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M42.47,65.53 L39.29,68.71"
+        android:strokeColor="#f6871f" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+    <path android:pathData="M65.53,65.53 L68.71,68.71"
+        android:strokeColor="#f6871f" android:strokeWidth="3.1"
+        android:strokeLineCap="round" />
+</vector>
