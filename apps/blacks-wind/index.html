@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>over blacks — air on the cliff</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0c0f14; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: grab; }
+  canvas.dragging { cursor: grabbing; }
+  #hud {
+    position: fixed; left: 20px; bottom: 16px; right: 20px;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    font: 12px/1.7 "Inter", -apple-system, system-ui, sans-serif;
+    color: rgba(255, 240, 220, 0.5); letter-spacing: 0.02em;
+    user-select: none; -webkit-user-select: none;
+    pointer-events: none;
+  }
+  #hud b { font-weight: 500; color: rgba(255, 240, 220, 0.72); }
+  #left  { max-width: 46ch; }
+  #right { text-align: right; pointer-events: auto; }
+  #windRow { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+  #wind {
+    -webkit-appearance: none; appearance: none;
+    width: 180px; height: 2px; border-radius: 1px;
+    background: rgba(255,240,220,0.25); outline: none;
+  }
+  #wind::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #e8c08a; border: none; cursor: pointer;
+  }
+  #readout { font-variant-numeric: tabular-nums; margin-top: 4px; }
+  #err {
+    position: fixed; inset: 0; display: none; place-items: center; text-align: center;
+    color: rgba(255,240,220,0.65); font: 14px/1.8 system-ui; padding: 2em;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <div id="left"><b>over blacks</b> &nbsp;·&nbsp; air on the cliff, dusk &nbsp;·&nbsp; drag to orbit, scroll to zoom<br>
+  <span id="glider">glider: warming up</span></div>
+  <div id="right">
+    <div id="windRow"><span>wind</span><input id="wind" type="range" min="0" max="1000" value="330"></div>
+    <div id="readout">—</div>
+  </div>
+</div>
+<div id="err">This needs WebGPU — Chrome on your Mac has it.<br>If you're seeing this in Chrome, check chrome://gpu.</div>
+
+<script src="data/terrain.js"></script>
+<script>
+'use strict';
+// ============================================================================
+// OVER BLACKS — v0
+// A 3D incompressible flow solve (WebGPU compute) over the real USGS lidar
+// of the Torrey Pines gliderport (analytic stand-in if data/terrain.js is
+// missing). Onshore wind enters from the west, has nowhere to go but up.
+// A little glider tries to fly his figure; the wind edits it.
+// ============================================================================
+
+// ------------------------------------------------------------ configuration
+const TERRAIN = window.BLACKS_TERRAIN || null;
+const TINY = new URLSearchParams(location.search).has('tiny');  // headless smoke tests
+
+const NX = TINY ? 76 : 152, NY = TINY ? 64 : 128, NZ = TINY ? 20 : 40;
+const DX = TERRAIN ? TERRAIN.extentX : 2400;      // meters east-west
+const DXM = DX / NX;                              // cubic cell size
+const DY = NY * DXM, DZ = NZ * DXM;               // ≈2021 × ≈632 m at full res
+const HX = TERRAIN ? TERRAIN.width : 304;         // heightfield resolution
+const HY = TERRAIN ? TERRAIN.height : 256;
+const NP = TINY ? 32768 : 262144;                 // air tracer particles
+const JACOBI = TINY ? 8 : 18;
+const TRAIL_N = 256;
+// gliderport in local meters (from lidar metadata; fallback ≈ center of cliff)
+const GPORT = TERRAIN ? TERRAIN.gliderportXY : [DX * 0.42, DY * 0.49];
+
+const $ = id => document.getElementById(id);
+
+// ------------------------------------------------------------ terrain
+function makeHeightfield() {
+  if (TERRAIN) {
+    const bin = atob(TERRAIN.b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new Float32Array(bytes.buffer);   // south-first rows, meters
+  }
+  return makeAnalytic();
+}
+// Analytic stand-in: beach at ~2 m, sharp west-facing cliff to a ~105 m mesa.
+function makeAnalytic() {
+  const h = new Float32Array(HX * HY);
+  const rand2 = (x, y) => {
+    const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  const noise = (x, y) => {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    return rand2(xi, yi) * (1 - u) * (1 - v) + rand2(xi + 1, yi) * u * (1 - v)
+         + rand2(xi, yi + 1) * (1 - u) * v + rand2(xi + 1, yi + 1) * u * v;
+  };
+  const fbm = (x, y) => noise(x, y) * 0.5 + noise(x * 2.1, y * 2.1) * 0.25 + noise(x * 4.3, y * 4.3) * 0.125;
+
+  for (let j = 0; j < HY; j++) {
+    for (let i = 0; i < HX; i++) {
+      const x = i / HX, y = j / HY;             // 0..1 across domain
+      // cliff edge line wanders in y; ocean occupies the west ~35%
+      const edge = 0.40 + 0.05 * Math.sin(y * 5.2) + 0.04 * (fbm(3 + y * 6, 7.7) - 0.5);
+      const t = (x - edge) / 0.055;             // cliff width ~130 m
+      let elev = 2 + 103 * smooth01(t);
+      // mesa relief + canyon notch to the north (Blacks canyon-ish)
+      if (x > edge) {
+        elev += 14 * (fbm(x * 9, y * 9) - 0.5);
+        const cy = (y - 0.78), cx = (x - edge - 0.10);
+        const canyon = Math.exp(-(cy * cy) / 0.004) * Math.exp(-(cx * cx) / 0.01);
+        elev -= 55 * canyon * smooth01((x - edge) / 0.05);
+      }
+      // ocean west of the beach
+      const beach = 0.33 + 0.015 * Math.sin(y * 8.0);
+      if (x < beach) elev = 0;
+      else if (x < edge) elev = 2 + 3 * (x - beach) / (edge - beach);
+      h[j * HX + i] = Math.max(elev, 0);
+    }
+  }
+  return h;
+}
+function smooth01(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+
+// solid mask at sim resolution from the heightfield
+function makeSolid(height) {
+  const s = new Uint32Array(NX * NY * NZ);
+  for (let k = 0; k < NZ; k++) {
+    const z = (k + 0.5) * DXM;
+    for (let j = 0; j < NY; j++) {
+      const hy = Math.min(HY - 1, Math.floor((j + 0.5) / NY * HY));
+      for (let i = 0; i < NX; i++) {
+        const hx = Math.min(HX - 1, Math.floor((i + 0.5) / NX * HX));
+        if (z < height[hy * HX + hx]) s[i + NX * (j + NY * k)] = 1;
+      }
+    }
+  }
+  return s;
+}
+
+// ------------------------------------------------------------ WGSL
+const WGSL_COMMON = /* wgsl */`
+struct Params {
+  simDims : vec4<f32>,   // NX, NY, NZ, dx (m)
+  domain  : vec4<f32>,   // DX, DY, DZ, time (s)
+  wind    : vec4<f32>,   // inflow speed m/s, unused, dt, slider01
+  hmap    : vec4<f32>,   // HX, HY, hdx m/texel, unused
+};
+@group(0) @binding(0) var<uniform> P : Params;
+
+fn NXu() -> u32 { return u32(P.simDims.x); }
+fn NYu() -> u32 { return u32(P.simDims.y); }
+fn NZu() -> u32 { return u32(P.simDims.z); }
+fn idx3(i : vec3<u32>) -> u32 { return i.x + NXu() * (i.y + NYu() * i.z); }
+
+fn hash1(n : f32) -> f32 { return fract(sin(n) * 43758.5453123); }
+
+// wind speed factor with height (rough log profile, ~1 at 100 m)
+fn windProfile(z : f32) -> f32 {
+  let z0 = 2.0;
+  return clamp(log((z + z0) / z0) / log(102.0 / 2.0), 0.05, 1.35);
+}
+`;
+
+// velocity trilerp needs the vel buffer; injected where used
+const WGSL_SAMPLEVEL = /* wgsl */`
+fn sampleVel(pm : vec3<f32>) -> vec3<f32> {
+  let dims = vec3<f32>(P.simDims.xyz);
+  let c = clamp(pm / P.simDims.w - 0.5, vec3<f32>(0.0), dims - 1.001);
+  let i0 = vec3<u32>(floor(c));
+  let f = c - floor(c);
+  let i1 = min(i0 + vec3<u32>(1u), vec3<u32>(dims) - vec3<u32>(1u));
+  let v000 = velIn[idx3(vec3<u32>(i0.x, i0.y, i0.z))].xyz;
+  let v100 = velIn[idx3(vec3<u32>(i1.x, i0.y, i0.z))].xyz;
+  let v010 = velIn[idx3(vec3<u32>(i0.x, i1.y, i0.z))].xyz;
+  let v110 = velIn[idx3(vec3<u32>(i1.x, i1.y, i0.z))].xyz;
+  let v001 = velIn[idx3(vec3<u32>(i0.x, i0.y, i1.z))].xyz;
+  let v101 = velIn[idx3(vec3<u32>(i1.x, i0.y, i1.z))].xyz;
+  let v011 = velIn[idx3(vec3<u32>(i0.x, i1.y, i1.z))].xyz;
+  let v111 = velIn[idx3(vec3<u32>(i1.x, i1.y, i1.z))].xyz;
+  let v00 = mix(v000, v100, f.x); let v10 = mix(v010, v110, f.x);
+  let v01 = mix(v001, v101, f.x); let v11 = mix(v011, v111, f.x);
+  return mix(mix(v00, v10, f.y), mix(v01, v11, f.y), f.z);
+}
+`;
+
+const WGSL_HEIGHT = /* wgsl */`
+fn terrainHeight(pxy : vec2<f32>) -> f32 {
+  let hx = P.hmap.x; let hy = P.hmap.y;
+  let c = clamp(vec2<f32>(pxy.x / P.hmap.z, pxy.y / (P.domain.y / hy)) - 0.5,
+                vec2<f32>(0.0), vec2<f32>(hx - 1.001, hy - 1.001));
+  let i0 = vec2<u32>(floor(c));
+  let f = c - floor(c);
+  let i1 = min(i0 + vec2<u32>(1u), vec2<u32>(u32(hx) - 1u, u32(hy) - 1u));
+  let W = u32(hx);
+  let h00 = height[i0.y * W + i0.x]; let h10 = height[i0.y * W + i1.x];
+  let h01 = height[i1.y * W + i0.x]; let h11 = height[i1.y * W + i1.x];
+  return mix(mix(h00, h10, f.x), mix(h01, h11, f.x), f.y);
+}
+`;
+
+const ADVECT_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> velOut : array<vec4<f32>>;
+@group(0) @binding(3) var<storage, read> solid : array<u32>;
+` + WGSL_SAMPLEVEL + /* wgsl */`
+@compute @workgroup_size(4, 4, 4)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
+  let n = idx3(id);
+  if (solid[n] == 1u) { velOut[n] = vec4<f32>(0.0); return; }
+  let dx = P.simDims.w;
+  let pm = (vec3<f32>(id) + 0.5) * dx;
+  let back = pm - velIn[n].xyz * P.wind.z;
+  var v = sampleVel(back) * 0.999;
+  // west face: onshore inflow
+  if (id.x <= 1u) { v = vec3<f32>(P.wind.x * windProfile(pm.z), 0.0, 0.0); }
+  // lid: free-slip
+  if (id.z == NZu() - 1u) { v.z = min(v.z, 0.0); }
+  velOut[n] = vec4<f32>(v, 0.0);
+}`;
+
+const DIV_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> divOut : array<f32>;
+@group(0) @binding(3) var<storage, read> solid : array<u32>;
+
+fn velAt(i : vec3<i32>) -> vec3<f32> {
+  let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
+  let c = clamp(i, vec3<i32>(0), d - 1);
+  return velIn[idx3(vec3<u32>(c))].xyz;
+}
+@compute @workgroup_size(4, 4, 4)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
+  let n = idx3(id);
+  if (solid[n] == 1u) { divOut[n] = 0.0; return; }
+  let i = vec3<i32>(id);
+  let s = 0.5 / P.simDims.w;
+  divOut[n] =
+      (velAt(i + vec3<i32>(1,0,0)).x - velAt(i - vec3<i32>(1,0,0)).x
+     + velAt(i + vec3<i32>(0,1,0)).y - velAt(i - vec3<i32>(0,1,0)).y
+     + velAt(i + vec3<i32>(0,0,1)).z - velAt(i - vec3<i32>(0,0,1)).z) * s;
+}`;
+
+const JACOBI_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> pIn : array<f32>;
+@group(0) @binding(2) var<storage, read> divIn : array<f32>;
+@group(0) @binding(3) var<storage, read_write> pOut : array<f32>;
+@group(0) @binding(4) var<storage, read> solid : array<u32>;
+
+fn pAt(i : vec3<i32>, pc : f32) -> f32 {
+  let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
+  if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
+  let n = idx3(vec3<u32>(i));
+  if (solid[n] == 1u) { return pc; }
+  return pIn[n];
+}
+@compute @workgroup_size(4, 4, 4)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
+  let n = idx3(id);
+  if (solid[n] == 1u) { pOut[n] = 0.0; return; }
+  let i = vec3<i32>(id);
+  let pc = pIn[n];
+  let dx = P.simDims.w;
+  let sum = pAt(i + vec3<i32>(1,0,0), pc) + pAt(i - vec3<i32>(1,0,0), pc)
+          + pAt(i + vec3<i32>(0,1,0), pc) + pAt(i - vec3<i32>(0,1,0), pc)
+          + pAt(i + vec3<i32>(0,0,1), pc) + pAt(i - vec3<i32>(0,0,1), pc);
+  pOut[n] = (sum - divIn[n] * dx * dx) / 6.0;
+}`;
+
+const PROJECT_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read> pIn : array<f32>;
+@group(0) @binding(3) var<storage, read_write> velOut : array<vec4<f32>>;
+@group(0) @binding(4) var<storage, read> solid : array<u32>;
+
+fn pAt(i : vec3<i32>, pc : f32) -> f32 {
+  let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
+  if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
+  let n = idx3(vec3<u32>(i));
+  if (solid[n] == 1u) { return pc; }
+  return pIn[n];
+}
+@compute @workgroup_size(4, 4, 4)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
+  let n = idx3(id);
+  if (solid[n] == 1u) { velOut[n] = vec4<f32>(0.0); return; }
+  let i = vec3<i32>(id);
+  let pc = pIn[n];
+  let s = 0.5 / P.simDims.w;
+  var v = velIn[n].xyz - vec3<f32>(
+    pAt(i + vec3<i32>(1,0,0), pc) - pAt(i - vec3<i32>(1,0,0), pc),
+    pAt(i + vec3<i32>(0,1,0), pc) - pAt(i - vec3<i32>(0,1,0), pc),
+    pAt(i + vec3<i32>(0,0,1), pc) - pAt(i - vec3<i32>(0,0,1), pc)) * s;
+  let pm = (vec3<f32>(id) + 0.5) * P.simDims.w;
+  if (id.x <= 1u) { v = vec3<f32>(P.wind.x * windProfile(pm.z), 0.0, 0.0); }
+  velOut[n] = vec4<f32>(v, 0.0);
+}`;
+
+const PARTICLE_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> parts : array<vec4<f32>>;
+@group(0) @binding(3) var<storage, read> height : array<f32>;
+` + WGSL_SAMPLEVEL + WGSL_HEIGHT + /* wgsl */`
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  let k = id.x;
+  if (k >= arrayLength(&parts)) { return; }
+  var p = parts[k].xyz;
+  let v = sampleVel(p);
+  p += v * P.wind.z;
+  var w = v.z;
+  let t = P.domain.w;
+  let sk = f32(k) * 0.618;
+  // respawn: swept out east, out the sides, into the ground, or old age
+  var dead = false;
+  if (p.x > P.domain.x - 10.0 || p.x < 2.0) { dead = true; }
+  if (p.y < 2.0 || p.y > P.domain.y - 2.0) { dead = true; }
+  if (p.z > P.domain.z - 4.0) { dead = true; }
+  if (p.z < terrainHeight(p.xy) + 1.0) { dead = true; }
+  if (hash1(sk + floor(t * 0.5) * 7.3) < 0.004) { dead = true; }
+  if (dead) {
+    let r1 = hash1(sk + t * 1.37);
+    let r2 = hash1(sk + t * 2.11 + 5.0);
+    let r3 = hash1(sk + t * 3.71 + 9.0);
+    let r4 = hash1(sk + t * 1.93 + 13.0);
+    if (r4 < 0.75) {
+      // most respawn upstream over the ocean, weighted low
+      p = vec3<f32>(4.0 + r1 * P.domain.x * 0.22,
+                    r2 * P.domain.y,
+                    6.0 + pow(r3, 1.6) * P.domain.z * 0.55);
+    } else {
+      // some fill the whole volume so the lee isn't empty
+      p = vec3<f32>(r1 * P.domain.x, r2 * P.domain.y,
+                    terrainHeight(vec2<f32>(r1 * P.domain.x, r2 * P.domain.y)) + 4.0 + pow(r3, 2.0) * 300.0);
+    }
+    w = 0.0;
+  }
+  parts[k] = vec4<f32>(p, w);
+}`;
+
+const GLIDER_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> G : array<f32>;   // state, 32 floats
+@group(0) @binding(3) var<storage, read> height : array<f32>;
+@group(0) @binding(4) var<storage, read_write> trail : array<vec4<f32>>;
+` + WGSL_SAMPLEVEL + WGSL_HEIGHT + /* wgsl */`
+// G layout: 0-2 pos | 3 mode (0 fly, 1 landed, 2 blown) | 4 timer | 5 phase
+//           6 trailHead | 7 heading | 8-10 desired pos | 11 frame
+
+fn figurePoint(tau : f32) -> vec3<f32> {
+  // mirrored swoop along the cliff edge: hover A, swoop down-across, hover B
+  let ax = P.domain.x * 0.395;             // just seaward of the cliff lip
+  let ay = P.domain.y * 0.39;              // ~200 m south of the gliderport
+  let by = P.domain.y * 0.60;              // ~200 m north
+  let hoverH = 46.0;                        // above local terrain
+  let hA = terrainHeight(vec2<f32>(P.domain.x * 0.44, ay)) + hoverH;
+  let hB = terrainHeight(vec2<f32>(P.domain.x * 0.44, by)) + hoverH;
+  var pos : vec3<f32>;
+  if (tau < 0.18) {                        // hover A (small drift circle)
+    let a = tau / 0.18 * 6.2831;
+    pos = vec3<f32>(ax + sin(a) * 9.0, ay + cos(a) * 9.0, hA);
+  } else if (tau < 0.5) {                  // swoop A -> B, dipping
+    let s = (tau - 0.18) / 0.32;
+    let e = s * s * (3.0 - 2.0 * s);
+    pos = vec3<f32>(ax, mix(ay, by, e), mix(hA, hB, e) - 30.0 * sin(3.14159 * s));
+  } else if (tau < 0.68) {                 // hover B
+    let a = (tau - 0.5) / 0.18 * 6.2831;
+    pos = vec3<f32>(ax + sin(a) * 9.0, by - cos(a) * 9.0, hB);
+  } else {                                 // swoop back
+    let s = (tau - 0.68) / 0.32;
+    let e = s * s * (3.0 - 2.0 * s);
+    pos = vec3<f32>(ax, mix(by, ay, e), mix(hB, hA, e) - 30.0 * sin(3.14159 * s));
+  }
+  return pos;
+}
+
+@compute @workgroup_size(1)
+fn main() {
+  let dt = P.wind.z;
+  var pos = vec3<f32>(G[0], G[1], G[2]);
+  var mode = G[3];
+  var timer = G[4];
+  var phase = G[5];
+
+  if (mode > 0.5) {                        // landed or blown out: wait, respawn
+    timer -= dt;
+    if (timer <= 0.0) {
+      pos = figurePoint(0.0);
+      mode = 0.0; phase = 0.0;
+    }
+  } else {
+    phase = fract(phase + dt / 26.0);      // 26 s per full figure
+    let want = figurePoint(phase);
+    let air = sampleVel(pos);
+    // intent: fly toward the figure at up to 11 m/s airspeed
+    let err = want - pos;
+    var cmd = err * 0.6;
+    let hmag = length(cmd.xy);
+    if (hmag > 11.0) { cmd = vec3<f32>(cmd.xy * (11.0 / hmag), cmd.z); }
+    cmd.z = clamp(cmd.z, -3.0, 1.1);
+    // the deal: he always sinks 1.05 m/s through the airmass
+    var vel = air + cmd;
+    vel.z = air.z + cmd.z - 1.05;
+    pos += vel * dt;
+    if (length(vel.xy) > 0.5) { G[7] = atan2(vel.y, vel.x); }
+
+    let ground = terrainHeight(pos.xy);
+    if (pos.z < ground + 2.0) { mode = 1.0; timer = 3.5; pos.z = ground + 2.0; }
+    if (pos.x < 8.0 || pos.x > P.domain.x - 8.0 ||
+        pos.y < 8.0 || pos.y > P.domain.y - 8.0 ||
+        pos.z > P.domain.z - 6.0) { mode = 2.0; timer = 3.5; }
+
+    G[8] = want.x; G[9] = want.y; G[10] = want.z;
+  }
+
+  // trail ring buffer, ~10 Hz
+  let frame = G[11] + 1.0;
+  G[11] = frame;
+  if (mode < 0.5 && (u32(frame) % 3u) == 0u) {
+    let head = u32(G[6]);
+    trail[head] = vec4<f32>(pos, 1.0);
+    G[6] = f32((head + 1u) % ${TRAIL_N}u);
+  }
+
+  G[0] = pos.x; G[1] = pos.y; G[2] = pos.z;
+  G[3] = mode; G[4] = timer; G[5] = phase;
+}`;
+
+// ------------------------------------------------------------ render WGSL
+const CAM_WGSL = /* wgsl */`
+struct Cam {
+  viewProj : mat4x4<f32>,
+  invViewProj : mat4x4<f32>,
+  eye : vec4<f32>,       // xyz eye, w time
+  sun : vec4<f32>,       // xyz dir-to-sun, w wind slider
+  misc : vec4<f32>,      // x aspect, y focal (1/tan(fov/2)), zw unused
+};
+@group(0) @binding(0) var<uniform> C : Cam;
+
+fn fogMix(dist : f32) -> f32 { return 1.0 - exp(-dist * 0.00019); }
+const FOG_COL = vec3<f32>(0.30, 0.26, 0.27);
+const SUN_COL = vec3<f32>(1.0, 0.62, 0.34);
+fn hash2(p : vec2<f32>) -> f32 {
+  var q = fract(p * vec2<f32>(234.34, 435.345));
+  q += dot(q, q + 34.23);
+  return fract(q.x * q.y);
+}
+fn vnoise2(p : vec2<f32>) -> f32 {
+  let i = floor(p); let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash2(i), hash2(i + vec2<f32>(1.0, 0.0)), u.x),
+             mix(hash2(i + vec2<f32>(0.0, 1.0)), hash2(i + vec2<f32>(1.0, 1.0)), u.x), u.y);
+}
+`;
+
+const SKY_WGSL = CAM_WGSL + /* wgsl */`
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) ndc : vec2<f32> };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let p = vec2<f32>(f32((vi << 1u) & 2u), f32(vi & 2u)) * 2.0 - 1.0;
+  var o : VOut;
+  o.pos = vec4<f32>(p, 0.9999, 1.0);
+  o.ndc = p;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let pw = C.invViewProj * vec4<f32>(v.ndc, 0.6, 1.0);
+  let dir = normalize(pw.xyz / pw.w - C.eye.xyz);
+  let up = clamp(dir.z, -0.15, 1.0);
+  // dusk over the ocean
+  var col = mix(vec3<f32>(0.34, 0.25, 0.24), vec3<f32>(0.065, 0.09, 0.15), smoothstep(-0.02, 0.55, up));
+  let sunAmt = pow(max(dot(dir, normalize(C.sun.xyz)), 0.0), 42.0);
+  col += SUN_COL * sunAmt * 0.9;
+  col += SUN_COL * pow(max(dot(dir, normalize(C.sun.xyz)), 0.0), 4.0) * 0.07;
+  // a few early stars up high
+  let sp = dir.xy / max(dir.z, 0.2) * 60.0;
+  let cell = floor(sp);
+  let hs = fract(sin(dot(cell, vec2<f32>(127.1, 311.7))) * 43758.5453);
+  if (hs > 0.994 && dir.z > 0.3) {
+    let f = fract(sp) - 0.5;
+    col += vec3<f32>(0.8) * exp(-dot(f, f) * 60.0) * (hs - 0.994) * 120.0 * smoothstep(0.3, 0.6, dir.z);
+  }
+  col += (hash2(v.ndc * 913.7) - 0.5) * 0.006;   // dither the gradient
+  return vec4<f32>(col, 1.0);
+}`;
+
+const TERRAIN_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> height : array<f32>;
+struct TP { dims : vec4<f32> };  // HX, HY, hdx, hdy
+@group(0) @binding(2) var<uniform> T : TP;
+
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) world : vec3<f32>,
+  @location(1) normal : vec3<f32>,
+};
+fn hAt(i : i32, j : i32) -> f32 {
+  let W = i32(T.dims.x); let H = i32(T.dims.y);
+  let ci = clamp(i, 0, W - 1); let cj = clamp(j, 0, H - 1);
+  return height[cj * W + ci];
+}
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let W = u32(T.dims.x);
+  let i = i32(vi % W); let j = i32(vi / W);
+  let h = hAt(i, j);
+  let world = vec3<f32>((f32(i) + 0.5) * T.dims.z, (f32(j) + 0.5) * T.dims.w, h);
+  let nx = hAt(i - 1, j) - hAt(i + 1, j);
+  let ny = hAt(i, j - 1) - hAt(i, j + 1);
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(world, 1.0);
+  o.world = world;
+  o.normal = normalize(vec3<f32>(nx / (2.0 * T.dims.z), ny / (2.0 * T.dims.w), 1.0));
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let h = v.world.z;
+  if (h < 0.4) { discard; }                             // the apron plane is the water
+  let n = normalize(v.normal);
+  let sun = normalize(C.sun.xyz);
+  let slope = 1.0 - n.z;
+  let mottle = vnoise2(v.world.xy * 0.011) * 0.5 + vnoise2(v.world.xy * 0.043) * 0.5;
+  let sand = vec3<f32>(0.50, 0.43, 0.33);
+  let sandstone = vec3<f32>(0.52, 0.40, 0.27) * (0.85 + 0.3 * mottle);
+  let sage = vec3<f32>(0.27, 0.28, 0.21) * (0.8 + 0.4 * mottle);
+  var albedo = mix(sage, sandstone, smoothstep(0.20, 0.48, slope));
+  albedo = mix(sand, albedo, smoothstep(2.5, 9.0, h));  // beach band
+  let diff = max(dot(n, sun), 0.0);
+  let skyAmb = 0.5 + 0.3 * n.z;
+  var col = albedo * (SUN_COL * diff * 1.0 + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.6);
+  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
+// the sea: one huge plane under everything, fresnel toward the dusk sky
+const APRON_WGSL = CAM_WGSL + /* wgsl */`
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) world : vec3<f32>,
+};
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let corner = vec2<f32>(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2.0 - 1.0;
+  let world = vec3<f32>(corner * 30000.0 + vec2<f32>(1200.0, 1000.0), -0.4);
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(world, 1.0);
+  o.world = world;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let sun = normalize(C.sun.xyz);
+  let vd = normalize(C.eye.xyz - v.world);
+  // gentle swell tilting the normal
+  let t = C.eye.w;
+  let sw = vnoise2(v.world.xy * 0.004 + vec2<f32>(t * 0.03, 0.0)) - 0.5;
+  let n = normalize(vec3<f32>(sw * 0.14, sw * 0.10, 1.0));
+  let deep = vec3<f32>(0.055, 0.095, 0.115);
+  let skyH = vec3<f32>(0.36, 0.27, 0.25);              // horizon color reflected
+  let fres = pow(1.0 - max(dot(vd, n), 0.0), 3.0);
+  var col = mix(deep, skyH, fres * 0.75);
+  let refl = reflect(-sun, n);
+  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 90.0) * 0.8;
+  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 7.0) * 0.06;
+  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
+const PART_RENDER_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> parts : array<vec4<f32>>;
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) uv : vec2<f32>,
+  @location(1) col : vec4<f32>,
+};
+@vertex
+fn vs(@builtin(vertex_index) vi : u32, @builtin(instance_index) inst : u32) -> VOut {
+  let p = parts[inst];
+  let corner = vec2<f32>(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2.0 - 1.0;
+  // billboard axes from view: cheap — screen-aligned via viewProj rows is
+  // overkill; offset in clip space by projected size instead
+  var o : VOut;
+  let clip = C.viewProj * vec4<f32>(p.xyz, 1.0);
+  let sizeM = 2.0;
+  // constant world-size billboard: clip-space offset, no extra w divide
+  o.pos = clip + vec4<f32>(corner * sizeM * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), 0.0, 0.0);
+  o.uv = corner;
+  // color = the one salient variable: vertical velocity.
+  // dead air is nearly invisible; only working air glows.
+  let w = p.w;
+  let rising = pow(clamp(w / 4.2, 0.0, 1.0), 2.3);
+  let sinking = pow(clamp(-w / 4.2, 0.0, 1.0), 2.3);
+  var c = vec3<f32>(1.0, 0.74, 0.40) * rising + vec3<f32>(0.30, 0.44, 0.62) * sinking * 0.5;
+  var a = 0.0007 + rising * 0.055 + sinking * 0.02;
+  o.col = vec4<f32>(c, a);
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let g = exp(-dot(v.uv, v.uv) * 3.0);
+  return vec4<f32>(v.col.rgb * v.col.a * g, 1.0);
+}`;
+
+const TRAIL_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> trail : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read> G : array<f32>;
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) a : f32 };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let head = u32(G[6]);
+  let N = ${TRAIL_N}u;
+  let k = (head + vi) % N;                 // oldest -> newest
+  let p = trail[k];
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(p.xyz, 1.0);
+  o.a = pow(f32(vi) / f32(N), 1.5) * p.w * 0.85;
+  if (p.w < 0.5) { o.a = 0.0; }
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(vec3<f32>(1.0, 0.92, 0.75) * v.a, 1.0);
+}`;
+
+const INTENT_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> path : array<vec4<f32>>;
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) a : f32 };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let p = path[vi];
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(p.xyz, 1.0);
+  o.a = select(0.0, 0.10, (vi % 4u) < 2u);  // dashed
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  return vec4<f32>(vec3<f32>(1.0, 0.95, 0.85) * v.a, 1.0);
+}`;
+
+// a soft glow so the eye can find him at vista distance
+const GLIDER_GLOW_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> G : array<f32>;
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) uv : vec2<f32> };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let corner = vec2<f32>(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2.0 - 1.0;
+  let clip = C.viewProj * vec4<f32>(G[0], G[1], G[2], 1.0);
+  var o : VOut;
+  o.pos = clip + vec4<f32>(corner * 22.0 * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), 0.0, 0.0);
+  o.uv = corner;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let g = exp(-dot(v.uv, v.uv) * 5.0);
+  return vec4<f32>(vec3<f32>(1.0, 0.9, 0.7) * g * 0.28, 1.0);
+}`;
+
+const GLIDER_RENDER_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> G : array<f32>;
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) c : vec3<f32> };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  // a little delta wing: 2 triangles, ~14 m span, oriented by heading
+  var local = array<vec3<f32>, 6>(
+    vec3<f32>( 7.5,  0.0, 0.0), vec3<f32>(-4.5, -7.0, 1.5), vec3<f32>(-2.2, 0.0, 0.0),
+    vec3<f32>( 7.5,  0.0, 0.0), vec3<f32>(-2.2,  0.0, 0.0), vec3<f32>(-4.5,  7.0, 1.5));
+  let hdg = G[7];
+  let ch = cos(hdg); let sh = sin(hdg);
+  let l = local[vi];
+  let world = vec3<f32>(G[0], G[1], G[2]) +
+    vec3<f32>(l.x * ch - l.y * sh, l.x * sh + l.y * ch, l.z);
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(world, 1.0);
+  let landed = G[3];
+  o.c = select(vec3<f32>(1.0, 0.95, 0.88), vec3<f32>(0.9, 0.4, 0.3), landed > 0.5);
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> { return vec4<f32>(v.c, 1.0); }`;
+
+// ------------------------------------------------------------ boot
+const canvas = $('c');
+async function boot() {
+  if (!navigator.gpu) throw new Error('no webgpu');
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) throw new Error('no adapter');
+  const device = await adapter.requestDevice();
+  device.onuncapturederror ??= e => console.error('WebGPU:', e.error?.message || e);
+  device.addEventListener?.('uncapturederror', e => console.error('WebGPU:', e.error.message));
+  const ctx = canvas.getContext('webgpu');
+  const format = navigator.gpu.getPreferredCanvasFormat();
+
+  // ---------- buffers
+  const NC = NX * NY * NZ;
+  const mkBuf = (size, usage) => device.createBuffer({ size, usage });
+  const vel   = mkBuf(NC * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const velT  = mkBuf(NC * 16, GPUBufferUsage.STORAGE);
+  const pr0   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
+  const pr1   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
+  const div   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
+  const solidB= mkBuf(NC * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const heightB = mkBuf(HX * HY * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const partsB  = mkBuf(NP * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const gliderB = mkBuf(32 * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
+  const trailB  = mkBuf(TRAIL_N * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const gliderRead = mkBuf(32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
+  const paramsB = mkBuf(64, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const camB    = mkBuf(176, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const terrainUB = mkBuf(16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const intentB = mkBuf(256 * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+
+  // ---------- initial data
+  const height = makeHeightfield();
+  device.queue.writeBuffer(heightB, 0, height);
+  device.queue.writeBuffer(solidB, 0, makeSolid(height));
+  device.queue.writeBuffer(terrainUB, 0, new Float32Array([HX, HY, DX / HX, DY / HY]));
+
+  const parts = new Float32Array(NP * 4);
+  const hAtM = (x, y) => {
+    const i = Math.min(HX - 1, Math.max(0, Math.floor(x / DX * HX)));
+    const j = Math.min(HY - 1, Math.max(0, Math.floor(y / DY * HY)));
+    return height[j * HX + i];
+  };
+  for (let k = 0; k < NP; k++) {
+    const x = Math.random() * DX, y = Math.random() * DY;
+    parts[k * 4] = x; parts[k * 4 + 1] = y;
+    parts[k * 4 + 2] = hAtM(x, y) + 3 + Math.pow(Math.random(), 1.5) * (DZ * 0.7);
+    parts[k * 4 + 3] = 0;
+  }
+  device.queue.writeBuffer(partsB, 0, parts);
+
+  const gInit = new Float32Array(32);
+  gInit[0] = DX * 0.395; gInit[1] = DY * 0.39; gInit[2] = 150; gInit[7] = Math.PI / 2;
+  device.queue.writeBuffer(gliderB, 0, gInit);
+
+  // intent figure polyline for the ghost path (mirrors figurePoint in WGSL)
+  {
+    const pts = new Float32Array(256 * 4);
+    const ax = DX * 0.395, ay = DY * 0.39, by = DY * 0.60;
+    const hA = hAtM(DX * 0.44, ay) + 46, hB = hAtM(DX * 0.44, by) + 46;
+    for (let k = 0; k < 256; k++) {
+      const tau = k / 255;
+      let x = ax, y, z;
+      if (tau < 0.18) { const a = tau / 0.18 * Math.PI * 2; x = ax + Math.sin(a) * 9; y = ay + Math.cos(a) * 9; z = hA; }
+      else if (tau < 0.5) { const s = (tau - 0.18) / 0.32, e = s * s * (3 - 2 * s); y = ay + (by - ay) * e; z = hA + (hB - hA) * e - 30 * Math.sin(Math.PI * s); }
+      else if (tau < 0.68) { const a = (tau - 0.5) / 0.18 * Math.PI * 2; x = ax + Math.sin(a) * 9; y = by - Math.cos(a) * 9; z = hB; }
+      else { const s = (tau - 0.68) / 0.32, e = s * s * (3 - 2 * s); y = by + (ay - by) * e; z = hB + (hA - hB) * e - 30 * Math.sin(Math.PI * s); }
+      pts[k * 4] = x; pts[k * 4 + 1] = y; pts[k * 4 + 2] = z; pts[k * 4 + 3] = 1;
+    }
+    device.queue.writeBuffer(intentB, 0, pts);
+  }
+
+  // ---------- pipelines
+  const cs = (code) => device.createComputePipeline({
+    layout: 'auto',
+    compute: { module: device.createShaderModule({ code }), entryPoint: 'main' },
+  });
+  const pAdvect = cs(ADVECT_WGSL);
+  const pDiv = cs(DIV_WGSL);
+  const pJacobi = cs(JACOBI_WGSL);
+  const pProject = cs(PROJECT_WGSL);
+  const pParts = cs(PARTICLE_WGSL);
+  const pGlider = cs(GLIDER_WGSL);
+
+  const bg = (pipe, entries) => device.createBindGroup({
+    layout: pipe.getBindGroupLayout(0),
+    entries: entries.map((b, i) => ({ binding: i, resource: { buffer: b } })),
+  });
+  const bgAdvect = bg(pAdvect, [paramsB, vel, velT, solidB]);
+  const bgDiv = bg(pDiv, [paramsB, velT, div, solidB]);
+  const bgJacobiA = bg(pJacobi, [paramsB, pr0, div, pr1, solidB]);
+  const bgJacobiB = bg(pJacobi, [paramsB, pr1, div, pr0, solidB]);
+  const bgProject = bg(pProject, [paramsB, velT, pr0, vel, solidB]);
+  const bgParts = bg(pParts, [paramsB, vel, partsB, heightB]);
+  const bgGlider = bg(pGlider, [paramsB, vel, gliderB, heightB, trailB]);
+
+  const depthFormat = 'depth24plus';
+  let depthTex = null;
+
+  const rp = (code, { blend = null, topology = 'triangle-list', depthWrite = true, depthCompare = 'less' } = {}) => {
+    const module = device.createShaderModule({ code });
+    const target = { format };
+    if (blend) target.blend = blend;
+    return device.createRenderPipeline({
+      layout: 'auto',
+      vertex: { module, entryPoint: 'vs' },
+      fragment: { module, entryPoint: 'fs', targets: [target] },
+      primitive: { topology, cullMode: 'none' },
+      depthStencil: { format: depthFormat, depthWriteEnabled: depthWrite, depthCompare },
+    });
+  };
+  const additive = {
+    color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+    alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
+  };
+  const pSky = rp(SKY_WGSL, { depthWrite: false, depthCompare: 'less-equal' });
+  const pTerrain = rp(TERRAIN_WGSL);
+  const pApron = rp(APRON_WGSL, { topology: 'triangle-strip' });
+  const pPartR = rp(PART_RENDER_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
+  const pTrail = rp(TRAIL_WGSL, { blend: additive, topology: 'line-strip', depthWrite: false });
+  const pIntent = rp(INTENT_WGSL, { blend: additive, topology: 'line-strip', depthWrite: false });
+  const pGliderR = rp(GLIDER_RENDER_WGSL);
+  const pGlow = rp(GLIDER_GLOW_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
+
+  const bgSky = bg(pSky, [camB]);
+  const bgTerrain = bg(pTerrain, [camB, heightB, terrainUB]);
+  const bgApron = bg(pApron, [camB]);
+  const bgPartR = bg(pPartR, [camB, partsB]);
+  const bgTrail = bg(pTrail, [camB, trailB, gliderB]);
+  const bgIntent = bg(pIntent, [camB, intentB]);
+  const bgGliderR = bg(pGliderR, [camB, gliderB]);
+  const bgGlow = bg(pGlow, [camB, gliderB]);
+
+  // terrain index buffer
+  const idx = new Uint32Array((HX - 1) * (HY - 1) * 6);
+  let q = 0;
+  for (let j = 0; j < HY - 1; j++) for (let i = 0; i < HX - 1; i++) {
+    const a = j * HX + i;
+    idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + HX;
+    idx[q++] = a + 1; idx[q++] = a + HX + 1; idx[q++] = a + HX;
+  }
+  const idxB = device.createBuffer({ size: idx.byteLength, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
+  device.queue.writeBuffer(idxB, 0, idx);
+
+  // ---------- camera
+  const cam = {
+    target: [GPORT[0], GPORT[1], 70],
+    azim: -2.9, elev: 0.13, dist: 1600,
+  };
+  let dragging = false, lastMx = 0, lastMy = 0;
+  canvas.addEventListener('pointerdown', e => { dragging = true; lastMx = e.clientX; lastMy = e.clientY; canvas.classList.add('dragging'); });
+  addEventListener('pointerup', () => { dragging = false; canvas.classList.remove('dragging'); });
+  addEventListener('pointermove', e => {
+    if (!dragging) return;
+    cam.azim -= (e.clientX - lastMx) * 0.005;
+    cam.elev = Math.max(0.03, Math.min(1.35, cam.elev + (e.clientY - lastMy) * 0.004));
+    lastMx = e.clientX; lastMy = e.clientY;
+  });
+  addEventListener('wheel', e => {
+    cam.dist = Math.max(180, Math.min(4200, cam.dist * Math.exp(e.deltaY * 0.001)));
+  }, { passive: true });
+
+  function mat4Mul(a, b) {
+    const o = new Float32Array(16);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) {
+      o[c * 4 + r] = a[r] * b[c * 4] + a[4 + r] * b[c * 4 + 1] + a[8 + r] * b[c * 4 + 2] + a[12 + r] * b[c * 4 + 3];
+    }
+    return o;
+  }
+  function mat4Invert(m) {
+    // general 4x4 inverse (column-major)
+    const inv = new Float32Array(16);
+    inv[0] = m[5]*m[10]*m[15]-m[5]*m[11]*m[14]-m[9]*m[6]*m[15]+m[9]*m[7]*m[14]+m[13]*m[6]*m[11]-m[13]*m[7]*m[10];
+    inv[4] = -m[4]*m[10]*m[15]+m[4]*m[11]*m[14]+m[8]*m[6]*m[15]-m[8]*m[7]*m[14]-m[12]*m[6]*m[11]+m[12]*m[7]*m[10];
+    inv[8] = m[4]*m[9]*m[15]-m[4]*m[11]*m[13]-m[8]*m[5]*m[15]+m[8]*m[7]*m[13]+m[12]*m[5]*m[11]-m[12]*m[7]*m[9];
+    inv[12] = -m[4]*m[9]*m[14]+m[4]*m[10]*m[13]+m[8]*m[5]*m[14]-m[8]*m[6]*m[13]-m[12]*m[5]*m[10]+m[12]*m[6]*m[9];
+    inv[1] = -m[1]*m[10]*m[15]+m[1]*m[11]*m[14]+m[9]*m[2]*m[15]-m[9]*m[3]*m[14]-m[13]*m[2]*m[11]+m[13]*m[3]*m[10];
+    inv[5] = m[0]*m[10]*m[15]-m[0]*m[11]*m[14]-m[8]*m[2]*m[15]+m[8]*m[3]*m[14]+m[12]*m[2]*m[11]-m[12]*m[3]*m[10];
+    inv[9] = -m[0]*m[9]*m[15]+m[0]*m[11]*m[13]+m[8]*m[1]*m[15]-m[8]*m[3]*m[13]-m[12]*m[1]*m[11]+m[12]*m[3]*m[9];
+    inv[13] = m[0]*m[9]*m[14]-m[0]*m[10]*m[13]-m[8]*m[1]*m[14]+m[8]*m[2]*m[13]+m[12]*m[1]*m[10]-m[12]*m[2]*m[9];
+    inv[2] = m[1]*m[6]*m[15]-m[1]*m[7]*m[14]-m[5]*m[2]*m[15]+m[5]*m[3]*m[14]+m[13]*m[2]*m[7]-m[13]*m[3]*m[6];
+    inv[6] = -m[0]*m[6]*m[15]+m[0]*m[7]*m[14]+m[4]*m[2]*m[15]-m[4]*m[3]*m[14]-m[12]*m[2]*m[7]+m[12]*m[3]*m[6];
+    inv[10] = m[0]*m[5]*m[15]-m[0]*m[7]*m[13]-m[4]*m[1]*m[15]+m[4]*m[3]*m[13]+m[12]*m[1]*m[7]-m[12]*m[3]*m[5];
+    inv[14] = -m[0]*m[5]*m[14]+m[0]*m[6]*m[13]+m[4]*m[1]*m[14]-m[4]*m[2]*m[13]-m[12]*m[1]*m[6]+m[12]*m[2]*m[5];
+    inv[3] = -m[1]*m[6]*m[11]+m[1]*m[7]*m[10]+m[5]*m[2]*m[11]-m[5]*m[3]*m[10]-m[9]*m[2]*m[7]+m[9]*m[3]*m[6];
+    inv[7] = m[0]*m[6]*m[11]-m[0]*m[7]*m[10]-m[4]*m[2]*m[11]+m[4]*m[3]*m[10]+m[8]*m[2]*m[7]-m[8]*m[3]*m[6];
+    inv[11] = -m[0]*m[5]*m[11]+m[0]*m[7]*m[9]+m[4]*m[1]*m[11]-m[4]*m[3]*m[9]-m[8]*m[1]*m[7]+m[8]*m[3]*m[5];
+    inv[15] = m[0]*m[5]*m[10]-m[0]*m[6]*m[9]-m[4]*m[1]*m[10]+m[4]*m[2]*m[9]+m[8]*m[1]*m[6]-m[8]*m[2]*m[5];
+    let det = m[0]*inv[0]+m[1]*inv[4]+m[2]*inv[8]+m[3]*inv[12];
+    det = 1.0 / det;
+    for (let i = 0; i < 16; i++) inv[i] *= det;
+    return inv;
+  }
+  function lookAt(eye, target, up) {
+    const zx = eye[0]-target[0], zy = eye[1]-target[1], zz = eye[2]-target[2];
+    let zl = Math.hypot(zx, zy, zz); const z = [zx/zl, zy/zl, zz/zl];
+    const x = [up[1]*z[2]-up[2]*z[1], up[2]*z[0]-up[0]*z[2], up[0]*z[1]-up[1]*z[0]];
+    const xl = Math.hypot(...x); x[0]/=xl; x[1]/=xl; x[2]/=xl;
+    const y = [z[1]*x[2]-z[2]*x[1], z[2]*x[0]-z[0]*x[2], z[0]*x[1]-z[1]*x[0]];
+    return new Float32Array([
+      x[0], y[0], z[0], 0,
+      x[1], y[1], z[1], 0,
+      x[2], y[2], z[2], 0,
+      -(x[0]*eye[0]+x[1]*eye[1]+x[2]*eye[2]),
+      -(y[0]*eye[0]+y[1]*eye[1]+y[2]*eye[2]),
+      -(z[0]*eye[0]+z[1]*eye[1]+z[2]*eye[2]), 1,
+    ]);
+  }
+  function perspective(fovY, aspectR, near, far) {
+    const f = 1 / Math.tan(fovY / 2);
+    return new Float32Array([
+      f / aspectR, 0, 0, 0,
+      0, f, 0, 0,
+      0, 0, far / (near - far), -1,
+      0, 0, (far * near) / (near - far), 0,
+    ]);
+  }
+
+  // ---------- wind & UI
+  const windSlider = $('wind');
+  const readout = $('readout');
+  const gliderLabel = $('glider');
+  function windNow(t) {
+    const s = windSlider.value / 1000;                    // 0..1
+    const base = Math.pow(s, 1.6) * 40;                   // 0..40 m/s (≈90 mph)
+    const gust = 1 + 0.28 * Math.sin(t * 0.21) * Math.sin(t * 0.043 + 1.2)
+               + 0.14 * Math.sin(t * 0.9 + Math.sin(t * 0.11) * 3);
+    return { ms: Math.max(0, base * gust), base, s };
+  }
+
+  // ---------- resize
+  function resize() {
+    const dpr = TINY ? 1 : Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.floor(innerWidth * dpr);
+    canvas.height = Math.floor(innerHeight * dpr);
+    ctx.configure({ device, format, alphaMode: 'opaque' });
+    depthTex = device.createTexture({
+      size: [canvas.width, canvas.height],
+      format: depthFormat,
+      usage: GPUTextureUsage.RENDER_ATTACHMENT,
+    });
+  }
+  resize();
+  addEventListener('resize', resize);
+
+  // ---------- frame
+  const wgX = Math.ceil(NX / 4), wgY = Math.ceil(NY / 4), wgZ = Math.ceil(NZ / 4);
+  let simTime = 0, last = performance.now();
+  let frameN = 0, readingBack = false;
+  let captureReq = null;
+  window.__capture = () => new Promise(res => { captureReq = res; });
+  window.__setCam = (azim, elev, dist) => { cam.azim = azim; cam.elev = elev; cam.dist = dist; };
+  window.__setWind = v => { windSlider.value = v; };
+  const modeNames = ['soaring', 'landed — hiking back up', 'blown out — resetting'];
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min((now - last) / 1000, 1 / 24);
+    last = now;
+    simTime += dt;
+    frameN++;
+
+    const wind = windNow(simTime);
+    device.queue.writeBuffer(paramsB, 0, new Float32Array([
+      NX, NY, NZ, DXM,
+      DX, DY, DZ, simTime,
+      wind.ms, 0, dt, wind.s,
+      HX, HY, DX / HX, 0,
+    ]));
+
+    // camera
+    const aspectR = canvas.width / canvas.height;
+    const eye = [
+      cam.target[0] + Math.cos(cam.azim) * Math.cos(cam.elev) * cam.dist,
+      cam.target[1] + Math.sin(cam.azim) * Math.cos(cam.elev) * cam.dist,
+      cam.target[2] + Math.sin(cam.elev) * cam.dist,
+    ];
+    const vp = mat4Mul(perspective(0.9, aspectR, 2, 12000), lookAt(eye, cam.target, [0, 0, 1]));
+    const camData = new Float32Array(44);
+    camData.set(vp, 0);
+    camData.set(mat4Invert(vp), 16);
+    camData.set([...eye, simTime], 32);
+    camData.set([-0.86, 0.20, 0.24, wind.s], 36);   // dir to sun: WNW, low
+    camData.set([aspectR, 1 / Math.tan(0.45), 0, 0], 40);
+    device.queue.writeBuffer(camB, 0, camData);
+
+    const enc = device.createCommandEncoder();
+
+    // --- sim
+    {
+      const c = enc.beginComputePass();
+      c.setPipeline(pAdvect); c.setBindGroup(0, bgAdvect); c.dispatchWorkgroups(wgX, wgY, wgZ);
+      c.setPipeline(pDiv); c.setBindGroup(0, bgDiv); c.dispatchWorkgroups(wgX, wgY, wgZ);
+      c.setPipeline(pJacobi);
+      for (let i = 0; i < JACOBI; i++) {
+        c.setBindGroup(0, i % 2 === 0 ? bgJacobiA : bgJacobiB);
+        c.dispatchWorkgroups(wgX, wgY, wgZ);
+      }
+      c.setPipeline(pProject); c.setBindGroup(0, bgProject); c.dispatchWorkgroups(wgX, wgY, wgZ);
+      c.setPipeline(pParts); c.setBindGroup(0, bgParts); c.dispatchWorkgroups(Math.ceil(NP / 64));
+      c.setPipeline(pGlider); c.setBindGroup(0, bgGlider); c.dispatchWorkgroups(1);
+      c.end();
+    }
+
+    // --- render
+    const drawScene = (colorView, depthView) => {
+      const r = enc.beginRenderPass({
+        colorAttachments: [{ view: colorView, clearValue: { r: 0.05, g: 0.06, b: 0.09, a: 1 }, loadOp: 'clear', storeOp: 'store' }],
+        depthStencilAttachment: {
+          view: depthView,
+          depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store',
+        },
+      });
+      r.setPipeline(pSky); r.setBindGroup(0, bgSky); r.draw(3);
+      r.setPipeline(pApron); r.setBindGroup(0, bgApron); r.draw(4);
+      r.setPipeline(pTerrain); r.setBindGroup(0, bgTerrain);
+      r.setIndexBuffer(idxB, 'uint32'); r.drawIndexed(idx.length);
+      r.setPipeline(pIntent); r.setBindGroup(0, bgIntent); r.draw(256);
+      r.setPipeline(pTrail); r.setBindGroup(0, bgTrail); r.draw(TRAIL_N);
+      r.setPipeline(pPartR); r.setBindGroup(0, bgPartR); r.draw(4, NP);
+      r.setPipeline(pGliderR); r.setBindGroup(0, bgGliderR); r.draw(6);
+      r.setPipeline(pGlow); r.setBindGroup(0, bgGlow); r.draw(4);
+      r.end();
+    };
+    drawScene(ctx.getCurrentTexture().createView(), depthTex.createView());
+
+    // offscreen capture for tooling (window.__capture() → dataURL promise)
+    if (captureReq) {
+      const req = captureReq; captureReq = null;
+      const cw = 896, ch = 560;
+      const capTex = device.createTexture({ size: [cw, ch], format,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC });
+      const capDepth = device.createTexture({ size: [cw, ch], format: depthFormat,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT });
+      const capBuf = device.createBuffer({ size: cw * 4 * ch,
+        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ });
+      drawScene(capTex.createView(), capDepth.createView());
+      enc.copyTextureToBuffer({ texture: capTex }, { buffer: capBuf, bytesPerRow: cw * 4 }, [cw, ch]);
+      device.queue.submit([enc.finish()]);
+      capBuf.mapAsync(GPUMapMode.READ).then(() => {
+        const bytes = new Uint8Array(capBuf.getMappedRange().slice(0));
+        capBuf.unmap(); capTex.destroy(); capDepth.destroy(); capBuf.destroy();
+        const c2 = document.createElement('canvas');
+        c2.width = cw; c2.height = ch;
+        const g = c2.getContext('2d');
+        const img = g.createImageData(cw, ch);
+        const bgra = format === 'bgra8unorm';
+        for (let i = 0; i < cw * ch; i++) {
+          img.data[i * 4]     = bytes[i * 4 + (bgra ? 2 : 0)];
+          img.data[i * 4 + 1] = bytes[i * 4 + 1];
+          img.data[i * 4 + 2] = bytes[i * 4 + (bgra ? 0 : 2)];
+          img.data[i * 4 + 3] = 255;
+        }
+        g.putImageData(img, 0, 0);
+        req(c2.toDataURL('image/png'));
+      }).catch(e => req('ERROR: ' + e));
+      const mph0 = wind.ms * 2.237;
+      readout.textContent = mph0 < 1 ? 'dead calm' : `${mph0.toFixed(0)} mph onshore`;
+      return;   // this frame's commands already submitted
+    }
+
+    // occasional glider state readback for the HUD
+    if (frameN % 20 === 0 && !readingBack) {
+      enc.copyBufferToBuffer(gliderB, 0, gliderRead, 0, 32 * 4);
+      readingBack = true;
+      device.queue.submit([enc.finish()]);
+      gliderRead.mapAsync(GPUMapMode.READ).then(() => {
+        const g = new Float32Array(gliderRead.getMappedRange().slice(0));
+        gliderRead.unmap();
+        readingBack = false;
+        gliderLabel.textContent = 'glider: ' + (modeNames[Math.round(g[3])] || 'soaring') +
+          '  ·  ' + Math.round(g[2] * 3.28) + ' ft';
+      }).catch(() => { readingBack = false; });
+    } else {
+      device.queue.submit([enc.finish()]);
+    }
+
+    const mph = wind.ms * 2.237;
+    readout.textContent = mph < 1 ? 'dead calm' : `${mph.toFixed(0)} mph onshore`;
+  }
+  requestAnimationFrame(frame);
+}
+
+boot().catch(e => {
+  console.error(e);
+  $('err').style.display = 'grid';
+});
+</script>
+</body>
+</html>

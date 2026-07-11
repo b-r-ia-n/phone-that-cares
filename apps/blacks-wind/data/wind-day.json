@@ -1,0 +1,153 @@
+{
+ "station": "LJPC1",
+ "stationName": "Scripps Pier, La Jolla CA (~3 km S of gliderport)",
+ "date": "2026-06-19",
+ "timezone": "UTC (subtract 7h for PDT; midday PDT = 18:00-24:00 UTC)",
+ "samples": [
+  {
+   "t": "00:20",
+   "dirDeg": 300,
+   "speedMs": 4.1,
+   "gustMs": 5.1
+  },
+  {
+   "t": "01:20",
+   "dirDeg": 300,
+   "speedMs": 3.1,
+   "gustMs": 4.6
+  },
+  {
+   "t": "02:20",
+   "dirDeg": 290,
+   "speedMs": 3.1,
+   "gustMs": 4.6
+  },
+  {
+   "t": "03:20",
+   "dirDeg": 290,
+   "speedMs": 3.6,
+   "gustMs": 5.1
+  },
+  {
+   "t": "04:20",
+   "dirDeg": 320,
+   "speedMs": 3.1,
+   "gustMs": 4.1
+  },
+  {
+   "t": "05:20",
+   "dirDeg": 320,
+   "speedMs": 2.1,
+   "gustMs": 3.1
+  },
+  {
+   "t": "06:20",
+   "dirDeg": 320,
+   "speedMs": 2.6,
+   "gustMs": 4.1
+  },
+  {
+   "t": "07:20",
+   "dirDeg": 10,
+   "speedMs": 1.5,
+   "gustMs": 2.6
+  },
+  {
+   "t": "08:20",
+   "dirDeg": 340,
+   "speedMs": 1.5,
+   "gustMs": 3.1
+  },
+  {
+   "t": "09:20",
+   "dirDeg": 330,
+   "speedMs": 1.0,
+   "gustMs": 2.6
+  },
+  {
+   "t": "10:20",
+   "dirDeg": 40,
+   "speedMs": 1.0,
+   "gustMs": 2.6
+  },
+  {
+   "t": "11:20",
+   "dirDeg": 350,
+   "speedMs": 1.0,
+   "gustMs": 2.6
+  },
+  {
+   "t": "12:20",
+   "dirDeg": 300,
+   "speedMs": 3.6,
+   "gustMs": 4.6
+  },
+  {
+   "t": "13:20",
+   "dirDeg": 290,
+   "speedMs": 3.6,
+   "gustMs": 5.1
+  },
+  {
+   "t": "14:20",
+   "dirDeg": 310,
+   "speedMs": 2.6,
+   "gustMs": 4.1
+  },
+  {
+   "t": "15:20",
+   "dirDeg": 310,
+   "speedMs": 2.6,
+   "gustMs": 4.1
+  },
+  {
+   "t": "16:20",
+   "dirDeg": 320,
+   "speedMs": 2.6,
+   "gustMs": 3.6
+  },
+  {
+   "t": "17:20",
+   "dirDeg": 300,
+   "speedMs": 3.6,
+   "gustMs": 5.1
+  },
+  {
+   "t": "18:20",
+   "dirDeg": 300,
+   "speedMs": 4.1,
+   "gustMs": 5.1
+  },
+  {
+   "t": "19:20",
+   "dirDeg": 290,
+   "speedMs": 4.1,
+   "gustMs": 5.7
+  },
+  {
+   "t": "20:20",
+   "dirDeg": 300,
+   "speedMs": 4.6,
+   "gustMs": 5.7
+  },
+  {
+   "t": "21:20",
+   "dirDeg": 300,
+   "speedMs": 4.6,
+   "gustMs": 6.7
+  },
+  {
+   "t": "22:20",
+   "dirDeg": 300,
+   "speedMs": 5.1,
+   "gustMs": 6.2
+  },
+  {
+   "t": "23:20",
+   "dirDeg": 300,
+   "speedMs": 5.1,
+   "gustMs": 6.7
+  }
+ ],
+ "notes": "NDBC realtime2 hourly obs. Chosen for sustained onshore flow: all 18-23 UTC samples had WDIR 250-310 deg and WSPD >= 4 m/s (midday avg 4.6 m/s). dirDeg is meteorological (direction wind comes FROM, deg true); ~270-290 = onshore/west at this coast."
+}
