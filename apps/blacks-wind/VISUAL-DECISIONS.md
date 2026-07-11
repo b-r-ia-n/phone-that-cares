@@ -76,3 +76,16 @@ date each entry. If you change a decision, add a new line saying so and why.**
   visual-registers rebalance.
 - Trail draws straight-line jumps across the mesa after a respawn (ring buffer not
   cleared) — for the dramaturgy lane.
+
+**trees data (2026-07-11, trees lane)**
+- Tree positions are REAL, not procedural: canopy height model from the same USGS 2014
+  San Diego lidar as the terrain (EPT point cloud, first returns minus ground), local
+  maxima >= 2.5 m. 14,050 trees in `data/trees.js` (6,372 inside the sim domain, rest
+  extend ~2.7 km north into the reserve); x,y,z_ground,height,radius packed Float32.
+- Buildings rejected by roof-plateau + no-ground-visibility test; cliff-edge CHM
+  artifacts rejected by local ground-relief test. Beach/cliff face/ocean verified clean
+  in `data/trees-preview.png`.
+- Heights 2.5-43 m (median ~9). The tall dark-green mass in the SE corner is the real
+  UCSD eucalyptus grove — keep it; it anchors the place. Torrey pines proper are the
+  scattered 5-15 m crowns on the canyon rims and the reserve mesa.
+- Vintage is 2014: renderer shouldn't promise current campus landscaping.
