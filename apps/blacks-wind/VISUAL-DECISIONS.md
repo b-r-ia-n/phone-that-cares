@@ -152,3 +152,41 @@ date each entry. If you change a decision, add a new line saying so and why.**
 **Perf / regressions**
 - 121 fps at full res (unchanged from v0 despite 7 velocity taps per wisp — wisp count
   is 4× lower). Box, jun-19 day mode, glider, ocean, terrain verified unregressed.
+
+## 2026-07-11 (world lane: coastline surround + real trees)
+
+**Coastline surround (La Jolla → Del Mar, 14×18 km coarse DEM)**
+- Same terrain pipeline/palette as the detail domain — one TP uniform gained an
+  origin/zBias/flag vec4 so both meshes share the shader. Continuity comes from the
+  identical world-space mottling + fog; no separate "background register."
+- Seam choice: **mask, not stack.** The surround discards its fragments inside the
+  detail domain's rectangle (inset 55 m so there's an underlap ring), and sits only
+  0.5 m low. History: first tried 1.5 m low — that drowned the surround's near-zero
+  beach under the ocean plane and the domain's SW corner read as a hard rectangular
+  cut in the sand.
+- Beach shelf: the 3DEP surround clamps surf + sand to 0 m, so its shore fell
+  straight into the sea while the lidar domain has a ~100 m beach. At decode we
+  dilate the land edge ~2 cells (~70 m) seaward at 1.2 m elevation — a continuous
+  sand ribbon now runs Scripps → Del Mar and through the domain seam. More truthful
+  than the raw DEM (Blacks beach is real and about that wide).
+- Fog does the distance work: at 5–10 km the surround dissolves into the mauve haze
+  (continuity, not detail). Far plane 12 km → 30 km, zoom clamp 4.2 km → 12 km so
+  you can pull back and see the whole coast; ocean apron already reached the horizon.
+
+**Trees (14,050 real lidar canopy positions)**
+- Register: two crossed alpha-cut quads per tree, per-tree rotation; crown = noise-
+  broken ellipse SDF over the upper 2/3, thin stem below. Dark green albedo
+  (0.105, 0.125, 0.085) with world-noise mottle — quiet dark presence, not green
+  blobs. A fake rounded normal lets west faces catch a little SUN_COL (×1.35);
+  east sides go near-silhouette. Trees dim with the reveal like all scenery.
+- Tall crowns widen: halfW = max(1.15·r, 0.24·h), because the 30–43 m UCSD
+  eucalyptus with narrow lidar radii read as office towers on the skyline.
+- Rooted 2 m below z_ground so nothing floats where the 36 m surround DEM disagrees
+  with the lidar ground sample.
+- Wind: inside the sim domain each crown samples the solved velocity (nearest cell
+  at 0.7·h) and leans by v·0.13 s, capped at 0.30·h, quadratic-in-height bend +
+  a small speed-scaled shiver; outside the domain they lean with half the ambient
+  inflow (new Cam.wind uniform, direction-aware for jun-19 mode). Verified: calm =
+  upright, 60 mph = visible eastward lean, plausible at the cap.
+- Perf: 121 fps unchanged (14k instances × 12 verts is nothing). Haze, reveal,
+  streaklets, box, day mode, glider all verified unregressed by screenshot.

@@ -57,6 +57,8 @@
 
 <script src="data/terrain.js"></script>
 <script src="data/windday.js"></script>
+<script src="data/coastline.js"></script>
+<script src="data/trees.js"></script>
 <script>
 'use strict';
 // ============================================================================
@@ -69,6 +71,8 @@
 
 // ------------------------------------------------------------ configuration
 const TERRAIN = window.BLACKS_TERRAIN || null;
+const COAST = window.BLACKS_COAST || null;    // coarse surround DEM, scenery only
+const TREES = window.BLACKS_TREES || null;    // real lidar canopy: x,y,zg,h,r per tree
 const TINY = new URLSearchParams(location.search).has('tiny');  // headless smoke tests
 
 const NX = TINY ? 76 : 152, NY = TINY ? 64 : 128, NZ = TINY ? 20 : 40;
@@ -87,14 +91,14 @@ const GPORT = TERRAIN ? TERRAIN.gliderportXY : [DX * 0.42, DY * 0.49];
 const $ = id => document.getElementById(id);
 
 // ------------------------------------------------------------ terrain
+function decodeF32(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Float32Array(bytes.buffer);
+}
 function makeHeightfield() {
-  if (TERRAIN) {
-    const bin = atob(TERRAIN.b64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return new Float32Array(bytes.buffer);   // south-first rows, meters
-  }
-  return makeAnalytic();
+  return TERRAIN ? decodeF32(TERRAIN.b64) : makeAnalytic();  // south-first rows, meters
 }
 // Analytic stand-in: beach at ~2 m, sharp west-facing cliff to a ~105 m mesa.
 function makeAnalytic() {
@@ -520,7 +524,8 @@ struct Cam {
   invViewProj : mat4x4<f32>,
   eye : vec4<f32>,       // xyz eye, w time
   sun : vec4<f32>,       // xyz dir-to-sun, w wind slider
-  misc : vec4<f32>,      // x aspect, y focal (1/tan(fov/2)), zw unused
+  misc : vec4<f32>,      // x aspect, y focal (1/tan(fov/2)), z reveal, w unused
+  wind : vec4<f32>,      // xy ambient inflow (m/s, east/north), z speed m/s, w unused
 };
 @group(0) @binding(0) var<uniform> C : Cam;
 
@@ -575,7 +580,11 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
 
 const TERRAIN_WGSL = CAM_WGSL + /* wgsl */`
 @group(0) @binding(1) var<storage, read> height : array<f32>;
-struct TP { dims : vec4<f32> };  // HX, HY, hdx, hdy
+// dims: HX, HY, hdx, hdy | orig: originX, originY, zBias, surround flag
+// (the coarse coastline surround reuses this pipeline with its own DEM + origin;
+//  it sits 1.5 m low and is cut away under the detailed domain, leaving a ~55 m
+//  underlap ring so the seam never gaps)
+struct TP { dims : vec4<f32>, orig : vec4<f32> };
 @group(0) @binding(2) var<uniform> T : TP;
 
 struct VOut {
@@ -593,7 +602,8 @@ fn vs(@builtin(vertex_index) vi : u32) -> VOut {
   let W = u32(T.dims.x);
   let i = i32(vi % W); let j = i32(vi / W);
   let h = hAt(i, j);
-  let world = vec3<f32>((f32(i) + 0.5) * T.dims.z, (f32(j) + 0.5) * T.dims.w, h);
+  let world = vec3<f32>(T.orig.x + (f32(i) + 0.5) * T.dims.z,
+                        T.orig.y + (f32(j) + 0.5) * T.dims.w, h + T.orig.z);
   let nx = hAt(i - 1, j) - hAt(i + 1, j);
   let ny = hAt(i, j - 1) - hAt(i, j + 1);
   var o : VOut;
@@ -604,8 +614,11 @@ fn vs(@builtin(vertex_index) vi : u32) -> VOut {
 }
 @fragment
 fn fs(v : VOut) -> @location(0) vec4<f32> {
-  let h = v.world.z;
+  let h = v.world.z - T.orig.z;
   if (h < 0.4) { discard; }                             // the apron plane is the water
+  if (T.orig.w > 0.5 &&
+      v.world.x > 55.0 && v.world.x < ${(DX - 55).toFixed(1)} &&
+      v.world.y > 55.0 && v.world.y < ${(DY - 55).toFixed(1)}) { discard; }  // detail domain owns its rectangle
   let n = normalize(v.normal);
   let sun = normalize(C.sun.xyz);
   let slope = 1.0 - n.z;
@@ -874,6 +887,81 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   return vec4<f32>(col, 1.0);
 }`;
 
+// real trees from the 2014 lidar canopy: crossed alpha-cut quads, dark crowns
+// warm-edged by the low sun, leaning and shivering with the local wind
+const TREE_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> trees : array<f32>;      // x, y, zg, h, r per tree
+@group(0) @binding(2) var<storage, read> velIn : array<vec4<f32>>;
+
+fn windAt(pm : vec3<f32>) -> vec3<f32> {
+  // inside the sim domain: nearest-cell solved velocity; outside: ambient inflow
+  if (pm.x > 0.0 && pm.x < ${DX.toFixed(1)} && pm.y > 0.0 && pm.y < ${DY.toFixed(1)}) {
+    let g = clamp(vec3<i32>(pm / ${DXM.toFixed(4)}), vec3<i32>(0), vec3<i32>(${NX - 1}, ${NY - 1}, ${NZ - 1}));
+    return velIn[u32(g.x) + ${NX}u * (u32(g.y) + ${NY}u * u32(g.z))].xyz;
+  }
+  return vec3<f32>(C.wind.xy * 0.5, 0.0);   // ~crown-height share of the inflow
+}
+
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) uv : vec2<f32>,          // x -1..1 across, y 0..1 base -> tip
+  @location(1) world : vec3<f32>,
+  @location(2) aux : vec3<f32>,         // plane axis xy, seed
+};
+@vertex
+fn vs(@builtin(vertex_index) vi : u32, @builtin(instance_index) inst : u32) -> VOut {
+  let t0 = inst * 5u;
+  let base = vec3<f32>(trees[t0], trees[t0 + 1u], trees[t0 + 2u]);
+  let ht = trees[t0 + 3u];
+  let rad = trees[t0 + 4u];
+  var corners = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, 0.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
+  let c = corners[vi % 6u];
+  let seed = fract(f32(inst) * 0.61803);
+  let ang = seed * 3.14159 + f32(vi / 6u) * 1.5708;   // two crossed planes, per-tree rotation
+  let axis = vec2<f32>(cos(ang), sin(ang));
+  // crowns lean with the wind at crown height, tip more than base
+  let v = windAt(base + vec3<f32>(0.0, 0.0, ht * 0.7));
+  let spd = length(v.xy);
+  var lean = v.xy * 0.13;
+  let leanCap = ht * 0.30;
+  let lm = length(lean);
+  if (lm > leanCap) { lean *= leanCap / lm; }
+  let shiv = sin(C.eye.w * (1.9 + seed * 1.6) + seed * 39.0) * 0.02 * spd;
+  let bendT = c.y * c.y;
+  let world = vec3<f32>(
+    base.xy + axis * (c.x * max(rad * 1.15, ht * 0.24)) + (lean + vec2<f32>(-axis.y, axis.x) * shiv) * bendT,
+    base.z - 2.0 + c.y * (ht + 2.0));     // rooted 2 m deep: no floating on the coarse DEM
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(world, 1.0);
+  o.uv = c;
+  o.world = world;
+  o.aux = vec3<f32>(axis, seed);
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let uv = v.uv;
+  // crown: noise-broken ellipse over the upper 2/3; a thin stem below it
+  let q = vec2<f32>(uv.x / 0.95, (uv.y - 0.68) / 0.34);
+  let d = length(q) + (vnoise2(uv * vec2<f32>(4.0, 7.0) + v.aux.z * 43.0) - 0.5) * 0.55;
+  let trunk = abs(uv.x) < 0.045 && uv.y < 0.68;
+  if (d > 1.0 && !trunk) { discard; }
+  // fake rounded normal so the west side catches the last of the sun
+  let n = normalize(vec3<f32>(v.aux.x * q.x * 0.8, v.aux.y * q.x * 0.8, max(q.y, -0.2) * 0.5 + 0.55));
+  let sun = normalize(C.sun.xyz);
+  let diff = max(dot(n, sun), 0.0);
+  let mottle = vnoise2(v.world.xy * 0.9 + v.aux.z * 17.0);
+  var albedo = vec3<f32>(0.105, 0.125, 0.085) * (0.7 + 0.6 * mottle);
+  if (trunk && d > 1.0) { albedo = vec3<f32>(0.15, 0.115, 0.09); }
+  let rv = C.misc.z;
+  var col = albedo * (SUN_COL * diff * 1.35 * (1.0 - 0.78 * rv)
+                    + vec3<f32>(0.40, 0.44, 0.58) * 0.30 * (1.0 - 0.30 * rv));
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
 // ------------------------------------------------------------ boot
 const canvas = $('c');
 async function boot() {
@@ -903,15 +991,43 @@ async function boot() {
   const trailB  = mkBuf(TRAIL_N * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const gliderRead = mkBuf(32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
   const paramsB = mkBuf(112, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
-  const camB    = mkBuf(176, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
-  const terrainUB = mkBuf(16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const camB    = mkBuf(192, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const terrainUB = mkBuf(32, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const intentB = mkBuf(256 * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const coastB  = COAST ? mkBuf(COAST.width * COAST.height * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST) : null;
+  const coastUB = COAST ? mkBuf(32, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST) : null;
+  const treesB  = TREES ? mkBuf(TREES.count * TREES.stride * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST) : null;
 
   // ---------- initial data
   const height = makeHeightfield();
   device.queue.writeBuffer(heightB, 0, height);
   device.queue.writeBuffer(solidB, 0, makeSolid(height));
-  device.queue.writeBuffer(terrainUB, 0, new Float32Array([HX, HY, DX / HX, DY / HY]));
+  device.queue.writeBuffer(terrainUB, 0, new Float32Array([HX, HY, DX / HX, DY / HY, 0, 0, 0, 0]));
+  if (COAST) {
+    // the 3DEP surround clamps surf + sand to 0, so its shore falls straight into
+    // the sea and the detail domain's wide beach ends in a hard corner; dilate the
+    // land edge ~2 cells (~70 m) seaward into a low sand shelf so the beach ribbon
+    // continues through the seam and up the whole coast
+    const cd = decodeF32(COAST.b64);
+    const CW = COAST.width, CH = COAST.height;
+    const shelf = new Float32Array(cd);
+    for (let j = 0; j < CH; j++) for (let i = 0; i < CW; i++) {
+      if (cd[j * CW + i] > 0.4) continue;
+      let near = false;
+      for (let dj = -2; dj <= 2 && !near; dj++) for (let di = -2; di <= 2; di++) {
+        const jj = j + dj, ii = i + di;
+        if (jj >= 0 && jj < CH && ii >= 0 && ii < CW && cd[jj * CW + ii] > 0.5) { near = true; break; }
+      }
+      if (near) shelf[j * CW + i] = 1.2;
+    }
+    device.queue.writeBuffer(coastB, 0, shelf);
+    device.queue.writeBuffer(coastUB, 0, new Float32Array([
+      COAST.width, COAST.height, COAST.extentX / COAST.width, COAST.extentY / COAST.height,
+      COAST.originX, COAST.originY, -0.5, 1]));   // 0.5 m low + masked: detail wins the seam
+      // (history: -1.5 m drowned the surround's low beach under the ocean plane —
+      //  the shoreline snapped inland and the domain's SW corner read as a hard cut)
+  }
+  if (TREES) device.queue.writeBuffer(treesB, 0, decodeF32(TREES.b64));
 
   const parts = new Float32Array(NP * 8);
   const hAtM = (x, y) => {
@@ -1014,9 +1130,12 @@ async function boot() {
   const pGliderR = rp(GLIDER_RENDER_WGSL);
   const pGlow = rp(GLIDER_GLOW_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
   const pBox = rp(BOX_WGSL);
+  const pTree = TREES ? rp(TREE_WGSL) : null;
 
   const bgSky = bg(pSky, [camB]);
   const bgTerrain = bg(pTerrain, [camB, heightB, terrainUB]);
+  const bgCoast = COAST ? bg(pTerrain, [camB, coastB, coastUB]) : null;   // same pipeline, its own DEM
+  const bgTree = TREES ? bg(pTree, [camB, treesB, vel]) : null;
   const bgApron = bg(pApron, [camB]);
   const bgPartR = bg(pPartR, [camB, partsB]);
   const bgStreakR = bg(pStreakR, [camB, streakB]);
@@ -1026,16 +1145,21 @@ async function boot() {
   const bgGlow = bg(pGlow, [camB, gliderB]);
   const bgBox = bg(pBox, [camB, paramsB]);
 
-  // terrain index buffer
-  const idx = new Uint32Array((HX - 1) * (HY - 1) * 6);
-  let q = 0;
-  for (let j = 0; j < HY - 1; j++) for (let i = 0; i < HX - 1; i++) {
-    const a = j * HX + i;
-    idx[q++] = a; idx[q++] = a + 1; idx[q++] = a + HX;
-    idx[q++] = a + 1; idx[q++] = a + HX + 1; idx[q++] = a + HX;
-  }
-  const idxB = device.createBuffer({ size: idx.byteLength, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
-  device.queue.writeBuffer(idxB, 0, idx);
+  // grid index buffers (detail terrain + coastline surround)
+  const gridIdx = (W, H) => {
+    const ia = new Uint32Array((W - 1) * (H - 1) * 6);
+    let q = 0;
+    for (let j = 0; j < H - 1; j++) for (let i = 0; i < W - 1; i++) {
+      const a = j * W + i;
+      ia[q++] = a; ia[q++] = a + 1; ia[q++] = a + W;
+      ia[q++] = a + 1; ia[q++] = a + W + 1; ia[q++] = a + W;
+    }
+    const buf = device.createBuffer({ size: ia.byteLength, usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST });
+    device.queue.writeBuffer(buf, 0, ia);
+    return { buf, n: ia.length };
+  };
+  const terrIdx = gridIdx(HX, HY);
+  const coastIdx = COAST ? gridIdx(COAST.width, COAST.height) : null;
 
   // ---------- camera
   const cam = {
@@ -1112,7 +1236,7 @@ async function boot() {
       bUsed = true;
       box.cx = Math.max(60, Math.min(DX - 60, box.cx + e.deltaY * 0.6));
     } else {
-      cam.dist = Math.max(180, Math.min(4200, cam.dist * Math.exp(e.deltaY * 0.001)));
+      cam.dist = Math.max(180, Math.min(12000, cam.dist * Math.exp(e.deltaY * 0.001)));
     }
   }, { passive: true });
   window.__setBox = (x, y, z, on) => {
@@ -1299,14 +1423,15 @@ async function boot() {
       cam.target[1] + Math.sin(cam.azim) * Math.cos(cam.elev) * cam.dist,
       cam.target[2] + Math.sin(cam.elev) * cam.dist,
     ];
-    const vp = mat4Mul(perspective(0.9, aspectR, 2, 12000), lookAt(eye, cam.target, [0, 0, 1]));
-    const camData = new Float32Array(44);
+    const vp = mat4Mul(perspective(0.9, aspectR, 2, 30000), lookAt(eye, cam.target, [0, 0, 1]));
+    const camData = new Float32Array(48);
     camData.set(vp, 0);
     invVpCur = mat4Invert(vp);
     camData.set(invVpCur, 16);
     camData.set([...eye, simTime], 32);
     camData.set([-0.86, 0.20, 0.24, wind.s], 36);   // dir to sun: WNW, low
     camData.set([aspectR, 1 / Math.tan(0.45), reveal, 0], 40);
+    camData.set([Math.cos(wind.ang || 0) * wind.ms, Math.sin(wind.ang || 0) * wind.ms, wind.ms, 0], 44);
     device.queue.writeBuffer(camB, 0, camData);
 
     const enc = device.createCommandEncoder();
@@ -1339,8 +1464,10 @@ async function boot() {
       });
       r.setPipeline(pSky); r.setBindGroup(0, bgSky); r.draw(3);
       r.setPipeline(pApron); r.setBindGroup(0, bgApron); r.draw(4);
-      r.setPipeline(pTerrain); r.setBindGroup(0, bgTerrain);
-      r.setIndexBuffer(idxB, 'uint32'); r.drawIndexed(idx.length);
+      r.setPipeline(pTerrain);
+      if (bgCoast) { r.setBindGroup(0, bgCoast); r.setIndexBuffer(coastIdx.buf, 'uint32'); r.drawIndexed(coastIdx.n); }
+      r.setBindGroup(0, bgTerrain); r.setIndexBuffer(terrIdx.buf, 'uint32'); r.drawIndexed(terrIdx.n);
+      if (bgTree) { r.setPipeline(pTree); r.setBindGroup(0, bgTree); r.draw(12, TREES.count); }
       if (box.on) { r.setPipeline(pBox); r.setBindGroup(0, bgBox); r.draw(36); }
       r.setPipeline(pIntent); r.setBindGroup(0, bgIntent); r.draw(256);
       r.setPipeline(pTrail); r.setBindGroup(0, bgTrail); r.draw(TRAIL_N);
