@@ -179,6 +179,23 @@ F. **Coastline fill** — coarse DEM well beyond the sim domain (La Jolla → De
    ~12×12 km) rendered as background terrain with the same palette, no sim. The world
    shouldn't end at the domain edge. (Also fixes the visible domain-edge slab.)
 
+**Extra-time ideas from Brian (2026-07-11, in priority-ish order):**
+> "if there is extra time consider: searching for, finding adding trees, adding a lower
+> fidelity wind simulation so things look continuous along the coastline, adding some
+> basic gameplay features for users, also if all that is done, feel free to get creative
+> have fun"
+- Trees: the Torrey pines themselves (the reserve is full of them; instanced billboards
+  or simple cones bent by local wind would be very alive).
+- Low-fi coastline wind: a cheap 2D/analytic flow layer over the coarse surround so haze/
+  particles don't dead-stop at the sim-domain boundary — continuity, not accuracy.
+- Basic gameplay: undefined on purpose — keep it "natural in that" (his phrase), no
+  points/streaks/badges (hard taste rule). Think: challenges of weather, not UI.
+- Then: get creative, have fun (explicit permission).
+
+## Also maintain
+`VISUAL-DECISIONS.md` (same folder) — Brian asked for an explicit running list of visual
+assumptions/choices/decisions. Append dated entries whenever you make one.
+
 ## Rules for subinstances
 
 - The main instance owns integration; **only edit `apps/blacks-wind/index.html` if your
