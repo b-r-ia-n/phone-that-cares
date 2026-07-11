@@ -48,3 +48,31 @@ date each entry. If you change a decision, add a new line saying so and why.**
 **HUD**
 - Inter, 12 px, warm off-white at ~50% alpha, bottom corners only. One slider (wind).
   No panels, no numbers unless they're the salient variable (mph readout, glider ft).
+
+## 2026-07-11 (Lane A: obstacle box + jun-19 day mode)
+
+**The box**
+- Look: a quiet dark slab in a weathered-timber register — warm dark albedo
+  (0.21, 0.165, 0.125) with value-noise mottling, lit by the same low sun + sky ambient,
+  fogged with the scene. Deliberately NOT techy (no wireframe, no glow, no ghost preview):
+  it should feel like an object hanging in the evening air, not a debug gizmo.
+- Default size/placement: 90×90×45 m slab (~300 ft square), centered 300 m seaward of
+  the gliderport, bottom face ≈ 60 m over the water — right in the lift band's approach,
+  per Brian's original "big box hovering 200' in the air" phrasing.
+- Interaction: tap B toggles; hold B + drag moves it in the vertical N-S plane; hold B +
+  scroll pushes it east/west. Kept off the HUD — one line of hint text only.
+- Glider vs box: flying into it = crash (same landed mode as terrain). Particles die
+  inside it (no tracers passing through the solid).
+
+**jun 19 day mode**
+- Toggle is a small dotted-underline text button left of the wind slider; when on, the
+  slider hides (the day drives the wind — one salient variable at a time) and the readout
+  becomes `jun 19 · 5:45 pm · 9 mph WNW` (local PDT clock, compass direction).
+- Time scale: 90 sim-seconds per hour (~36 min per looping day). Direction lerps
+  shortest-path between hourly obs; gusts scale with the obs gust-minus-mean.
+
+**Noted, not yet fixed**
+- Dust curtain pools at the NW corner at low wind (respawn-zone pileup) — for the
+  visual-registers rebalance.
+- Trail draws straight-line jumps across the mesa after a respawn (ring buffer not
+  cleared) — for the dramaturgy lane.

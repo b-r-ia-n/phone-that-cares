@@ -31,6 +31,12 @@
     background: #e8c08a; border: none; cursor: pointer;
   }
   #readout { font-variant-numeric: tabular-nums; margin-top: 4px; }
+  #dayToggle {
+    cursor: pointer; opacity: 0.45; margin-right: 6px;
+    border-bottom: 1px dotted rgba(255,240,220,0.35);
+  }
+  #dayToggle:hover { opacity: 0.8; }
+  #dayToggle.on { opacity: 1; color: #e8c08a; border-bottom-color: #e8c08a; }
   #err {
     position: fixed; inset: 0; display: none; place-items: center; text-align: center;
     color: rgba(255,240,220,0.65); font: 14px/1.8 system-ui; padding: 2em;
@@ -40,16 +46,17 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud">
-  <div id="left"><b>over blacks</b> &nbsp;·&nbsp; air on the cliff, dusk &nbsp;·&nbsp; drag to orbit, scroll to zoom<br>
+  <div id="left"><b>over blacks</b> &nbsp;·&nbsp; air on the cliff, dusk &nbsp;·&nbsp; drag to orbit, scroll to zoom &nbsp;·&nbsp; B box (hold B: drag moves, scroll pushes)<br>
   <span id="glider">glider: warming up</span></div>
   <div id="right">
-    <div id="windRow"><span>wind</span><input id="wind" type="range" min="0" max="1000" value="330"></div>
+    <div id="windRow"><span id="dayToggle">jun 19</span><span>wind</span><input id="wind" type="range" min="0" max="1000" value="330"></div>
     <div id="readout">—</div>
   </div>
 </div>
 <div id="err">This needs WebGPU — Chrome on your Mac has it.<br>If you're seeing this in Chrome, check chrome://gpu.</div>
 
 <script src="data/terrain.js"></script>
+<script src="data/windday.js"></script>
 <script>
 'use strict';
 // ============================================================================
@@ -150,10 +157,21 @@ const WGSL_COMMON = /* wgsl */`
 struct Params {
   simDims : vec4<f32>,   // NX, NY, NZ, dx (m)
   domain  : vec4<f32>,   // DX, DY, DZ, time (s)
-  wind    : vec4<f32>,   // inflow speed m/s, unused, dt, slider01
+  wind    : vec4<f32>,   // inflow speed m/s, inflow angle rad, dt, slider01
   hmap    : vec4<f32>,   // HX, HY, hdx m/texel, unused
+  box0    : vec4<f32>,   // obstacle box center xyz (m), w = on (0/1)
+  box1    : vec4<f32>,   // obstacle box half-extents xyz (m), w unused
 };
 @group(0) @binding(0) var<uniform> P : Params;
+
+// the floating obstacle box, treated as solid wherever it is
+fn inBox(pm : vec3<f32>) -> bool {
+  if (P.box0.w < 0.5) { return false; }
+  let d = abs(pm - P.box0.xyz);
+  return all(d <= P.box1.xyz);
+}
+fn cellPos(i : vec3<i32>) -> vec3<f32> { return (vec3<f32>(i) + 0.5) * P.simDims.w; }
+fn inflowDir() -> vec2<f32> { return vec2<f32>(cos(P.wind.y), sin(P.wind.y)); }
 
 fn NXu() -> u32 { return u32(P.simDims.x); }
 fn NYu() -> u32 { return u32(P.simDims.y); }
@@ -215,13 +233,12 @@ const ADVECT_WGSL = WGSL_COMMON + /* wgsl */`
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
   let n = idx3(id);
-  if (solid[n] == 1u) { velOut[n] = vec4<f32>(0.0); return; }
-  let dx = P.simDims.w;
-  let pm = (vec3<f32>(id) + 0.5) * dx;
+  let pm = (vec3<f32>(id) + 0.5) * P.simDims.w;
+  if (solid[n] == 1u || inBox(pm)) { velOut[n] = vec4<f32>(0.0); return; }
   let back = pm - velIn[n].xyz * P.wind.z;
   var v = sampleVel(back) * 0.999;
   // west face: onshore inflow
-  if (id.x <= 1u) { v = vec3<f32>(P.wind.x * windProfile(pm.z), 0.0, 0.0); }
+  if (id.x <= 1u) { v = vec3<f32>(inflowDir() * P.wind.x * windProfile(pm.z), 0.0); }
   // lid: free-slip
   if (id.z == NZu() - 1u) { v.z = min(v.z, 0.0); }
   velOut[n] = vec4<f32>(v, 0.0);
@@ -241,8 +258,8 @@ fn velAt(i : vec3<i32>) -> vec3<f32> {
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
   let n = idx3(id);
-  if (solid[n] == 1u) { divOut[n] = 0.0; return; }
   let i = vec3<i32>(id);
+  if (solid[n] == 1u || inBox(cellPos(i))) { divOut[n] = 0.0; return; }
   let s = 0.5 / P.simDims.w;
   divOut[n] =
       (velAt(i + vec3<i32>(1,0,0)).x - velAt(i - vec3<i32>(1,0,0)).x
@@ -260,15 +277,15 @@ fn pAt(i : vec3<i32>, pc : f32) -> f32 {
   let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
   if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
   let n = idx3(vec3<u32>(i));
-  if (solid[n] == 1u) { return pc; }
+  if (solid[n] == 1u || inBox(cellPos(i))) { return pc; }
   return pIn[n];
 }
 @compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
   let n = idx3(id);
-  if (solid[n] == 1u) { pOut[n] = 0.0; return; }
   let i = vec3<i32>(id);
+  if (solid[n] == 1u || inBox(cellPos(i))) { pOut[n] = 0.0; return; }
   let pc = pIn[n];
   let dx = P.simDims.w;
   let sum = pAt(i + vec3<i32>(1,0,0), pc) + pAt(i - vec3<i32>(1,0,0), pc)
@@ -287,15 +304,15 @@ fn pAt(i : vec3<i32>, pc : f32) -> f32 {
   let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
   if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
   let n = idx3(vec3<u32>(i));
-  if (solid[n] == 1u) { return pc; }
+  if (solid[n] == 1u || inBox(cellPos(i))) { return pc; }
   return pIn[n];
 }
 @compute @workgroup_size(4, 4, 4)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (id.x >= NXu() || id.y >= NYu() || id.z >= NZu()) { return; }
   let n = idx3(id);
-  if (solid[n] == 1u) { velOut[n] = vec4<f32>(0.0); return; }
   let i = vec3<i32>(id);
+  if (solid[n] == 1u || inBox(cellPos(i))) { velOut[n] = vec4<f32>(0.0); return; }
   let pc = pIn[n];
   let s = 0.5 / P.simDims.w;
   var v = velIn[n].xyz - vec3<f32>(
@@ -303,7 +320,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
     pAt(i + vec3<i32>(0,1,0), pc) - pAt(i - vec3<i32>(0,1,0), pc),
     pAt(i + vec3<i32>(0,0,1), pc) - pAt(i - vec3<i32>(0,0,1), pc)) * s;
   let pm = (vec3<f32>(id) + 0.5) * P.simDims.w;
-  if (id.x <= 1u) { v = vec3<f32>(P.wind.x * windProfile(pm.z), 0.0, 0.0); }
+  if (id.x <= 1u) { v = vec3<f32>(inflowDir() * P.wind.x * windProfile(pm.z), 0.0); }
   velOut[n] = vec4<f32>(v, 0.0);
 }`;
 
@@ -328,6 +345,7 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (p.y < 2.0 || p.y > P.domain.y - 2.0) { dead = true; }
   if (p.z > P.domain.z - 4.0) { dead = true; }
   if (p.z < terrainHeight(p.xy) + 1.0) { dead = true; }
+  if (inBox(p)) { dead = true; }
   if (hash1(sk + floor(t * 0.5) * 7.3) < 0.004) { dead = true; }
   if (dead) {
     let r1 = hash1(sk + t * 1.37);
@@ -417,6 +435,7 @@ fn main() {
 
     let ground = terrainHeight(pos.xy);
     if (pos.z < ground + 2.0) { mode = 1.0; timer = 3.5; pos.z = ground + 2.0; }
+    if (inBox(pos)) { mode = 1.0; timer = 3.5; }   // flew into the box: crash
     if (pos.x < 8.0 || pos.x > P.domain.x - 8.0 ||
         pos.y < 8.0 || pos.y > P.domain.y - 8.0 ||
         pos.z > P.domain.z - 6.0) { mode = 2.0; timer = 3.5; }
@@ -693,6 +712,58 @@ fn vs(@builtin(vertex_index) vi : u32) -> VOut {
 @fragment
 fn fs(v : VOut) -> @location(0) vec4<f32> { return vec4<f32>(v.c, 1.0); }`;
 
+// the floating obstacle: a quiet dark slab, lit by the same low sun
+const BOX_WGSL = CAM_WGSL + /* wgsl */`
+struct Params {
+  simDims : vec4<f32>, domain : vec4<f32>, wind : vec4<f32>, hmap : vec4<f32>,
+  box0 : vec4<f32>, box1 : vec4<f32>,
+};
+@group(0) @binding(1) var<uniform> P : Params;
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) world : vec3<f32>,
+  @location(1) normal : vec3<f32>,
+};
+@vertex
+fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+  let face = vi / 6u;                     // 0..5: -x +x -y +y -z +z
+  let corner = vi % 6u;
+  var st = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0));
+  let axis = face / 2u;                   // 0 x, 1 y, 2 z
+  let sgn = select(-1.0, 1.0, (face & 1u) == 1u);
+  var n = vec3<f32>(0.0);
+  n[axis] = sgn;
+  let a1 = (axis + 1u) % 3u;
+  let a2 = (axis + 2u) % 3u;
+  let uv = st[corner];
+  let he = P.box1.xyz;
+  var local = vec3<f32>(0.0);
+  local[axis] = sgn * he[axis];
+  local[a1] = uv.x * he[a1];
+  local[a2] = uv.y * he[a2];
+  let world = P.box0.xyz + local;
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(world, 1.0);
+  o.world = world;
+  o.normal = n;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let n = normalize(v.normal);
+  let sun = normalize(C.sun.xyz);
+  let diff = max(dot(n, sun), 0.0);
+  let skyAmb = 0.5 + 0.34 * n.z;
+  // warm dark slab — weathered timber register, nothing techy
+  let mottle = vnoise2(v.world.xy * 0.06 + v.world.zz * 0.06) * 0.3 + 0.85;
+  let albedo = vec3<f32>(0.21, 0.165, 0.125) * mottle;
+  var col = albedo * (SUN_COL * diff * 1.15 + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.55);
+  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
 // ------------------------------------------------------------ boot
 const canvas = $('c');
 async function boot() {
@@ -708,7 +779,8 @@ async function boot() {
   // ---------- buffers
   const NC = NX * NY * NZ;
   const mkBuf = (size, usage) => device.createBuffer({ size, usage });
-  const vel   = mkBuf(NC * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const vel   = mkBuf(NC * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
+  const probeRead = mkBuf(16, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
   const velT  = mkBuf(NC * 16, GPUBufferUsage.STORAGE);
   const pr0   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
   const pr1   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
@@ -719,7 +791,7 @@ async function boot() {
   const gliderB = mkBuf(32 * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
   const trailB  = mkBuf(TRAIL_N * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const gliderRead = mkBuf(32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
-  const paramsB = mkBuf(64, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const paramsB = mkBuf(96, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const camB    = mkBuf(176, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const terrainUB = mkBuf(16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const intentB = mkBuf(256 * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
@@ -816,6 +888,7 @@ async function boot() {
   const pIntent = rp(INTENT_WGSL, { blend: additive, topology: 'line-strip', depthWrite: false });
   const pGliderR = rp(GLIDER_RENDER_WGSL);
   const pGlow = rp(GLIDER_GLOW_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
+  const pBox = rp(BOX_WGSL);
 
   const bgSky = bg(pSky, [camB]);
   const bgTerrain = bg(pTerrain, [camB, heightB, terrainUB]);
@@ -825,6 +898,7 @@ async function boot() {
   const bgIntent = bg(pIntent, [camB, intentB]);
   const bgGliderR = bg(pGliderR, [camB, gliderB]);
   const bgGlow = bg(pGlow, [camB, gliderB]);
+  const bgBox = bg(pBox, [camB, paramsB]);
 
   // terrain index buffer
   const idx = new Uint32Array((HX - 1) * (HY - 1) * 6);
@@ -842,18 +916,80 @@ async function boot() {
     target: [GPORT[0], GPORT[1], 70],
     azim: -2.9, elev: 0.13, dist: 1600,
   };
-  let dragging = false, lastMx = 0, lastMy = 0;
-  canvas.addEventListener('pointerdown', e => { dragging = true; lastMx = e.clientX; lastMy = e.clientY; canvas.classList.add('dragging'); });
-  addEventListener('pointerup', () => { dragging = false; canvas.classList.remove('dragging'); });
+  // the obstacle box: ~300 ft square slab hanging in the lift band's approach
+  const box = {
+    cx: GPORT[0] - 300, cy: GPORT[1], cz: 82.5,   // bottom face ≈ 60 m over the water
+    hx: 45, hy: 45, hz: 22.5,
+    on: false,
+  };
+  let invVpCur = null;                              // this frame's inverse viewProj
+  function unproject(ndcX, ndcY, ndcZ) {
+    const m = invVpCur;
+    const w = m[3] * ndcX + m[7] * ndcY + m[11] * ndcZ + m[15];
+    return [
+      (m[0] * ndcX + m[4] * ndcY + m[8] * ndcZ + m[12]) / w,
+      (m[1] * ndcX + m[5] * ndcY + m[9] * ndcZ + m[13]) / w,
+      (m[2] * ndcX + m[6] * ndcY + m[10] * ndcZ + m[14]) / w,
+    ];
+  }
+  let dragging = false, boxDragging = false, lastMx = 0, lastMy = 0;
+  let bHeld = false, bUsed = false;                 // tap B = toggle, hold B + drag/scroll = move
+  addEventListener('keydown', e => {
+    if (e.repeat) return;
+    if (e.key === 'b' || e.key === 'B') { bHeld = true; bUsed = false; }
+  });
+  addEventListener('keyup', e => {
+    if (e.key === 'b' || e.key === 'B') {
+      if (!bUsed) box.on = !box.on;
+      bHeld = false;
+    }
+  });
+  canvas.addEventListener('pointerdown', e => {
+    dragging = true;
+    boxDragging = box.on && (bHeld || e.shiftKey);
+    if (boxDragging) bUsed = true;
+    lastMx = e.clientX; lastMy = e.clientY;
+    canvas.classList.add('dragging');
+  });
+  addEventListener('pointerup', () => { dragging = false; boxDragging = false; canvas.classList.remove('dragging'); });
   addEventListener('pointermove', e => {
     if (!dragging) return;
-    cam.azim -= (e.clientX - lastMx) * 0.005;
-    cam.elev = Math.max(0.03, Math.min(1.35, cam.elev + (e.clientY - lastMy) * 0.004));
+    if (boxDragging && invVpCur) {
+      // raycast against the vertical plane x = box.cx: north-south + vertical
+      const nx = (e.clientX / innerWidth) * 2 - 1;
+      const ny = 1 - (e.clientY / innerHeight) * 2;
+      const p0 = unproject(nx, ny, 0.0), p1 = unproject(nx, ny, 0.99);
+      const dx = p1[0] - p0[0];
+      if (Math.abs(dx) > 1e-6) {
+        const t = (box.cx - p0[0]) / dx;
+        if (t > 0) {
+          box.cy = Math.max(60, Math.min(DY - 60, p0[1] + t * (p1[1] - p0[1])));
+          box.cz = Math.max(box.hz + 6, Math.min(DZ - 60, p0[2] + t * (p1[2] - p0[2])));
+        }
+      }
+    } else {
+      cam.azim -= (e.clientX - lastMx) * 0.005;
+      cam.elev = Math.max(0.03, Math.min(1.35, cam.elev + (e.clientY - lastMy) * 0.004));
+    }
     lastMx = e.clientX; lastMy = e.clientY;
   });
   addEventListener('wheel', e => {
-    cam.dist = Math.max(180, Math.min(4200, cam.dist * Math.exp(e.deltaY * 0.001)));
+    if (bHeld && box.on) {                          // B + scroll: push the box east/west
+      bUsed = true;
+      box.cx = Math.max(60, Math.min(DX - 60, box.cx + e.deltaY * 0.6));
+    } else {
+      cam.dist = Math.max(180, Math.min(4200, cam.dist * Math.exp(e.deltaY * 0.001)));
+    }
   }, { passive: true });
+  window.__setBox = (x, y, z, on) => {
+    if (x != null) box.cx = x;
+    if (y != null) box.cy = y;
+    if (z != null) box.cz = z;
+    if (on != null) box.on = !!on;
+  };
+  // tooling: sample the velocity field at a point (meters) -> [u, v, w] m/s
+  let probeReq = null;
+  window.__probe = (x, y, z) => new Promise(res => { probeReq = { x, y, z, res }; });
 
   function mat4Mul(a, b) {
     const o = new Float32Array(16);
@@ -915,12 +1051,52 @@ async function boot() {
   const windSlider = $('wind');
   const readout = $('readout');
   const gliderLabel = $('glider');
+
+  // real day mode: hourly Scripps pier obs for 2026-06-19, ~90 sim-s per hour
+  const DAY = window.BLACKS_WINDDAY || null;
+  const SEC_PER_HOUR = 90;
+  const COMPASS = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  let dayMode = false;
+  const dayToggle = $('dayToggle');
+  if (!DAY) dayToggle.style.display = 'none';
+  dayToggle.addEventListener('click', () => {
+    dayMode = !dayMode;
+    dayToggle.classList.toggle('on', dayMode);
+    windSlider.style.visibility = dayMode ? 'hidden' : 'visible';
+  });
+
   function windNow(t) {
-    const s = windSlider.value / 1000;                    // 0..1
-    const base = Math.pow(s, 1.6) * 40;                   // 0..40 m/s (≈90 mph)
     const gust = 1 + 0.28 * Math.sin(t * 0.21) * Math.sin(t * 0.043 + 1.2)
                + 0.14 * Math.sin(t * 0.9 + Math.sin(t * 0.11) * 3);
-    return { ms: Math.max(0, base * gust), base, s };
+    if (dayMode && DAY) {
+      const hourF = (t / SEC_PER_HOUR) % 24;               // UTC hour of the looping day
+      const i0 = Math.floor(hourF) % 24, i1 = (i0 + 1) % 24, f = hourF % 1;
+      const s0 = DAY.samples[i0], s1 = DAY.samples[i1];
+      const base = s0.speedMs + (s1.speedMs - s0.speedMs) * f;
+      const gustAmp = (s0.gustMs - s0.speedMs) * (1 - f) + (s1.gustMs - s1.speedMs) * f;
+      let dd = s1.dirDeg - s0.dirDeg;                      // shortest-path direction lerp
+      if (dd > 180) dd -= 360; if (dd < -180) dd += 360;
+      const dirDeg = (s0.dirDeg + dd * f + 360) % 360;
+      const D = dirDeg * Math.PI / 180;
+      // meteorological FROM-direction -> local blowing-toward vector (x east, y north)
+      const ang = Math.atan2(-Math.cos(D), -Math.sin(D));
+      const ms = Math.max(0, base + gustAmp * Math.max(0, gust - 1) * 2.4);
+      return { ms, base, s: Math.min(1, base / 12), ang, hourF, dirDeg };
+    }
+    const s = windSlider.value / 1000;                    // 0..1
+    const base = Math.pow(s, 1.6) * 40;                   // 0..40 m/s (≈90 mph)
+    return { ms: Math.max(0, base * gust), base, s, ang: 0 };
+  }
+  function readoutText(w) {
+    const mph = w.ms * 2.237;
+    if (dayMode && DAY) {
+      const pdt = (w.hourF + 0.333 - 7 + 24) % 24;         // samples land at :20 UTC
+      const hh = Math.floor(pdt), mm = Math.floor((pdt - hh) * 60);
+      const h12 = ((hh + 11) % 12) + 1, ap = hh < 12 ? 'am' : 'pm';
+      const comp = COMPASS[Math.round(w.dirDeg / 22.5) % 16];
+      return `jun 19 · ${h12}:${String(mm).padStart(2, '0')} ${ap} · ${mph.toFixed(0)} mph ${comp}`;
+    }
+    return mph < 1 ? 'dead calm' : `${mph.toFixed(0)} mph onshore`;
   }
 
   // ---------- resize
@@ -942,7 +1118,7 @@ async function boot() {
   const wgX = Math.ceil(NX / 4), wgY = Math.ceil(NY / 4), wgZ = Math.ceil(NZ / 4);
   let simTime = 0, last = performance.now();
   let frameN = 0, readingBack = false;
-  let captureReq = null;
+  let captureReq = null, probeInFlight = null, probeMapping = false;
   window.__capture = () => new Promise(res => { captureReq = res; });
   window.__setCam = (azim, elev, dist) => { cam.azim = azim; cam.elev = elev; cam.dist = dist; };
   window.__setWind = v => { windSlider.value = v; };
@@ -950,6 +1126,16 @@ async function boot() {
 
   function frame(now) {
     requestAnimationFrame(frame);
+    // finish a velocity probe whose copy was submitted last frame
+    if (probeInFlight && !probeMapping) {
+      probeMapping = true;
+      const pr = probeInFlight; probeInFlight = null;
+      probeRead.mapAsync(GPUMapMode.READ).then(() => {
+        const v = new Float32Array(probeRead.getMappedRange().slice(0));
+        probeRead.unmap(); probeMapping = false;
+        pr.res([v[0], v[1], v[2]]);
+      }).catch(() => { probeMapping = false; pr.res(null); });
+    }
     const dt = Math.min((now - last) / 1000, 1 / 24);
     last = now;
     simTime += dt;
@@ -959,8 +1145,10 @@ async function boot() {
     device.queue.writeBuffer(paramsB, 0, new Float32Array([
       NX, NY, NZ, DXM,
       DX, DY, DZ, simTime,
-      wind.ms, 0, dt, wind.s,
+      wind.ms, wind.ang || 0, dt, wind.s,
       HX, HY, DX / HX, 0,
+      box.cx, box.cy, box.cz, box.on ? 1 : 0,
+      box.hx, box.hy, box.hz, 0,
     ]));
 
     // camera
@@ -973,7 +1161,8 @@ async function boot() {
     const vp = mat4Mul(perspective(0.9, aspectR, 2, 12000), lookAt(eye, cam.target, [0, 0, 1]));
     const camData = new Float32Array(44);
     camData.set(vp, 0);
-    camData.set(mat4Invert(vp), 16);
+    invVpCur = mat4Invert(vp);
+    camData.set(invVpCur, 16);
     camData.set([...eye, simTime], 32);
     camData.set([-0.86, 0.20, 0.24, wind.s], 36);   // dir to sun: WNW, low
     camData.set([aspectR, 1 / Math.tan(0.45), 0, 0], 40);
@@ -1010,6 +1199,7 @@ async function boot() {
       r.setPipeline(pApron); r.setBindGroup(0, bgApron); r.draw(4);
       r.setPipeline(pTerrain); r.setBindGroup(0, bgTerrain);
       r.setIndexBuffer(idxB, 'uint32'); r.drawIndexed(idx.length);
+      if (box.on) { r.setPipeline(pBox); r.setBindGroup(0, bgBox); r.draw(36); }
       r.setPipeline(pIntent); r.setBindGroup(0, bgIntent); r.draw(256);
       r.setPipeline(pTrail); r.setBindGroup(0, bgTrail); r.draw(TRAIL_N);
       r.setPipeline(pPartR); r.setBindGroup(0, bgPartR); r.draw(4, NP);
@@ -1018,6 +1208,16 @@ async function boot() {
       r.end();
     };
     drawScene(ctx.getCurrentTexture().createView(), depthTex.createView());
+
+    // record a velocity probe copy (mapped at the top of next frame)
+    if (probeReq && !probeInFlight && !probeMapping) {
+      const pr = probeReq; probeReq = null;
+      const ci = Math.max(0, Math.min(NX - 1, Math.floor(pr.x / DXM)));
+      const cj = Math.max(0, Math.min(NY - 1, Math.floor(pr.y / DXM)));
+      const ck = Math.max(0, Math.min(NZ - 1, Math.floor(pr.z / DXM)));
+      enc.copyBufferToBuffer(vel, (ci + NX * (cj + NY * ck)) * 16, probeRead, 0, 16);
+      probeInFlight = pr;
+    }
 
     // offscreen capture for tooling (window.__capture() → dataURL promise)
     if (captureReq) {
@@ -1049,8 +1249,7 @@ async function boot() {
         g.putImageData(img, 0, 0);
         req(c2.toDataURL('image/png'));
       }).catch(e => req('ERROR: ' + e));
-      const mph0 = wind.ms * 2.237;
-      readout.textContent = mph0 < 1 ? 'dead calm' : `${mph0.toFixed(0)} mph onshore`;
+      readout.textContent = readoutText(wind);
       return;   // this frame's commands already submitted
     }
 
@@ -1070,8 +1269,7 @@ async function boot() {
       device.queue.submit([enc.finish()]);
     }
 
-    const mph = wind.ms * 2.237;
-    readout.textContent = mph < 1 ? 'dead calm' : `${mph.toFixed(0)} mph onshore`;
+    readout.textContent = readoutText(wind);
   }
   requestAnimationFrame(frame);
 }
