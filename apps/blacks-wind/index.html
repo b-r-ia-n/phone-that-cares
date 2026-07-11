@@ -59,6 +59,7 @@
 <script src="data/windday.js"></script>
 <script src="data/coastline.js"></script>
 <script src="data/trees.js"></script>
+<script src="data/structures.js"></script>
 <script>
 'use strict';
 // ============================================================================
@@ -73,6 +74,7 @@
 const TERRAIN = window.BLACKS_TERRAIN || null;
 const COAST = window.BLACKS_COAST || null;    // coarse surround DEM, scenery only
 const TREES = window.BLACKS_TREES || null;    // real lidar canopy: x,y,zg,h,r per tree
+const STRUCT = window.BLACKS_STRUCTURES || null;  // real OSM buildings/parking/roads/trails
 const TINY = new URLSearchParams(location.search).has('tiny');  // headless smoke tests
 
 const NX = TINY ? 76 : 152, NY = TINY ? 64 : 128, NZ = TINY ? 20 : 40;
@@ -156,6 +158,184 @@ function makeSolid(height) {
     }
   }
   return s;
+}
+
+// ------------------------------------------------------------ structures geometry
+// ear-clipping triangulation of a simple polygon (handles the non-convex OSM
+// footprints). input/returns work in polygon-vertex indices. CCW assumed.
+function polyArea(poly) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    a += p.x * q.y - q.x * p.y;
+  }
+  return a * 0.5;
+}
+function pointInTri(p, a, b, c) {
+  const d1 = (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y);
+  const d2 = (p.x - c.x) * (b.y - c.y) - (b.x - c.x) * (p.y - c.y);
+  const d3 = (p.x - a.x) * (c.y - a.y) - (c.x - a.x) * (p.y - a.y);
+  const neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+  const pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+  return !(neg && pos);
+}
+function earClip(poly) {                       // poly: [{x,y}] CCW; -> [[i,j,k], ...]
+  const n = poly.length;
+  if (n < 3) return [];
+  const idx = [...Array(n).keys()];
+  const tris = [];
+  let guard = 0;
+  while (idx.length > 3 && guard++ < n + 6) {
+    let clipped = false;
+    for (let i = 0; i < idx.length; i++) {
+      const L = idx.length;
+      const i0 = idx[(i + L - 1) % L], i1 = idx[i], i2 = idx[(i + 1) % L];
+      const a = poly[i0], b = poly[i1], c = poly[i2];
+      const cross = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      if (cross <= 0) continue;                // reflex or collinear (CCW)
+      let ok = true;
+      for (const j of idx) {
+        if (j === i0 || j === i1 || j === i2) continue;
+        if (pointInTri(poly[j], a, b, c)) { ok = false; break; }
+      }
+      if (!ok) continue;
+      tris.push([i0, i1, i2]);
+      idx.splice(i, 1);
+      clipped = true;
+      guard = 0;
+      break;
+    }
+    if (!clipped) break;                        // degenerate: bail (defensive)
+  }
+  if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+  return tris;
+}
+function toPoly(verts) {                         // flat [x,y,...] -> CCW [{x,y}], deduped
+  const n = verts.length / 2;
+  const poly = [];
+  for (let i = 0; i < n; i++) {
+    const x = verts[i * 2], y = verts[i * 2 + 1];
+    const last = poly[poly.length - 1];
+    if (last && Math.abs(last.x - x) < 1e-4 && Math.abs(last.y - y) < 1e-4) continue;
+    poly.push({ x, y });
+  }
+  if (poly.length > 1) {                         // drop closing dup
+    const f = poly[0], l = poly[poly.length - 1];
+    if (Math.abs(f.x - l.x) < 1e-4 && Math.abs(f.y - l.y) < 1e-4) poly.pop();
+  }
+  if (polyArea(poly) < 0) poly.reverse();        // force CCW
+  return poly;
+}
+
+// buildings -> extruded prisms; returns Float32Array, stride 8 (pos3, nrm3, hash, kind)
+function buildBuildings(list, hAtM) {
+  const V = [];
+  const fr = x => x - Math.floor(x);
+  // find the gliderport shop: nearest ~350 m^2 footprint to (1008,1053)
+  let shopIdx = -1, shopBest = 1e9;
+  for (let bi = 0; bi < list.length; bi++) {
+    const b = list[bi];
+    const poly = toPoly(b.verts);
+    if (poly.length < 3) continue;
+    const area = Math.abs(polyArea(poly));
+    if (area < 180 || area > 600) continue;
+    let cx = 0, cy = 0;
+    for (const p of poly) { cx += p.x; cy += p.y; }
+    cx /= poly.length; cy /= poly.length;
+    const d = Math.hypot(cx - 1008, cy - 1053);
+    if (d < shopBest && d < 90) { shopBest = d; shopIdx = bi; }
+  }
+  for (let bi = 0; bi < list.length; bi++) {
+    const b = list[bi];
+    if (!(b.z_ground > -5 && b.z_ground < 200)) continue;   // drop insane ground z
+    const poly = toPoly(b.verts);
+    if (poly.length < 3) continue;
+    if (Math.abs(polyArea(poly)) < 1.0) continue;            // sliver
+    const zb = b.z_ground - 1.5;                             // sink base: no floating gap
+    const zt = b.z_ground + Math.max(b.height || 0, 3.0);
+    const hash = fr(Math.sin(bi * 12.9898 + 3.1) * 43758.5453);
+    const kind = bi === shopIdx ? 1 : 0;
+    const N = poly.length;
+    for (let i = 0; i < N; i++) {                            // walls
+      const a = poly[i], c = poly[(i + 1) % N];
+      const ex = c.x - a.x, ey = c.y - a.y, el = Math.hypot(ex, ey);
+      if (el < 1e-4) continue;
+      const nx = ey / el, ny = -ex / el;                     // outward (CCW)
+      V.push(a.x, a.y, zb, nx, ny, 0, hash, kind);
+      V.push(c.x, c.y, zb, nx, ny, 0, hash, kind);
+      V.push(c.x, c.y, zt, nx, ny, 0, hash, kind);
+      V.push(a.x, a.y, zb, nx, ny, 0, hash, kind);
+      V.push(c.x, c.y, zt, nx, ny, 0, hash, kind);
+      V.push(a.x, a.y, zt, nx, ny, 0, hash, kind);
+    }
+    for (const t of earClip(poly)) {                         // roof cap
+      for (const vi of t) { const p = poly[vi]; V.push(p.x, p.y, zt, 0, 0, 1, hash, kind); }
+    }
+  }
+  // a handful of parked cars in the gliderport dirt lot only (~1063,1058) — it
+  // always has cars + wing bags. small dark rounded-ish boxes, no detail.
+  const pushBox = (cx, cy, cz, hx, hy, hz, yaw) => {
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const rot = (x, y) => [cx + x * c - y * s, cy + x * s + y * c];
+    const faces = [
+      { n: [c, s, 0],   q: [[hx, -hy, -hz], [hx, hy, -hz], [hx, hy, hz], [hx, -hy, hz]] },
+      { n: [-c, -s, 0], q: [[-hx, hy, -hz], [-hx, -hy, -hz], [-hx, -hy, hz], [-hx, hy, hz]] },
+      { n: [-s, c, 0],  q: [[hx, hy, -hz], [-hx, hy, -hz], [-hx, hy, hz], [hx, hy, hz]] },
+      { n: [s, -c, 0],  q: [[-hx, -hy, -hz], [hx, -hy, -hz], [hx, -hy, hz], [-hx, -hy, hz]] },
+      { n: [0, 0, 1],   q: [[-hx, -hy, hz], [hx, -hy, hz], [hx, hy, hz], [-hx, hy, hz]] },
+    ];
+    for (const f of faces) {
+      const w = f.q.map(p => { const r = rot(p[0], p[1]); return [r[0], r[1], cz + p[2]]; });
+      const T = (a, b, d) => { for (const k of [a, b, d]) V.push(w[k][0], w[k][1], w[k][2], f.n[0], f.n[1], f.n[2], 0, 2); };
+      T(0, 1, 2); T(0, 2, 3);
+    }
+  };
+  const rnd = (seed => () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)(7);
+  for (let i = 0; i < 8; i++) {
+    const row = i % 4, col = i < 4 ? 0 : 1;
+    const cx = 1050 + col * 6.5 + (rnd() - 0.5) * 1.2;
+    const cy = 1048 + row * 5.2 + (rnd() - 0.5) * 1.0;
+    const yaw = 1.05 + (rnd() - 0.5) * 0.25;                 // roughly parked in a row
+    pushBox(cx, cy, hAtM(cx, cy) + 0.75, 2.3, 1.0, 0.75, yaw);
+  }
+  return new Float32Array(V);
+}
+
+// parking -> flat triangulated polys; stride 4 (pos3, surf: 0 dirt/sand, 1 paved)
+function buildParking(list) {
+  const V = [];
+  for (const p of list) {
+    if (!(p.z_ground > -5 && p.z_ground < 200)) continue;
+    const poly = toPoly(p.verts);
+    if (poly.length < 3 || Math.abs(polyArea(poly)) < 4) continue;
+    const z = p.z_ground + 0.25;
+    const surf = (p.surface === 'dirt' || p.surface === 'sand') ? 0 : 1;
+    for (const t of earClip(poly)) for (const vi of t) { const q = poly[vi]; V.push(q.x, q.y, z, surf); }
+  }
+  return new Float32Array(V);
+}
+
+// polylines -> ribbon triangles; stride 4 (pos3, acrossT [-1,1])
+function buildRibbon(list, widthFn, zOff) {
+  const V = [];
+  for (const r of list) {
+    const pts = r.pts, n = pts.length / 3;
+    if (n < 2) continue;
+    const hw = Math.max(widthFn(r), 1.0) * 0.5;
+    for (let i = 0; i < n - 1; i++) {
+      const ax = pts[i * 3], ay = pts[i * 3 + 1], az = pts[i * 3 + 2];
+      const bx = pts[(i + 1) * 3], by = pts[(i + 1) * 3 + 1], bz = pts[(i + 1) * 3 + 2];
+      let dx = bx - ax, dy = by - ay; const dl = Math.hypot(dx, dy);
+      if (dl < 1e-3) continue;
+      const px = -dy / dl * hw, py = dx / dl * hw;
+      const aL = [ax + px, ay + py, az + zOff], aR = [ax - px, ay - py, az + zOff];
+      const bL = [bx + px, by + py, bz + zOff], bR = [bx - px, by - py, bz + zOff];
+      const P = (p, t) => V.push(p[0], p[1], p[2], t);
+      P(aL, 1); P(aR, -1); P(bR, -1);
+      P(aL, 1); P(bR, -1); P(bL, 1);
+    }
+  }
+  return new Float32Array(V);
 }
 
 // ------------------------------------------------------------ WGSL
@@ -1112,6 +1292,106 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   return vec4<f32>(col, 1.0);
 }`;
 
+// real OSM structures — buildings, parking, roads, trails. Static geometry built
+// once at boot into a few vertex buffers; dusk register, quiet warm masses.
+// Buildings: extruded footprint prisms (walls + ear-clipped roof cap), dark warm
+// albedo varied per building, faint west-face sun, a few sparse lit windows.
+const BUILDING_WGSL = CAM_WGSL + /* wgsl */`
+struct VOut {
+  @builtin(position) pos : vec4<f32>,
+  @location(0) world : vec3<f32>,
+  @location(1) normal : vec3<f32>,
+  @location(2) info : vec2<f32>,        // x hash (per-building), y kind (0 bldg, 1 shop, 2 car)
+};
+@vertex
+fn vs(@location(0) p : vec3<f32>, @location(1) n : vec3<f32>, @location(2) info : vec2<f32>) -> VOut {
+  var o : VOut;
+  o.pos = C.viewProj * vec4<f32>(p, 1.0);
+  o.world = p;
+  o.normal = n;
+  o.info = info;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let n = normalize(v.normal);
+  let sun = normalize(C.sun.xyz);
+  let diff = max(dot(n, sun), 0.0);
+  let skyAmb = 0.5 + 0.34 * n.z;
+  let hash = v.info.x;
+  let kind = v.info.y;
+  let rv = C.misc.z;
+  // dark warm mass, slight per-building variation; the shop a touch warmer/livelier
+  var albedo = vec3<f32>(0.150, 0.128, 0.112) * (0.72 + 0.55 * hash);
+  if (kind > 0.5 && kind < 1.5) { albedo = vec3<f32>(0.205, 0.150, 0.112); }
+  if (kind > 1.5)               { albedo = vec3<f32>(0.052, 0.058, 0.072); }  // parked car
+  var col = albedo * (SUN_COL * diff * (1.0 - 0.78 * rv)
+                    + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.5 * (1.0 - 0.30 * rv));
+  // a subtle roofline lift: brighten the very top band of walls (near-silhouette east
+  // faces still read an edge). purely cosmetic; scenery.
+  // sparse lit windows on near-vertical faces — warm dots, dim in the reveal
+  let isWall = abs(n.z) < 0.5;
+  if (isWall && kind < 1.5) {
+    let horiz = select(v.world.x, v.world.y, abs(n.x) > abs(n.y));
+    let gh = 3.7; let gv = 3.7;                 // ~one window per storey
+    let cellH = floor(horiz / gh);
+    let cellV = floor(v.world.z / gv);
+    let seed = fract(sin(cellH * 12.9898 + cellV * 78.233 + hash * 57.3) * 43758.5453);
+    let litFrac = select(0.05, 0.20, kind > 0.5);   // the shop feels inhabited
+    if (seed < litFrac && v.world.z > 3.0) {
+      let u = fract(horiz / gh) - 0.5;
+      let w = fract(v.world.z / gv) - 0.5;
+      if (abs(u) < 0.27 && abs(w) < 0.33) {         // a centered pane, not the whole cell
+        let warm = vec3<f32>(1.0, 0.70, 0.36);
+        let glow = select(0.80, 1.25, kind > 0.5) * (0.55 + 0.45 * fract(seed * 91.0));
+        col += warm * glow * (1.0 - 0.85 * rv);
+      }
+    }
+  }
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
+// flat surfaces a few cm above terrain — parking lots. dirt = sandy clearing (the
+// gliderport lot), paved = darker/cooler patch. y-attr: 0 dirt/sand, 1 paved.
+const PARKING_WGSL = CAM_WGSL + /* wgsl */`
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) world : vec3<f32>, @location(1) surf : f32 };
+@vertex
+fn vs(@location(0) p : vec3<f32>, @location(1) surf : f32) -> VOut {
+  var o : VOut; o.pos = C.viewProj * vec4<f32>(p, 1.0); o.world = p; o.surf = surf; return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let rv = C.misc.z;
+  let mottle = vnoise2(v.world.xy * 0.05) * 0.16 + 0.9;
+  let dirt  = vec3<f32>(0.285, 0.238, 0.170);  // sandy dirt lot (kept quiet, not pale)
+  let paved = vec3<f32>(0.115, 0.120, 0.135);  // cool worn asphalt
+  var col = mix(dirt, paved, step(0.5, v.surf)) * mottle;
+  col *= (1.0 - 0.5 * rv);                      // scenery dims in the reveal
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+
+// road / trail ribbons — worn quiet tone, center marginally lighter. t-attr is
+// across-width in [-1,1]. no lane markings, no glowing edges.
+const ribbonWGSL = (edge, center) => CAM_WGSL + /* wgsl */`
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) world : vec3<f32>, @location(1) t : f32 };
+@vertex
+fn vs(@location(0) p : vec3<f32>, @location(1) t : f32) -> VOut {
+  var o : VOut; o.pos = C.viewProj * vec4<f32>(p, 1.0); o.world = p; o.t = t; return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> {
+  let rv = C.misc.z;
+  let mid = 1.0 - abs(v.t);
+  var col = mix(vec3<f32>(${edge}), vec3<f32>(${center}), smoothstep(0.30, 1.0, mid));
+  col *= (1.0 - 0.5 * rv);
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
+  return vec4<f32>(col, 1.0);
+}`;
+const ROAD_WGSL  = ribbonWGSL('0.100, 0.100, 0.115', '0.150, 0.150, 0.155');
+const TRAIL_R_WGSL = ribbonWGSL('0.30, 0.25, 0.185', '0.40, 0.34, 0.25');
+
 // ------------------------------------------------------------ boot
 const canvas = $('c');
 async function boot() {
@@ -1237,6 +1517,37 @@ async function boot() {
     device.queue.writeBuffer(intentB, 0, pts);
   }
 
+  // ---------- real structures: build static vertex buffers once from the OSM data
+  let struct = null;
+  if (STRUCT) {
+    const vbuf = (arr) => {
+      const b = device.createBuffer({ size: Math.max(arr.byteLength, 4), usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+      if (arr.byteLength) device.queue.writeBuffer(b, 0, arr);
+      return b;
+    };
+    const classW = { motorway: 18, motorway_link: 9, trunk: 14, primary: 11, primary_link: 6,
+                     secondary: 9, secondary_link: 5, tertiary: 7, tertiary_link: 4,
+                     residential: 6, living_street: 5, unclassified: 6, service: 4,
+                     pedestrian: 3.5, track: 3, footway: 2, path: 2 };
+    const roadW = (r) => {
+      let w = r.width || classW[r.cls] || 5;
+      if (r.cls && r.cls.indexOf('motorway') === 0) w = Math.max(w, 16);
+      return w;
+    };
+    const bld = buildBuildings(STRUCT.buildings || [], hAtM);
+    const park = buildParking(STRUCT.parking || []);
+    const road = buildRibbon(STRUCT.roads || [], roadW, 0.40);
+    const trail = buildRibbon(STRUCT.trails || [], () => 1.4, 0.50);
+    struct = {
+      bldVB: vbuf(bld),   bldN: bld.length / 8,
+      parkVB: vbuf(park), parkN: park.length / 4,
+      roadVB: vbuf(road), roadN: road.length / 4,
+      trailVB: vbuf(trail), trailN: trail.length / 4,
+    };
+    console.log(`structures: ${struct.bldN / 3 | 0} bldg-tris, ${struct.roadN / 3 | 0} road-tris, ` +
+                `${struct.parkN / 3 | 0} park-tris, ${struct.trailN / 3 | 0} trail-tris`);
+  }
+
   // ---------- pipelines
   const cs = (code) => device.createComputePipeline({
     layout: 'auto',
@@ -1266,18 +1577,26 @@ async function boot() {
   const depthFormat = 'depth24plus';
   let depthTex = null;
 
-  const rp = (code, { blend = null, topology = 'triangle-list', depthWrite = true, depthCompare = 'less' } = {}) => {
+  const rp = (code, { blend = null, topology = 'triangle-list', depthWrite = true, depthCompare = 'less', buffers = undefined } = {}) => {
     const module = device.createShaderModule({ code });
     const target = { format };
     if (blend) target.blend = blend;
     return device.createRenderPipeline({
       layout: 'auto',
-      vertex: { module, entryPoint: 'vs' },
+      vertex: { module, entryPoint: 'vs', buffers },
       fragment: { module, entryPoint: 'fs', targets: [target] },
       primitive: { topology, cullMode: 'none' },
       depthStencil: { format: depthFormat, depthWriteEnabled: depthWrite, depthCompare },
     });
   };
+  // vertex layouts for the static structure geometry
+  const VL_BLDG = [{ arrayStride: 32, attributes: [
+    { shaderLocation: 0, offset: 0, format: 'float32x3' },
+    { shaderLocation: 1, offset: 12, format: 'float32x3' },
+    { shaderLocation: 2, offset: 24, format: 'float32x2' }] }];
+  const VL_FLAT = [{ arrayStride: 16, attributes: [
+    { shaderLocation: 0, offset: 0, format: 'float32x3' },
+    { shaderLocation: 1, offset: 12, format: 'float32' }] }];
   const additive = {
     color: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
     alpha: { srcFactor: 'one', dstFactor: 'one', operation: 'add' },
@@ -1293,6 +1612,10 @@ async function boot() {
   const pGlow = rp(GLIDER_GLOW_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
   const pBox = rp(BOX_WGSL);
   const pTree = TREES ? rp(TREE_WGSL) : null;
+  const pBldg  = STRUCT ? rp(BUILDING_WGSL, { buffers: VL_BLDG }) : null;
+  const pPark  = STRUCT ? rp(PARKING_WGSL, { buffers: VL_FLAT }) : null;
+  const pRoad  = STRUCT ? rp(ROAD_WGSL, { buffers: VL_FLAT }) : null;
+  const pPath  = STRUCT ? rp(TRAIL_R_WGSL, { buffers: VL_FLAT }) : null;
 
   const bgSky = bg(pSky, [camB]);
   const bgTerrain = bg(pTerrain, [camB, heightB, terrainUB]);
@@ -1306,6 +1629,10 @@ async function boot() {
   const bgGliderR = bg(pGliderR, [camB, gliderB]);
   const bgGlow = bg(pGlow, [camB, gliderB]);
   const bgBox = bg(pBox, [camB, paramsB]);
+  const bgBldg = STRUCT ? bg(pBldg, [camB]) : null;
+  const bgPark = STRUCT ? bg(pPark, [camB]) : null;
+  const bgRoad = STRUCT ? bg(pRoad, [camB]) : null;
+  const bgPath = STRUCT ? bg(pPath, [camB]) : null;
 
   // grid index buffers (detail terrain + coastline surround)
   const gridIdx = (W, H) => {
@@ -1652,6 +1979,13 @@ async function boot() {
       r.setPipeline(pTerrain);
       if (bgCoast) { r.setBindGroup(0, bgCoast); r.setIndexBuffer(coastIdx.buf, 'uint32'); r.drawIndexed(coastIdx.n); }
       r.setBindGroup(0, bgTerrain); r.setIndexBuffer(terrIdx.buf, 'uint32'); r.drawIndexed(terrIdx.n);
+      // real OSM structures: flat decals (roads/parking/trails) then extruded buildings
+      if (struct) {
+        if (struct.roadN)  { r.setPipeline(pRoad); r.setBindGroup(0, bgRoad); r.setVertexBuffer(0, struct.roadVB); r.draw(struct.roadN); }
+        if (struct.parkN)  { r.setPipeline(pPark); r.setBindGroup(0, bgPark); r.setVertexBuffer(0, struct.parkVB); r.draw(struct.parkN); }
+        if (struct.trailN) { r.setPipeline(pPath); r.setBindGroup(0, bgPath); r.setVertexBuffer(0, struct.trailVB); r.draw(struct.trailN); }
+        if (struct.bldN)   { r.setPipeline(pBldg); r.setBindGroup(0, bgBldg); r.setVertexBuffer(0, struct.bldVB); r.draw(struct.bldN); }
+      }
       if (bgTree) { r.setPipeline(pTree); r.setBindGroup(0, bgTree); r.draw(12, TREES.count); }
       if (box.on) { r.setPipeline(pBox); r.setBindGroup(0, bgBox); r.draw(36); }
       r.setPipeline(pIntent); r.setBindGroup(0, bgIntent); r.draw(256);

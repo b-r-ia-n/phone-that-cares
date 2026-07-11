@@ -191,6 +191,63 @@ date each entry. If you change a decision, add a new line saying so and why.**
 - Perf: 121 fps unchanged (14k instances × 12 verts is nothing). Haze, reveal,
   streaklets, box, day mode, glider all verified unregressed by screenshot.
 
+## 2026-07-11 (structures lane: real OSM buildings / parking / roads / trails)
+
+**Source & scope.** `data/structures.js` (`window.BLACKS_STRUCTURES`) — OSM extract in the
+same local frame as the lidar. All rendered as scenery (dim in the W-reveal, fog with the
+scene). Built once at boot into four static vertex buffers (~86k building tris, 5.4k road,
+1.9k parking, 0.8k trail) — one draw call each. No subsampling: everything ships (residential
+La Jolla to the south, full UCSD/Salk campus). At dusk + fog the far sprawl recedes into
+mauve haze on its own, so it reads as horizon city-glow, not clutter. 121 fps unchanged.
+
+**Buildings (extruded footprint prisms).**
+- Geometry: walls as quad strips + ear-clipped roof cap (non-convex OSM footprints handled;
+  degenerate/sliver polys skipped defensively; z_ground outside −5..200 dropped). Base sunk
+  1.5 m below z_ground so no floating gap where the coarse surround DEM disagrees with the
+  footprint's sampled ground. Height = OSM height, min 3 m for untagged/zero.
+- Palette: dark warm mass `(0.150,0.128,0.112)` × per-building hash (0.72–1.27), low WNW sun
+  strikes west faces, east faces near-silhouette (falls out of diffuse), sky ambient fill.
+- Window lights: sparse warm dots `(1.0,0.70,0.36)` on near-vertical faces only. Coarse
+  3.7 m grid (≈one per storey), hash-gated ~5% lit (shop 20%), a centered pane per lit cell
+  (not the whole cell). Added to surface colour before fog (so distant windows fade), dim
+  ×(1−0.85·reveal). Reads inhabited-but-quiet; the south/vista views are the money shot.
+- Gliderport shop: auto-detected as the nearest 180–600 m² footprint to (1008,1053); flagged
+  warmer albedo `(0.205,0.150,0.112)` + denser/brighter windows — the one lived-in glow at
+  the mesa edge. Verified: warm window visible from vista and close.
+- Salk: rendered faithfully — its two footprints (1473,715 / 1473,772) are separate blocks,
+  so the courtyard gap is inherent from above. No special handling needed.
+
+**Parked cars (gliderport dirt lot only).** 8 small dark-cool boxes (2.3×1.0×0.75 m half-
+extents, kind=2, albedo `(0.052,0.058,0.072)`, no windows) in a loose two-row cluster near
+(1050,1050), seeded PRNG jitter + yaw, sat on sampled terrain +0.75 m. Deliberately subtle —
+they mingle with the shop-side trees at vista distance (restraint per brief), texture up close.
+
+**Parking (flat triangulated polys, z_ground + 0.25 m).** Surface attr: OSM `dirt`/`sand` →
+sandy `(0.285,0.238,0.170)` (the gliderport customer lot, tagged dirt in the data); everything
+else (incl. untagged `unknown`, which is mostly real paved campus lots) → cool worn asphalt
+`(0.115,0.120,0.135)`. History: first dirt tone `(0.34,0.285,0.205)` read a touch pale/
+prominent on the mesa; pulled down to keep it a quiet sandy clearing. Known simplification:
+one constant z per lot, so a lot spanning a slope reads as a slightly flat shelf (fine on the
+flat mesa where the gliderport lot lives).
+
+**Roads / trails (ribbon triangles).** Per-segment quads offset by half-width in XY, laid at
+vertex z + 0.40 m (roads) / +0.50 m (trails) to clear coarse-terrain interpolation error and
+avoid z-fighting. Width = OSM `width` else class default; motorway (I-5) floored at 16 m.
+Worn-asphalt tone, center marginally lighter (across-width t attr, `smoothstep` toward
+`(0.150,0.150,0.155)`); NO lane markings, no glowing edges — reads as the faint gray web from
+a real glider. Trails ~1.4 m, sandy `(0.30,0.25,0.185)`→`(0.40,0.34,0.25)`; the cliff hike
+trail renders as a nice pale ribbon winding the face (glider path not re-routed).
+
+**Known simplification (noted per brief).** Buildings/cars/box-less structures are NOT added
+to the wind solver's solid mask — the flow does not see them. Fine for v1: they sit mostly
+east of / on the mesa, out of the lift band the sim cares about. The only solid the solver
+respects remains terrain + the obstacle box.
+
+**Perf / regressions.** 117–121 fps across wind 0 / 330 / 1000. Zero page errors. Haze base,
+hold-W reveal (structures dim correctly), S streaklets, B box, jun-19 day mode, coastline
+surround, 14k trees, gliders (soar/blown), ocean, terrain all verified unregressed with
+structures present.
+
 ## 2026-07-11 (Lane D: glider dramaturgy — story through the guy)
 
 **The story is now a full loop, not a freeze.** The single glider became a small cast
