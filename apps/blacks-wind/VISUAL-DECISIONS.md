@@ -73,7 +73,7 @@ date each entry. If you change a decision, add a new line saying so and why.**
 
 **Noted, not yet fixed**
 - Dust curtain pools at the NW corner at low wind (respawn-zone pileup) — for the
-  visual-registers rebalance.
+  visual-registers rebalance. *(Fixed by the registers lane, see 2026-07-11 Lane B.)*
 - Trail draws straight-line jumps across the mesa after a respawn (ring buffer not
   cleared) — for the dramaturgy lane.
 
@@ -89,3 +89,66 @@ date each entry. If you change a decision, add a new line saying so and why.**
   UCSD eucalyptus grove — keep it; it anchors the place. Torrey pines proper are the
   scattered 5-15 m crowns on the canyon rims and the reserve mesa.
 - Vintage is 2014: renderer shouldn't promise current campus landscaping.
+
+## 2026-07-11 (Lane B: visual registers — haze base / w-reveal / streaklet pulse)
+
+**Base register is now "marine layer + sun" (supersedes w-colored particles as default)**
+- 262,144 tiny (2 m) w-colored grains → 65,536 soft haze wisps, 13–34 m gaussian
+  billboards, flattened 0.62× vertically (stratified marine air) and stretched up to
+  +0.42 when rising ≥2.5 m/s — streamers visibly elongate up the cliff face.
+- No data color in this register. Wisp color = dusk haze (0.40, 0.37, 0.43) warmed
+  toward the sun color by forward scatter (0.22 floor + 0.60·pow(mu, 2.5), mu = view·sun)
+  so haze between eye and sun catches gold, the rest stays gray-mauve.
+- Churn = |curl| of the local velocity (6 extra trilerp taps per wisp, smoothed
+  0.06/frame, normalized at 0.30 s⁻¹) drives opacity: baseA = 0.007 + 0.022·churn.
+  Rotors and the shear band boil with haze; laminar air is near-invisible. This is the
+  cheap Q-criterion proxy from the survey.
+- Stratification: alpha ×(0.35 + 0.65·e^(−z/140)) — the layer hugs low, thins aloft.
+- Per-wisp life 24–48 s with 4 s fade-in / 5 s fade-out; near-camera fade
+  (smoothstep 60→300 m) + size shrink below 400 m so wisps never blob the lens;
+  distance softening by fog (×(1 − 0.65·fogMix)).
+- Respawn distribution (this also killed the NW dust curtain): 45% marine feed spread
+  across x = 0.03–0.38 DX at z ≤ ~150 m, 15% "lift intake" just off the cliff base
+  (x = 0.26–0.40 DX, ≤70 m above ground), 40% volume fill. Age-staggered init + fade-in
+  means no visible spawn seam; life turnover stops low-wind pooling. Verified clean at
+  2 mph from the high oblique.
+
+**Reveal register (hold W, or window.__setReveal(0..1))**
+- Crossfade uniform (Cam.misc.z), ~300 ms linear ramp both ways. Nothing pops.
+- World dims with reveal: sun terms ×(1−0.85r) in sky/ocean glitter, ×(1−0.78r) on
+  terrain/box diffuse, ambient ×(1−0.30r), fog color ×(1−0.45r), sky base ×(1−0.40r).
+  Stars keep full brightness — night leans in while you look at the air.
+- Same wisps re-lit from within by w: rising = pow(clamp(w/4.0), 2.0) → ember gold
+  (1.0, 0.55, 0.16) + white-hot core (rising²·0.5 of (1.0, 0.88, 0.66)); sinking =
+  pow(clamp(−w/2.5), 2.0) → teal (0.12, 0.55, 0.58); transparent at zero (base 0.0010).
+  Alphas 0.019 rising / 0.012 sinking.
+- In reveal, wisps shrink to 0.6× and the gaussian softens (exponent 2.6 → 2.0):
+  tighter grain = less additive stacking = embers, not a fire wall. (History: first
+  attempts saturated the whole escarpment orange — a 25 m sprite has ~150× the area of
+  v0's 2 m grain, so per-wisp alpha had to drop ~5× and sprites shrink before the
+  column integral behaved.)
+- Honest caveat: at 12+ mph the whole escarpment genuinely works, so from the head-on
+  vista the ember field is broad, not a thin band. The south view (looking along the
+  cliff) is the money shot — a curling gold plume over the lip.
+
+**Streaklet pulse (tap S, or window.__pulse())**
+- 4,096 comet-tailed segments reseeded per pulse (time-salted so each pulse differs),
+  staggered birth over 0.7 s, life 3.0–4.2 s, fade-in 0.25 s, fade-out from 55% of life.
+  Compute + draw fully skipped once the pulse expires (zero cost when idle).
+- Spawn hugs the story: x = 0.08–0.70 DX, z = ground + pow(r, 2.2)·300 — mostly low,
+  over the cliff zone, few wasted in empty sky.
+- Tail length = speed × 2.2 s (clamp 4–90 m) — speed encoded as geometry, never color.
+  Screen-space ribbon, 0.9 m min half-width (~1 px floor at vista distance), head
+  warm-white (1.0, 0.90, 0.75) fading to transparent tail. Alpha gated by speed
+  (smoothstep 2→8 m/s) so dead air barely whispers; near fade 120→420 m.
+- No arrows, ever. In stills the pulse can read slightly rain-like; in motion the
+  streaklets advect coherently along the flow (the nullschool effect).
+
+**Keys & HUD**
+- Hold W = reveal, tap S = pulse, B unchanged (box). One quiet hint added to the
+  existing HUD line: "hold W: lift & sink · S: streaklets". No new panels.
+- Tooling hooks: window.__setReveal(v|null), window.__pulse().
+
+**Perf / regressions**
+- 121 fps at full res (unchanged from v0 despite 7 velocity taps per wisp — wisp count
+  is 4× lower). Box, jun-19 day mode, glider, ocean, terrain verified unregressed.

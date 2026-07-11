@@ -46,7 +46,7 @@
 <body>
 <canvas id="c"></canvas>
 <div id="hud">
-  <div id="left"><b>over blacks</b> &nbsp;·&nbsp; air on the cliff, dusk &nbsp;·&nbsp; drag to orbit, scroll to zoom &nbsp;·&nbsp; B box (hold B: drag moves, scroll pushes)<br>
+  <div id="left"><b>over blacks</b> &nbsp;·&nbsp; air on the cliff, dusk &nbsp;·&nbsp; drag to orbit, scroll to zoom &nbsp;·&nbsp; B box (hold B: drag moves, scroll pushes) &nbsp;·&nbsp; hold W: lift &amp; sink &nbsp;·&nbsp; S: streaklets<br>
   <span id="glider">glider: warming up</span></div>
   <div id="right">
     <div id="windRow"><span id="dayToggle">jun 19</span><span>wind</span><input id="wind" type="range" min="0" max="1000" value="330"></div>
@@ -77,7 +77,8 @@ const DXM = DX / NX;                              // cubic cell size
 const DY = NY * DXM, DZ = NZ * DXM;               // ≈2021 × ≈632 m at full res
 const HX = TERRAIN ? TERRAIN.width : 304;         // heightfield resolution
 const HY = TERRAIN ? TERRAIN.height : 256;
-const NP = TINY ? 32768 : 262144;                 // air tracer particles
+const NP = TINY ? 8192 : 65536;                   // haze wisps (fewer, larger, softer)
+const NS = TINY ? 512 : 4096;                     // summonable streaklets
 const JACOBI = TINY ? 8 : 18;
 const TRAIL_N = 256;
 // gliderport in local meters (from lidar metadata; fallback ≈ center of cliff)
@@ -161,6 +162,7 @@ struct Params {
   hmap    : vec4<f32>,   // HX, HY, hdx m/texel, unused
   box0    : vec4<f32>,   // obstacle box center xyz (m), w = on (0/1)
   box1    : vec4<f32>,   // obstacle box half-extents xyz (m), w unused
+  fx      : vec4<f32>,   // x = streaklet pulse spawn flag, y = s since pulse, zw unused
 };
 @group(0) @binding(0) var<uniform> P : Params;
 
@@ -237,6 +239,11 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   if (solid[n] == 1u || inBox(pm)) { velOut[n] = vec4<f32>(0.0); return; }
   let back = pm - velIn[n].xyz * P.wind.z;
   var v = sampleVel(back) * 0.999;
+  // physical ceiling: real flow here never exceeds ~2.5x inflow (terrain speedup
+  // tops out well under that); anything past it is numerical feedback, so bound it
+  let vcap = max(P.wind.x * 2.5, 25.0);
+  let vmag = length(v);
+  if (vmag > vcap) { v *= vcap / vmag; }
   // west face: onshore inflow
   if (id.x <= 1u) { v = vec3<f32>(inflowDir() * P.wind.x * windProfile(pm.z), 0.0); }
   // lid: free-slip
@@ -275,6 +282,7 @@ const JACOBI_WGSL = WGSL_COMMON + /* wgsl */`
 
 fn pAt(i : vec3<i32>, pc : f32) -> f32 {
   let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
+  if (i.x >= d.x) { return 0.0; }   // east face: open outflow (p = 0) — the pressure outlet
   if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
   let n = idx3(vec3<u32>(i));
   if (solid[n] == 1u || inBox(cellPos(i))) { return pc; }
@@ -302,6 +310,7 @@ const PROJECT_WGSL = WGSL_COMMON + /* wgsl */`
 
 fn pAt(i : vec3<i32>, pc : f32) -> f32 {
   let d = vec3<i32>(i32(P.simDims.x), i32(P.simDims.y), i32(P.simDims.z));
+  if (i.x >= d.x) { return 0.0; }   // east face: open outflow (p = 0) — the pressure outlet
   if (any(i < vec3<i32>(0)) || any(i >= d)) { return pc; }
   let n = idx3(vec3<u32>(i));
   if (solid[n] == 1u || inBox(cellPos(i))) { return pc; }
@@ -329,42 +338,90 @@ const PARTICLE_WGSL = WGSL_COMMON + /* wgsl */`
 @group(0) @binding(2) var<storage, read_write> parts : array<vec4<f32>>;
 @group(0) @binding(3) var<storage, read> height : array<f32>;
 ` + WGSL_SAMPLEVEL + WGSL_HEIGHT + /* wgsl */`
+// haze wisps: pos + w in [2k], (age, life, churn, seed) in [2k+1]
 @compute @workgroup_size(64)
 fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let k = id.x;
-  if (k >= arrayLength(&parts)) { return; }
-  var p = parts[k].xyz;
+  if (k * 2u + 1u >= arrayLength(&parts)) { return; }
+  var p = parts[k * 2u].xyz;
+  var st = parts[k * 2u + 1u];
   let v = sampleVel(p);
   p += v * P.wind.z;
   var w = v.z;
+  st.x += P.wind.z;
+  // churn: local curl magnitude — rotors boil with haze, laminar air stays glassy
+  let h = P.simDims.w;
+  let dvx = sampleVel(p + vec3<f32>(h, 0.0, 0.0)) - sampleVel(p - vec3<f32>(h, 0.0, 0.0));
+  let dvy = sampleVel(p + vec3<f32>(0.0, h, 0.0)) - sampleVel(p - vec3<f32>(0.0, h, 0.0));
+  let dvz = sampleVel(p + vec3<f32>(0.0, 0.0, h)) - sampleVel(p - vec3<f32>(0.0, 0.0, h));
+  let curl = vec3<f32>(dvy.z - dvz.y, dvz.x - dvx.z, dvx.y - dvy.x) / (2.0 * h);
+  st.z = mix(st.z, clamp(length(curl) / 0.30, 0.0, 1.0), 0.06);
   let t = P.domain.w;
   let sk = f32(k) * 0.618;
-  // respawn: swept out east, out the sides, into the ground, or old age
-  var dead = false;
+  // respawn: swept out, into the ground, or old age (life keeps calm air turning over)
+  var dead = st.x > st.y;
   if (p.x > P.domain.x - 10.0 || p.x < 2.0) { dead = true; }
   if (p.y < 2.0 || p.y > P.domain.y - 2.0) { dead = true; }
   if (p.z > P.domain.z - 4.0) { dead = true; }
   if (p.z < terrainHeight(p.xy) + 1.0) { dead = true; }
   if (inBox(p)) { dead = true; }
-  if (hash1(sk + floor(t * 0.5) * 7.3) < 0.004) { dead = true; }
   if (dead) {
     let r1 = hash1(sk + t * 1.37);
     let r2 = hash1(sk + t * 2.11 + 5.0);
     let r3 = hash1(sk + t * 3.71 + 9.0);
     let r4 = hash1(sk + t * 1.93 + 13.0);
-    if (r4 < 0.75) {
-      // most respawn upstream over the ocean, weighted low
-      p = vec3<f32>(4.0 + r1 * P.domain.x * 0.22,
-                    r2 * P.domain.y,
-                    6.0 + pow(r3, 1.6) * P.domain.z * 0.55);
+    if (r4 < 0.45) {
+      // marine layer feed: spread upstream, hugging low (fade-in hides the seam)
+      p = vec3<f32>(P.domain.x * (0.03 + r1 * 0.35), r2 * P.domain.y,
+                    4.0 + pow(r3, 1.8) * 150.0);
+    } else if (r4 < 0.60) {
+      // the lift's intake: low air just off the cliff base, about to be pulled up
+      let xy = vec2<f32>(P.domain.x * (0.26 + r1 * 0.14), r2 * P.domain.y);
+      p = vec3<f32>(xy, terrainHeight(xy) + 2.0 + pow(r3, 1.5) * 70.0);
     } else {
-      // some fill the whole volume so the lee isn't empty
-      p = vec3<f32>(r1 * P.domain.x, r2 * P.domain.y,
-                    terrainHeight(vec2<f32>(r1 * P.domain.x, r2 * P.domain.y)) + 4.0 + pow(r3, 2.0) * 300.0);
+      // volume fill so the lee and the sky aren't empty
+      let xy = vec2<f32>(r1 * P.domain.x, r2 * P.domain.y);
+      p = vec3<f32>(xy, terrainHeight(xy) + 3.0 + pow(r3, 1.9) * 330.0);
     }
     w = 0.0;
+    st = vec4<f32>(0.0, 24.0 + hash1(sk + t * 4.3 + 21.0) * 24.0, st.z * 0.5, st.w);
   }
-  parts[k] = vec4<f32>(p, w);
+  parts[k * 2u] = vec4<f32>(p, w);
+  parts[k * 2u + 1u] = st;
+}`;
+
+const STREAK_WGSL = WGSL_COMMON + /* wgsl */`
+@group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> strk : array<vec4<f32>>;
+@group(0) @binding(3) var<storage, read> height : array<f32>;
+` + WGSL_SAMPLEVEL + WGSL_HEIGHT + /* wgsl */`
+// summonable streaklet pulse: pos + age in [2k], cached vel + seed in [2k+1]
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  let k = id.x;
+  if (k * 2u + 1u >= arrayLength(&strk)) { return; }
+  var a = strk[k * 2u];
+  var b = strk[k * 2u + 1u];
+  if (P.fx.x > 0.5) {
+    // fresh pulse: reseed the whole airspace (time-salted so each pulse differs)
+    let sk = f32(k) * 0.618 + floor(P.domain.w * 10.0) * 0.013;
+    let r1 = hash1(sk + 1.3); let r2 = hash1(sk + 5.7);
+    let r3 = hash1(sk + 9.1); let r4 = hash1(sk + 13.7);
+    let xy = vec2<f32>(P.domain.x * (0.08 + r1 * 0.62), r2 * P.domain.y);
+    let z = terrainHeight(xy) + 3.0 + pow(r3, 2.2) * 300.0;
+    a = vec4<f32>(xy, z, -r4 * 0.7);          // negative age = staggered birth
+    b = vec4<f32>(sampleVel(vec3<f32>(xy, z)), hash1(sk + 17.9));
+  } else if (a.w < 6.0) {
+    a.w += P.wind.z;
+    if (a.w >= 0.0) {
+      let v = sampleVel(a.xyz);
+      a = vec4<f32>(a.xyz + v * P.wind.z, a.w);
+      b = vec4<f32>(v, b.w);
+      if (a.z < terrainHeight(a.xy) + 1.0 || inBox(a.xyz)) { a.w = 9.0; }
+    }
+  }
+  strk[k * 2u] = a;
+  strk[k * 2u + 1u] = b;
 }`;
 
 const GLIDER_WGSL = WGSL_COMMON + /* wgsl */`
@@ -498,11 +555,12 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   let pw = C.invViewProj * vec4<f32>(v.ndc, 0.6, 1.0);
   let dir = normalize(pw.xyz / pw.w - C.eye.xyz);
   let up = clamp(dir.z, -0.15, 1.0);
-  // dusk over the ocean
-  var col = mix(vec3<f32>(0.34, 0.25, 0.24), vec3<f32>(0.065, 0.09, 0.15), smoothstep(-0.02, 0.55, up));
+  // dusk over the ocean; C.misc.z (the reveal) pulls the sun down
+  let rv = C.misc.z;
+  var col = mix(vec3<f32>(0.34, 0.25, 0.24), vec3<f32>(0.065, 0.09, 0.15), smoothstep(-0.02, 0.55, up)) * (1.0 - 0.40 * rv);
   let sunAmt = pow(max(dot(dir, normalize(C.sun.xyz)), 0.0), 42.0);
-  col += SUN_COL * sunAmt * 0.9;
-  col += SUN_COL * pow(max(dot(dir, normalize(C.sun.xyz)), 0.0), 4.0) * 0.07;
+  col += SUN_COL * sunAmt * 0.9 * (1.0 - 0.85 * rv);
+  col += SUN_COL * pow(max(dot(dir, normalize(C.sun.xyz)), 0.0), 4.0) * 0.07 * (1.0 - 0.85 * rv);
   // a few early stars up high
   let sp = dir.xy / max(dir.z, 0.2) * 60.0;
   let cell = floor(sp);
@@ -559,8 +617,9 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   albedo = mix(sand, albedo, smoothstep(2.5, 9.0, h));  // beach band
   let diff = max(dot(n, sun), 0.0);
   let skyAmb = 0.5 + 0.3 * n.z;
-  var col = albedo * (SUN_COL * diff * 1.0 + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.6);
-  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  let rv = C.misc.z;
+  var col = albedo * (SUN_COL * diff * (1.0 - 0.78 * rv) + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.6 * (1.0 - 0.30 * rv));
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
   return vec4<f32>(col, 1.0);
 }`;
 
@@ -590,11 +649,12 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   let deep = vec3<f32>(0.055, 0.095, 0.115);
   let skyH = vec3<f32>(0.36, 0.27, 0.25);              // horizon color reflected
   let fres = pow(1.0 - max(dot(vd, n), 0.0), 3.0);
-  var col = mix(deep, skyH, fres * 0.75);
+  let rv = C.misc.z;
+  var col = mix(deep, skyH, fres * 0.75) * (1.0 - 0.35 * rv);
   let refl = reflect(-sun, n);
-  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 90.0) * 0.8;
-  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 7.0) * 0.06;
-  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 90.0) * 0.8 * (1.0 - 0.85 * rv);
+  col += SUN_COL * pow(max(dot(vd, refl), 0.0), 7.0) * 0.06 * (1.0 - 0.85 * rv);
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
   return vec4<f32>(col, 1.0);
 }`;
 
@@ -603,35 +663,84 @@ const PART_RENDER_WGSL = CAM_WGSL + /* wgsl */`
 struct VOut {
   @builtin(position) pos : vec4<f32>,
   @location(0) uv : vec2<f32>,
-  @location(1) col : vec4<f32>,
+  @location(1) col : vec3<f32>,
 };
 @vertex
 fn vs(@builtin(vertex_index) vi : u32, @builtin(instance_index) inst : u32) -> VOut {
-  let p = parts[inst];
+  let p = parts[inst * 2u];
+  let st = parts[inst * 2u + 1u];
   let corner = vec2<f32>(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2.0 - 1.0;
-  // billboard axes from view: cheap — screen-aligned via viewProj rows is
-  // overkill; offset in clip space by projected size instead
   var o : VOut;
   let clip = C.viewProj * vec4<f32>(p.xyz, 1.0);
-  let sizeM = 2.0;
-  // constant world-size billboard: clip-space offset, no extra w divide
-  o.pos = clip + vec4<f32>(corner * sizeM * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), 0.0, 0.0);
+  // haze wisps: varied size; flat when drifting, stretched tall when rising
+  let dist = distance(C.eye.xyz, p.xyz);
+  let riseT = clamp(p.w / 2.5, 0.0, 1.0);
+  let sizeM = mix(13.0, 34.0, fract(st.w * 7.31)) * clamp(dist / 400.0, 0.35, 1.0)
+            * mix(1.0, 0.6, C.misc.z);              // reveal: tighter grain, less stacking
+  let vScale = 0.62 + riseT * 0.42;                 // streamers elongate upward
+  o.pos = clip + vec4<f32>(corner * sizeM * vec2<f32>(C.misc.y / C.misc.x, C.misc.y * vScale), 0.0, 0.0);
   o.uv = corner;
-  // color = the one salient variable: vertical velocity.
-  // dead air is nearly invisible; only working air glows.
+  // birth/death envelope, near-camera fade, distance-fog softening
+  let env = smoothstep(0.0, 4.0, st.x) * (1.0 - smoothstep(st.y - 5.0, st.y, st.x));
+  let vis = env * smoothstep(60.0, 300.0, dist) * (1.0 - fogMix(dist) * 0.65);
+  // BASE register: sun-lit haze, no data color. Forward scatter warms wisps
+  // between eye and sun; churn (curl) thickens them so rotors visibly boil.
+  let mu = max(dot(normalize(p.xyz - C.eye.xyz), normalize(C.sun.xyz)), 0.0);
+  let baseCol = mix(vec3<f32>(0.40, 0.37, 0.43), SUN_COL * 1.25, 0.22 + 0.60 * pow(mu, 2.5));
+  let strat = 0.35 + 0.65 * exp(-p.xyz.z / 140.0);   // marine layer sits low
+  let baseA = vis * (0.007 + 0.022 * st.z) * strat;
+  // REVEAL register (C.misc.z): same haze re-lit from within by vertical velocity
   let w = p.w;
-  let rising = pow(clamp(w / 4.2, 0.0, 1.0), 2.3);
-  let sinking = pow(clamp(-w / 4.2, 0.0, 1.0), 2.3);
-  var c = vec3<f32>(1.0, 0.74, 0.40) * rising + vec3<f32>(0.30, 0.44, 0.62) * sinking * 0.5;
-  var a = 0.0007 + rising * 0.055 + sinking * 0.02;
-  o.col = vec4<f32>(c, a);
+  let rising = pow(clamp(w / 4.0, 0.0, 1.0), 2.0);
+  let sinking = pow(clamp(-w / 2.5, 0.0, 1.0), 2.0);
+  let revCol = vec3<f32>(1.0, 0.55, 0.16) * rising
+             + vec3<f32>(1.0, 0.88, 0.66) * rising * rising * 0.5   // white-hot core
+             + vec3<f32>(0.12, 0.55, 0.58) * sinking;
+  let revA = vis * (rising * 0.019 + sinking * 0.012 + 0.0010);
+  o.col = mix(baseCol * baseA, revCol * revA, C.misc.z);
   return o;
 }
 @fragment
 fn fs(v : VOut) -> @location(0) vec4<f32> {
-  let g = exp(-dot(v.uv, v.uv) * 3.0);
-  return vec4<f32>(v.col.rgb * v.col.a * g, 1.0);
+  let g = exp(-dot(v.uv, v.uv) * mix(2.6, 2.0, C.misc.z));   // creamier in reveal
+  return vec4<f32>(v.col * g, 1.0);
 }`;
+
+// summonable streaklet pulse: short comet-tailed segments riding the flow
+const STREAK_RENDER_WGSL = CAM_WGSL + /* wgsl */`
+@group(0) @binding(1) var<storage, read> strk : array<vec4<f32>>;
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) col : vec3<f32> };
+@vertex
+fn vs(@builtin(vertex_index) vi : u32, @builtin(instance_index) inst : u32) -> VOut {
+  let a = strk[inst * 2u];
+  let v = strk[inst * 2u + 1u];
+  var o : VOut;
+  let age = a.w;
+  let spd = length(v.xyz);
+  let life = 3.0 + fract(v.w * 3.71) * 1.2;
+  var env = smoothstep(0.0, 0.25, age) * (1.0 - smoothstep(life * 0.55, life, age));
+  if (age < 0.0 || age > life) { env = 0.0; }
+  let endT = f32(vi >> 1u);                       // 0 head, 1 tail
+  let side = f32(vi & 1u) * 2.0 - 1.0;
+  let dir = v.xyz / max(spd, 1e-3);
+  let tlen = clamp(spd * 2.2, 4.0, 90.0);         // tail length = speed, naturally
+  let clipH = C.viewProj * vec4<f32>(a.xyz, 1.0);
+  let clipT = C.viewProj * vec4<f32>(a.xyz - dir * tlen, 1.0);
+  let d2 = (clipT.xy / max(clipT.w, 0.05) - clipH.xy / max(clipH.w, 0.05)) * vec2<f32>(C.misc.x, 1.0);
+  var perp = vec2<f32>(0.0, 1.0);
+  let l2 = length(d2);
+  if (l2 > 1e-5) { perp = vec2<f32>(-d2.y, d2.x) / l2; }
+  var clip = mix(clipH, clipT, endT);
+  let halfW = max(0.90, clip.w * 0.0010);         // ~1px floor at vista distance
+  o.pos = vec4<f32>(clip.xy + perp * side * halfW * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), clip.zw);
+  let dist = distance(C.eye.xyz, a.xyz);
+  let nearF = smoothstep(120.0, 420.0, dist) * (1.0 - fogMix(dist) * 0.6);
+  let aH = env * nearF * (0.04 + 0.18 * smoothstep(2.0, 8.0, spd)) * (1.0 - endT);
+  o.col = vec3<f32>(1.0, 0.90, 0.75) * aH;
+  return o;
+}
+@fragment
+fn fs(v : VOut) -> @location(0) vec4<f32> { return vec4<f32>(v.col, 1.0); }`;
 
 const TRAIL_WGSL = CAM_WGSL + /* wgsl */`
 @group(0) @binding(1) var<storage, read> trail : array<vec4<f32>>;
@@ -716,7 +825,7 @@ fn fs(v : VOut) -> @location(0) vec4<f32> { return vec4<f32>(v.c, 1.0); }`;
 const BOX_WGSL = CAM_WGSL + /* wgsl */`
 struct Params {
   simDims : vec4<f32>, domain : vec4<f32>, wind : vec4<f32>, hmap : vec4<f32>,
-  box0 : vec4<f32>, box1 : vec4<f32>,
+  box0 : vec4<f32>, box1 : vec4<f32>, fx : vec4<f32>,
 };
 @group(0) @binding(1) var<uniform> P : Params;
 struct VOut {
@@ -759,8 +868,9 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   // warm dark slab — weathered timber register, nothing techy
   let mottle = vnoise2(v.world.xy * 0.06 + v.world.zz * 0.06) * 0.3 + 0.85;
   let albedo = vec3<f32>(0.21, 0.165, 0.125) * mottle;
-  var col = albedo * (SUN_COL * diff * 1.15 + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.55);
-  col = mix(col, FOG_COL, fogMix(distance(C.eye.xyz, v.world)));
+  let rv = C.misc.z;
+  var col = albedo * (SUN_COL * diff * 1.15 * (1.0 - 0.78 * rv) + vec3<f32>(0.40, 0.44, 0.58) * skyAmb * 0.55 * (1.0 - 0.30 * rv));
+  col = mix(col, FOG_COL * (1.0 - 0.45 * rv), fogMix(distance(C.eye.xyz, v.world)));
   return vec4<f32>(col, 1.0);
 }`;
 
@@ -787,11 +897,12 @@ async function boot() {
   const div   = mkBuf(NC * 4, GPUBufferUsage.STORAGE);
   const solidB= mkBuf(NC * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const heightB = mkBuf(HX * HY * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
-  const partsB  = mkBuf(NP * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const partsB  = mkBuf(NP * 32, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+  const streakB = mkBuf(NS * 32, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const gliderB = mkBuf(32 * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
   const trailB  = mkBuf(TRAIL_N * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const gliderRead = mkBuf(32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
-  const paramsB = mkBuf(96, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+  const paramsB = mkBuf(112, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const camB    = mkBuf(176, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const terrainUB = mkBuf(16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const intentB = mkBuf(256 * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
@@ -802,7 +913,7 @@ async function boot() {
   device.queue.writeBuffer(solidB, 0, makeSolid(height));
   device.queue.writeBuffer(terrainUB, 0, new Float32Array([HX, HY, DX / HX, DY / HY]));
 
-  const parts = new Float32Array(NP * 4);
+  const parts = new Float32Array(NP * 8);
   const hAtM = (x, y) => {
     const i = Math.min(HX - 1, Math.max(0, Math.floor(x / DX * HX)));
     const j = Math.min(HY - 1, Math.max(0, Math.floor(y / DY * HY)));
@@ -810,11 +921,22 @@ async function boot() {
   };
   for (let k = 0; k < NP; k++) {
     const x = Math.random() * DX, y = Math.random() * DY;
-    parts[k * 4] = x; parts[k * 4 + 1] = y;
-    parts[k * 4 + 2] = hAtM(x, y) + 3 + Math.pow(Math.random(), 1.5) * (DZ * 0.7);
-    parts[k * 4 + 3] = 0;
+    parts[k * 8] = x; parts[k * 8 + 1] = y;
+    parts[k * 8 + 2] = hAtM(x, y) + 3 + Math.pow(Math.random(), 1.5) * (DZ * 0.7);
+    parts[k * 8 + 3] = 0;
+    const life = 20 + Math.random() * 26;
+    parts[k * 8 + 4] = Math.random() * life;   // staggered ages: no global blink
+    parts[k * 8 + 5] = life;
+    parts[k * 8 + 6] = 0;                      // churn
+    parts[k * 8 + 7] = Math.random() * 100;    // seed
   }
   device.queue.writeBuffer(partsB, 0, parts);
+
+  {  // streaklets start dead; a pulse (S) reseeds them
+    const strk = new Float32Array(NS * 8);
+    for (let k = 0; k < NS; k++) strk[k * 8 + 3] = 9;
+    device.queue.writeBuffer(streakB, 0, strk);
+  }
 
   const gInit = new Float32Array(32);
   gInit[0] = DX * 0.395; gInit[1] = DY * 0.39; gInit[2] = 150; gInit[7] = Math.PI / 2;
@@ -847,6 +969,7 @@ async function boot() {
   const pJacobi = cs(JACOBI_WGSL);
   const pProject = cs(PROJECT_WGSL);
   const pParts = cs(PARTICLE_WGSL);
+  const pStreak = cs(STREAK_WGSL);
   const pGlider = cs(GLIDER_WGSL);
 
   const bg = (pipe, entries) => device.createBindGroup({
@@ -859,6 +982,7 @@ async function boot() {
   const bgJacobiB = bg(pJacobi, [paramsB, pr1, div, pr0, solidB]);
   const bgProject = bg(pProject, [paramsB, velT, pr0, vel, solidB]);
   const bgParts = bg(pParts, [paramsB, vel, partsB, heightB]);
+  const bgStreak = bg(pStreak, [paramsB, vel, streakB, heightB]);
   const bgGlider = bg(pGlider, [paramsB, vel, gliderB, heightB, trailB]);
 
   const depthFormat = 'depth24plus';
@@ -884,6 +1008,7 @@ async function boot() {
   const pTerrain = rp(TERRAIN_WGSL);
   const pApron = rp(APRON_WGSL, { topology: 'triangle-strip' });
   const pPartR = rp(PART_RENDER_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
+  const pStreakR = rp(STREAK_RENDER_WGSL, { blend: additive, topology: 'triangle-strip', depthWrite: false });
   const pTrail = rp(TRAIL_WGSL, { blend: additive, topology: 'line-strip', depthWrite: false });
   const pIntent = rp(INTENT_WGSL, { blend: additive, topology: 'line-strip', depthWrite: false });
   const pGliderR = rp(GLIDER_RENDER_WGSL);
@@ -894,6 +1019,7 @@ async function boot() {
   const bgTerrain = bg(pTerrain, [camB, heightB, terrainUB]);
   const bgApron = bg(pApron, [camB]);
   const bgPartR = bg(pPartR, [camB, partsB]);
+  const bgStreakR = bg(pStreakR, [camB, streakB]);
   const bgTrail = bg(pTrail, [camB, trailB, gliderB]);
   const bgIntent = bg(pIntent, [camB, intentB]);
   const bgGliderR = bg(pGliderR, [camB, gliderB]);
@@ -934,16 +1060,24 @@ async function boot() {
   }
   let dragging = false, boxDragging = false, lastMx = 0, lastMy = 0;
   let bHeld = false, bUsed = false;                 // tap B = toggle, hold B + drag/scroll = move
+  // visual registers: hold W = reveal (haze re-lit by lift/sink), tap S = streaklet pulse
+  let revealHeld = false, revealV = 0, revealOverride = null;
+  let pulseSpawn = 0, pulseAt = -100;
   addEventListener('keydown', e => {
     if (e.repeat) return;
     if (e.key === 'b' || e.key === 'B') { bHeld = true; bUsed = false; }
+    if (e.key === 'w' || e.key === 'W') revealHeld = true;
+    if (e.key === 's' || e.key === 'S') { pulseSpawn = 1; pulseAt = simTime; }
   });
   addEventListener('keyup', e => {
     if (e.key === 'b' || e.key === 'B') {
       if (!bUsed) box.on = !box.on;
       bHeld = false;
     }
+    if (e.key === 'w' || e.key === 'W') revealHeld = false;
   });
+  window.__setReveal = v => { revealOverride = v; };       // null releases the override
+  window.__pulse = () => { pulseSpawn = 1; pulseAt = simTime; };
   canvas.addEventListener('pointerdown', e => {
     dragging = true;
     boxDragging = box.on && (bHeld || e.shiftKey);
@@ -1142,6 +1276,11 @@ async function boot() {
     frameN++;
 
     const wind = windNow(simTime);
+    // reveal crossfade: ~300 ms toward held state (or a tooling override)
+    const rTarget = revealHeld ? 1 : 0;
+    revealV += Math.max(-dt / 0.3, Math.min(dt / 0.3, rTarget - revealV));
+    const reveal = revealOverride ?? revealV;
+    const pulseActive = pulseSpawn || simTime - pulseAt < 6;
     device.queue.writeBuffer(paramsB, 0, new Float32Array([
       NX, NY, NZ, DXM,
       DX, DY, DZ, simTime,
@@ -1149,7 +1288,9 @@ async function boot() {
       HX, HY, DX / HX, 0,
       box.cx, box.cy, box.cz, box.on ? 1 : 0,
       box.hx, box.hy, box.hz, 0,
+      pulseSpawn, simTime - pulseAt, 0, 0,
     ]));
+    pulseSpawn = 0;
 
     // camera
     const aspectR = canvas.width / canvas.height;
@@ -1165,7 +1306,7 @@ async function boot() {
     camData.set(invVpCur, 16);
     camData.set([...eye, simTime], 32);
     camData.set([-0.86, 0.20, 0.24, wind.s], 36);   // dir to sun: WNW, low
-    camData.set([aspectR, 1 / Math.tan(0.45), 0, 0], 40);
+    camData.set([aspectR, 1 / Math.tan(0.45), reveal, 0], 40);
     device.queue.writeBuffer(camB, 0, camData);
 
     const enc = device.createCommandEncoder();
@@ -1182,6 +1323,7 @@ async function boot() {
       }
       c.setPipeline(pProject); c.setBindGroup(0, bgProject); c.dispatchWorkgroups(wgX, wgY, wgZ);
       c.setPipeline(pParts); c.setBindGroup(0, bgParts); c.dispatchWorkgroups(Math.ceil(NP / 64));
+      if (pulseActive) { c.setPipeline(pStreak); c.setBindGroup(0, bgStreak); c.dispatchWorkgroups(Math.ceil(NS / 64)); }
       c.setPipeline(pGlider); c.setBindGroup(0, bgGlider); c.dispatchWorkgroups(1);
       c.end();
     }
@@ -1203,6 +1345,7 @@ async function boot() {
       r.setPipeline(pIntent); r.setBindGroup(0, bgIntent); r.draw(256);
       r.setPipeline(pTrail); r.setBindGroup(0, bgTrail); r.draw(TRAIL_N);
       r.setPipeline(pPartR); r.setBindGroup(0, bgPartR); r.draw(4, NP);
+      if (pulseActive) { r.setPipeline(pStreakR); r.setBindGroup(0, bgStreakR); r.draw(4, NS); }
       r.setPipeline(pGliderR); r.setBindGroup(0, bgGliderR); r.draw(6);
       r.setPipeline(pGlow); r.setBindGroup(0, bgGlow); r.draw(4);
       r.end();
