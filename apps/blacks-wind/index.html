@@ -85,6 +85,7 @@ const NP = TINY ? 8192 : 65536;                   // haze wisps (fewer, larger, 
 const NS = TINY ? 512 : 4096;                     // summonable streaklets
 const JACOBI = TINY ? 8 : 18;
 const TRAIL_N = 256;
+const NG = 4;                                     // gliders up (Blacks usually has a few)
 // gliderport in local meters (from lidar metadata; fallback ≈ center of cliff)
 const GPORT = TERRAIN ? TERRAIN.gliderportXY : [DX * 0.42, DY * 0.49];
 
@@ -242,7 +243,9 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
   let pm = (vec3<f32>(id) + 0.5) * P.simDims.w;
   if (solid[n] == 1u || inBox(pm)) { velOut[n] = vec4<f32>(0.0); return; }
   let back = pm - velIn[n].xyz * P.wind.z;
-  var v = sampleVel(back) * 0.999;
+  // calm air dissipates: with no inflow driving it, residual motion dies in a few
+  // seconds instead of coasting for minutes (dead calm should actually go dead)
+  var v = sampleVel(back) * mix(0.9965, 0.999, clamp(P.wind.x / 5.0, 0.0, 1.0));
   // physical ceiling: real flow here never exceeds ~2.5x inflow (terrain speedup
   // tops out well under that); anything past it is numerical feedback, so bound it
   let vcap = max(P.wind.x * 2.5, 25.0);
@@ -430,19 +433,27 @@ fn main(@builtin(global_invocation_id) id : vec3<u32>) {
 
 const GLIDER_WGSL = WGSL_COMMON + /* wgsl */`
 @group(0) @binding(1) var<storage, read> velIn : array<vec4<f32>>;
-@group(0) @binding(2) var<storage, read_write> G : array<f32>;   // state, 32 floats
+@group(0) @binding(2) var<storage, read_write> G : array<f32>;   // NG gliders x 32 floats
 @group(0) @binding(3) var<storage, read> height : array<f32>;
 @group(0) @binding(4) var<storage, read_write> trail : array<vec4<f32>>;
 ` + WGSL_SAMPLEVEL + WGSL_HEIGHT + /* wgsl */`
-// G layout: 0-2 pos | 3 mode (0 fly, 1 landed, 2 blown) | 4 timer | 5 phase
-//           6 trailHead | 7 heading | 8-10 desired pos | 11 frame
+// per-glider layout (stride 32):
+// 0-2 pos | 3 mode (0 fly, 1 flare, 2 sitting, 3 hiking, 4 blown) | 4 timer
+// 5 phase | 6 trailHead | 7 heading | 8-10 desired pos | 11 frame
+// 12 down flag (0 mesa, 1 beach, 2 water) | 13 hike stage | 14-16 carried vel
+// 17 tumble | 18 launch grace | 19 gliding-out (sunk out, making for the beach)
 
-fn figurePoint(tau : f32) -> vec3<f32> {
-  // mirrored swoop along the cliff edge: hover A, swoop down-across, hover B
-  let ax = P.domain.x * 0.395;             // just seaward of the cliff lip
-  let ay = P.domain.y * 0.39;              // ~200 m south of the gliderport
-  let by = P.domain.y * 0.60;              // ~200 m north
-  let hoverH = 46.0;                        // above local terrain
+fn figurePoint(tau : f32, gi : u32) -> vec3<f32> {
+  // mirrored swoop along the cliff edge: hover A, swoop down-across, hover B.
+  // each glider works his own stretch of ridge, his own rhythm.
+  var axA = array<f32, ${NG}>(0.395, 0.400, 0.390, 0.405);
+  var ayA = array<f32, ${NG}>(0.39, 0.56, 0.24, 0.42);
+  var byA = array<f32, ${NG}>(0.60, 0.74, 0.42, 0.57);
+  var hhA = array<f32, ${NG}>(46.0, 54.0, 40.0, 78.0);
+  let ax = P.domain.x * axA[gi];           // just seaward of the cliff lip
+  let ay = P.domain.y * ayA[gi];
+  let by = P.domain.y * byA[gi];
+  let hoverH = hhA[gi];                     // above local terrain
   let hA = terrainHeight(vec2<f32>(P.domain.x * 0.44, ay)) + hoverH;
   let hB = terrainHeight(vec2<f32>(P.domain.x * 0.44, by)) + hoverH;
   var pos : vec3<f32>;
@@ -464,57 +475,163 @@ fn figurePoint(tau : f32) -> vec3<f32> {
   return pos;
 }
 
-@compute @workgroup_size(1)
-fn main() {
+@compute @workgroup_size(${NG})
+fn main(@builtin(global_invocation_id) id : vec3<u32>) {
+  let gi = id.x;
+  if (gi >= ${NG}u) { return; }
+  let o = gi * 32u;
   let dt = P.wind.z;
-  var pos = vec3<f32>(G[0], G[1], G[2]);
-  var mode = G[3];
-  var timer = G[4];
-  var phase = G[5];
+  var pos = vec3<f32>(G[o], G[o + 1u], G[o + 2u]);
+  var mode = G[o + 3u];
+  var timer = G[o + 4u];
+  var phase = G[o + 5u];
+  var heading = G[o + 7u];
+  var downOn = G[o + 12u];
+  var stage = G[o + 13u];
+  var cvel = vec3<f32>(G[o + 14u], G[o + 15u], G[o + 16u]);
+  var tumble = G[o + 17u];
+  var grace = G[o + 18u];
+  var glideOut = G[o + 19u];
+  var clearTrail = false;
+  let ground = terrainHeight(pos.xy);
 
-  if (mode > 0.5) {                        // landed or blown out: wait, respawn
-    timer -= dt;
-    if (timer <= 0.0) {
-      pos = figurePoint(0.0);
-      mode = 0.0; phase = 0.0;
-    }
-  } else {
-    phase = fract(phase + dt / 26.0);      // 26 s per full figure
-    let want = figurePoint(phase);
+  if (mode < 0.5) {                        // ---- flying the figure
+    grace = max(grace - dt, 0.0);
+    var perA = array<f32, ${NG}>(26.0, 31.0, 23.0, 36.0);
+    phase = fract(phase + dt / perA[gi]);
+    var want = figurePoint(phase, gi);
     let air = sampleVel(pos);
-    // intent: fly toward the figure at up to 11 m/s airspeed
+    // sunk below usable lift: give up the figure, glide for the beach —
+    // unless the wind is past outrunning, in which case landing isn't the story
+    if (glideOut < 0.5 && grace <= 0.0 && pos.z < ground + 22.0 && air.z < 0.4 &&
+        length(air.xy) < 13.0) { glideOut = 1.0; }
+    if (glideOut > 0.5) {
+      // caught the lift band on the way out — or the wind rose past outrunning
+      if (air.z > 1.8 || length(air.xy) > 16.0) { glideOut = 0.0; }
+      else {
+        // make for the sand; lazy S-turns along the shoreline bleed the altitude
+        let sweep = sin(P.domain.w * 0.45 + f32(gi) * 2.1) * 90.0;
+        want = vec3<f32>(P.domain.x * 0.345, pos.y + sweep, 0.0);
+      }
+    }
+    // intent: fly toward the target. more wind = bar pulled in = more airspeed
+    // (real hang-glider behavior), topping out ~27 m/s — the solver's crest jet
+    // runs ~3x nominal inflow, so station-holding is measured against that
+    let trim = clamp(12.5 + P.wind.x * 1.6, 12.5, 27.0);
     let err = want - pos;
     var cmd = err * 0.6;
     let hmag = length(cmd.xy);
-    if (hmag > 11.0) { cmd = vec3<f32>(cmd.xy * (11.0 / hmag), cmd.z); }
-    cmd.z = clamp(cmd.z, -3.0, 1.1);
+    if (hmag > trim) { cmd = vec3<f32>(cmd.xy * (trim / hmag), cmd.z); }
+    // he can flatten the glide but can't climb without the air's help;
+    // gliding out he commits — spills weak lift, holds a real approach slope
+    cmd.z = clamp(cmd.z, select(-3.0, -2.0, glideOut > 0.5), 0.35);
+    var liftC = air.z;
+    if (glideOut > 0.5) { liftC = min(air.z, 0.4); }
     // the deal: he always sinks 1.05 m/s through the airmass
     var vel = air + cmd;
-    vel.z = air.z + cmd.z - 1.05;
+    vel.z = liftC + cmd.z - 1.05;
     pos += vel * dt;
-    if (length(vel.xy) > 0.5) { G[7] = atan2(vel.y, vel.x); }
+    if (length(vel.xy) > 0.5) { heading = atan2(vel.y, vel.x); }
 
-    let ground = terrainHeight(pos.xy);
-    if (pos.z < ground + 2.0) { mode = 1.0; timer = 3.5; pos.z = ground + 2.0; }
-    if (inBox(pos)) { mode = 1.0; timer = 3.5; }   // flew into the box: crash
-    if (pos.x < 8.0 || pos.x > P.domain.x - 8.0 ||
+    if (grace <= 0.0 && pos.z < ground + 5.0) {    // flare and land
+      mode = 1.0;
+      cvel = vec3<f32>(vel.xy, 0.0);
+      let cm = length(cvel.xy);
+      if (cm > 9.0) { cvel = vec3<f32>(cvel.xy * (9.0 / cm), 0.0); }
+    }
+    if (inBox(pos)) {                              // clipped the box: flutter down
+      mode = 1.0; cvel = vec3<f32>(vel.xy * 0.3, 0.0);
+    }
+    // hopelessly downwind of the ridge in big air = already lost, don't wait for the edge;
+    // in extreme wind, merely being behind the lip is already the end of the story
+    let hopeless = (pos.x > P.domain.x * 0.75 && P.wind.x > 15.0) ||
+                   (pos.x > P.domain.x * 0.44 && P.wind.x > 25.0);
+    if (hopeless || pos.x < 8.0 || pos.x > P.domain.x - 8.0 ||
         pos.y < 8.0 || pos.y > P.domain.y - 8.0 ||
-        pos.z > P.domain.z - 6.0) { mode = 2.0; timer = 3.5; }
-
-    G[8] = want.x; G[9] = want.y; G[10] = want.z;
+        pos.z > P.domain.z - 6.0) {
+      // the wind wins: carried up and over the back, out of the sim's world
+      mode = 4.0; timer = 12.0; tumble = 0.0;
+      var v2 = vel;
+      v2 = vec3<f32>(v2.xy + inflowDir() * max(P.wind.x, 8.0) * 0.8, v2.z);
+      let vm = length(v2.xy);
+      let vmin = max(P.wind.x * 1.3, 14.0);
+      if (vm < vmin) { v2 = vec3<f32>(v2.xy * (vmin / max(vm, 0.001)), v2.z); }
+      v2.z = max(v2.z, max(P.wind.x * 0.55, 7.0));   // way up, then away
+      cvel = v2;
+    }
+    G[o + 8u] = want.x; G[o + 9u] = want.y; G[o + 10u] = want.z;
+  } else if (mode < 1.5) {                 // ---- flare: level off, slow, settle
+    cvel = vec3<f32>(cvel.xy * exp(-1.1 * dt),
+                     clamp(-(pos.z - ground - 1.2) * 0.6, -3.0, 2.0));
+    pos += cvel * dt;
+    if (pos.z < ground + 1.0) { pos.z = ground + 1.0; }
+    if (length(cvel.xy) > 0.5) { heading = atan2(cvel.y, cvel.x); }
+    if (abs(pos.z - ground - 1.2) < 0.5 && length(cvel.xy) < 1.4) {
+      pos.z = ground + 1.2;
+      mode = 2.0;                          // sitting: catch his breath
+      timer = 6.0 + hash1(f32(gi) * 7.7 + P.domain.w) * 5.0;
+      downOn = select(select(0.0, 1.0, ground < 15.0), 2.0, ground < 0.5);
+      // where to join the trail: beach/water walk it all, mid-cliff joins partway,
+      // mesa landings just walk back to launch
+      stage = select(select(4.0, 2.0, ground < 60.0), 0.0, ground < 15.0);
+      glideOut = 0.0;
+    }
+  } else if (mode < 2.5) {                 // ---- sitting
+    timer -= dt;
+    if (timer <= 0.0) { mode = 3.0; }
+  } else if (mode < 3.5) {                 // ---- hiking back up the trail
+    // real line of low relief: the ravine just south of the gliderport
+    var wpx = array<f32, 5>(835.0, 905.0, 955.0, 1005.0, 1000.0);
+    var wpy = array<f32, 5>(830.0, 845.0, 825.0, 862.0, 950.0);
+    let ti = u32(clamp(stage, 0.0, 4.0));
+    let d = vec2<f32>(wpx[ti], wpy[ti]) - pos.xy;
+    let dm = length(d);
+    if (dm < 14.0) {
+      stage += 1.0;
+      if (stage > 4.5) {                   // back at the lip: launch again
+        mode = 0.0; phase = 0.0; grace = 4.0; glideOut = 0.0;
+        pos = vec3<f32>(pos.xy, ground + 4.0);
+        heading = 3.14159;                 // facing west, into the wind
+        clearTrail = true;
+      }
+    } else {
+      let nxy = pos.xy + d / dm * (13.0 * dt);
+      pos = vec3<f32>(nxy, terrainHeight(nxy) + 2.0);
+      heading = atan2(d.y, d.x);
+    }
+  } else {                                 // ---- blown away: tumbling downwind
+    timer -= dt;
+    tumble += dt * (2.2 + f32(gi) * 0.3);
+    cvel.z -= 1.8 * dt;                    // the arc comes back over, gently
+    cvel *= 1.0 - 0.02 * dt;
+    pos += cvel * dt;
+    if (length(cvel.xy) > 0.5) { heading = atan2(cvel.y, cvel.x); }
+    if (timer <= 0.0) {
+      pos = figurePoint(0.0, gi);
+      mode = 0.0; phase = 0.0; grace = 2.0; tumble = 0.0; glideOut = 0.0;
+      clearTrail = true;
+    }
   }
 
-  // trail ring buffer, ~10 Hz
-  let frame = G[11] + 1.0;
-  G[11] = frame;
-  if (mode < 0.5 && (u32(frame) % 3u) == 0u) {
-    let head = u32(G[6]);
-    trail[head] = vec4<f32>(pos, 1.0);
-    G[6] = f32((head + 1u) % ${TRAIL_N}u);
+  // trail ring buffer, ~10 Hz — protagonist only, recorded while airborne
+  let frame = G[o + 11u] + 1.0;
+  G[o + 11u] = frame;
+  if (gi == 0u) {
+    if (clearTrail) {                      // fresh flight, fresh line
+      for (var i = 0u; i < ${TRAIL_N}u; i++) { trail[i] = vec4<f32>(pos, 0.0); }
+      G[o + 6u] = 0.0;
+    } else if ((mode < 1.5 || mode > 3.5) && (u32(frame) % 3u) == 0u) {
+      let head = u32(G[o + 6u]);
+      trail[head] = vec4<f32>(pos, 1.0);
+      G[o + 6u] = f32((head + 1u) % ${TRAIL_N}u);
+    }
   }
 
-  G[0] = pos.x; G[1] = pos.y; G[2] = pos.z;
-  G[3] = mode; G[4] = timer; G[5] = phase;
+  G[o] = pos.x; G[o + 1u] = pos.y; G[o + 2u] = pos.z;
+  G[o + 3u] = mode; G[o + 4u] = timer; G[o + 5u] = phase;
+  G[o + 7u] = heading; G[o + 12u] = downOn; G[o + 13u] = stage;
+  G[o + 14u] = cvel.x; G[o + 15u] = cvel.y; G[o + 16u] = cvel.z;
+  G[o + 17u] = tumble; G[o + 18u] = grace; G[o + 19u] = glideOut;
 }`;
 
 // ------------------------------------------------------------ render WGSL
@@ -792,43 +909,76 @@ fn fs(v : VOut) -> @location(0) vec4<f32> {
   return vec4<f32>(vec3<f32>(1.0, 0.95, 0.85) * v.a, 1.0);
 }`;
 
-// a soft glow so the eye can find him at vista distance
+// a soft glow so the eye can find him at vista distance (protagonist only);
+// it follows the story: ember breathing while he sits, a small dot on the hike
 const GLIDER_GLOW_WGSL = CAM_WGSL + /* wgsl */`
 @group(0) @binding(1) var<storage, read> G : array<f32>;
-struct VOut { @builtin(position) pos : vec4<f32>, @location(0) uv : vec2<f32> };
+struct VOut { @builtin(position) pos : vec4<f32>, @location(0) uv : vec2<f32>, @location(1) col : vec3<f32> };
 @vertex
 fn vs(@builtin(vertex_index) vi : u32) -> VOut {
   let corner = vec2<f32>(f32(vi & 1u), f32((vi >> 1u) & 1u)) * 2.0 - 1.0;
   let clip = C.viewProj * vec4<f32>(G[0], G[1], G[2], 1.0);
+  let mode = G[3];
+  var size = 22.0;
+  var a = 0.28;
+  var col = vec3<f32>(1.0, 0.9, 0.7);
+  if (mode > 0.5 && mode < 2.5) {          // down: ember, breathing slow
+    col = vec3<f32>(1.0, 0.45, 0.28);
+    size = 16.0;
+    a = 0.14 + 0.08 * sin(C.eye.w * 2.1);
+  } else if (mode > 2.5 && mode < 3.5) {   // hiking: a small warm point on the cliff
+    size = 9.0;
+    a = 0.26;
+  } else if (mode > 3.5) {                 // blown out: the light goes with him
+    a = 0.28 * clamp(G[4] / 6.0, 0.0, 1.0);
+  }
   var o : VOut;
-  o.pos = clip + vec4<f32>(corner * 22.0 * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), 0.0, 0.0);
+  o.pos = clip + vec4<f32>(corner * size * vec2<f32>(C.misc.y / C.misc.x, C.misc.y), 0.0, 0.0);
   o.uv = corner;
+  o.col = col * a;
   return o;
 }
 @fragment
 fn fs(v : VOut) -> @location(0) vec4<f32> {
   let g = exp(-dot(v.uv, v.uv) * 5.0);
-  return vec4<f32>(vec3<f32>(1.0, 0.9, 0.7) * g * 0.28, 1.0);
+  return vec4<f32>(v.col * g, 1.0);
 }`;
 
 const GLIDER_RENDER_WGSL = CAM_WGSL + /* wgsl */`
 @group(0) @binding(1) var<storage, read> G : array<f32>;
 struct VOut { @builtin(position) pos : vec4<f32>, @location(0) c : vec3<f32> };
 @vertex
-fn vs(@builtin(vertex_index) vi : u32) -> VOut {
+fn vs(@builtin(vertex_index) vi : u32, @builtin(instance_index) gi : u32) -> VOut {
   // a little delta wing: 2 triangles, ~14 m span, oriented by heading
+  let go = gi * 32u;
   var local = array<vec3<f32>, 6>(
     vec3<f32>( 7.5,  0.0, 0.0), vec3<f32>(-4.5, -7.0, 1.5), vec3<f32>(-2.2, 0.0, 0.0),
     vec3<f32>( 7.5,  0.0, 0.0), vec3<f32>(-2.2,  0.0, 0.0), vec3<f32>(-4.5,  7.0, 1.5));
-  let hdg = G[7];
+  let hdg = G[go + 7u];
+  let mode = G[go + 3u];
+  var scale = select(1.0, 0.85, gi > 0u);          // extras a touch smaller
+  if (mode > 2.5 && mode < 3.5) { scale *= 0.32; } // hiking: wing packed, just a speck
+  if (mode > 3.5) { scale *= clamp(G[go + 4u] / 1.5, 0.0, 1.0); }  // gone before respawn
+  var l = local[vi] * scale;
+  if (mode > 3.5) {                                // blown out: slow tumble
+    let tb = G[go + 17u];
+    let cp = cos(tb); let sp = sin(tb);
+    l = vec3<f32>(l.x * cp - l.z * sp, l.y, l.x * sp + l.z * cp);
+    let cr = cos(tb * 0.7); let sr = sin(tb * 0.7);
+    l = vec3<f32>(l.x, l.y * cr - l.z * sr, l.y * sr + l.z * cr);
+  }
   let ch = cos(hdg); let sh = sin(hdg);
-  let l = local[vi];
-  let world = vec3<f32>(G[0], G[1], G[2]) +
+  let world = vec3<f32>(G[go], G[go + 1u], G[go + 2u]) +
     vec3<f32>(l.x * ch - l.y * sh, l.x * sh + l.y * ch, l.z);
   var o : VOut;
   o.pos = C.viewProj * vec4<f32>(world, 1.0);
-  let landed = G[3];
-  o.c = select(vec3<f32>(1.0, 0.95, 0.88), vec3<f32>(0.9, 0.4, 0.3), landed > 0.5);
+  var c = vec3<f32>(1.0, 0.95, 0.88);
+  if (gi > 0u) { c *= 0.72; }                      // extras quieter
+  if (mode > 0.5 && mode < 2.5) { c = vec3<f32>(0.9, 0.4, 0.3); }  // down: ember
+  // fade into the haze with distance; blown-out fades fully before respawn
+  var f = fogMix(distance(C.eye.xyz, world));
+  if (mode > 3.5) { f = max(f, pow(clamp(1.0 - G[go + 4u] / 12.0, 0.0, 1.0), 2.0)); }
+  o.c = mix(c, FOG_COL, f);
   return o;
 }
 @fragment
@@ -987,9 +1137,9 @@ async function boot() {
   const heightB = mkBuf(HX * HY * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const partsB  = mkBuf(NP * 32, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
   const streakB = mkBuf(NS * 32, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
-  const gliderB = mkBuf(32 * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
+  const gliderB = mkBuf(NG * 32 * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST | GPUBufferUsage.COPY_SRC);
   const trailB  = mkBuf(TRAIL_N * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
-  const gliderRead = mkBuf(32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
+  const gliderRead = mkBuf(NG * 32 * 4, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
   const paramsB = mkBuf(112, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const camB    = mkBuf(192, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
   const terrainUB = mkBuf(32, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
@@ -1054,8 +1204,20 @@ async function boot() {
     device.queue.writeBuffer(streakB, 0, strk);
   }
 
-  const gInit = new Float32Array(32);
-  gInit[0] = DX * 0.395; gInit[1] = DY * 0.39; gInit[2] = 150; gInit[7] = Math.PI / 2;
+  // each glider starts at his own hover A, phases staggered so the ridge feels inhabited
+  const gInit = new Float32Array(NG * 32);
+  {
+    const axA = [0.395, 0.400, 0.390, 0.405];
+    const ayA = [0.39, 0.56, 0.24, 0.42];
+    const hhA = [46, 54, 40, 78];
+    const ph = [0, 0.31, 0.57, 0.82];
+    for (let i = 0; i < NG; i++) {
+      const o = i * 32;
+      gInit[o] = DX * axA[i]; gInit[o + 1] = DY * ayA[i];
+      gInit[o + 2] = hAtM(DX * 0.44, DY * ayA[i]) + hhA[i];
+      gInit[o + 5] = ph[i]; gInit[o + 7] = Math.PI / 2; gInit[o + 18] = 2;
+    }
+  }
   device.queue.writeBuffer(gliderB, 0, gInit);
 
   // intent figure polyline for the ghost path (mirrors figurePoint in WGSL)
@@ -1380,7 +1542,30 @@ async function boot() {
   window.__capture = () => new Promise(res => { captureReq = res; });
   window.__setCam = (azim, elev, dist) => { cam.azim = azim; cam.elev = elev; cam.dist = dist; };
   window.__setWind = v => { windSlider.value = v; };
-  const modeNames = ['soaring', 'landed — hiking back up', 'blown out — resetting'];
+  // tooling: last protagonist state readback + poke individual state floats
+  let gLast = null;
+  window.__gliderInfo = (gi = 0) => (gLast ? Array.from(gLast.slice(gi * 32, gi * 32 + 32)) : null);
+  window.__setGlider = (fields, gi = 0) => {
+    for (const [k, v] of Object.entries(fields)) {
+      device.queue.writeBuffer(gliderB, (gi * 32 + (+k)) * 4, new Float32Array([v]));
+    }
+  };
+  // the quiet narration line — the protagonist's story, nothing else
+  function gliderText(g) {
+    const m = Math.round(g[3]);
+    const ft = Math.round(g[2] * 3.28) + ' ft';
+    if (m === 1) return 'flaring to land';
+    if (m === 2) {
+      const d = Math.round(g[12]);
+      return d === 2 ? 'splashed down just offshore — swimming in'
+           : d === 1 ? 'down on the beach — catching his breath'
+                     : 'down on the mesa — catching his breath';
+    }
+    if (m === 3) return 'hiking back up the trail  ·  ' + ft;
+    if (m === 4) return 'blown over the back — somewhere past la jolla by now';
+    if (g[19] > 0.5) return 'sinking out — making for the beach  ·  ' + ft;
+    return 'soaring  ·  ' + ft;
+  }
 
   function frame(now) {
     requestAnimationFrame(frame);
@@ -1473,7 +1658,7 @@ async function boot() {
       r.setPipeline(pTrail); r.setBindGroup(0, bgTrail); r.draw(TRAIL_N);
       r.setPipeline(pPartR); r.setBindGroup(0, bgPartR); r.draw(4, NP);
       if (pulseActive) { r.setPipeline(pStreakR); r.setBindGroup(0, bgStreakR); r.draw(4, NS); }
-      r.setPipeline(pGliderR); r.setBindGroup(0, bgGliderR); r.draw(6);
+      r.setPipeline(pGliderR); r.setBindGroup(0, bgGliderR); r.draw(6, NG);
       r.setPipeline(pGlow); r.setBindGroup(0, bgGlow); r.draw(4);
       r.end();
     };
@@ -1525,15 +1710,15 @@ async function boot() {
 
     // occasional glider state readback for the HUD
     if (frameN % 20 === 0 && !readingBack) {
-      enc.copyBufferToBuffer(gliderB, 0, gliderRead, 0, 32 * 4);
+      enc.copyBufferToBuffer(gliderB, 0, gliderRead, 0, NG * 32 * 4);
       readingBack = true;
       device.queue.submit([enc.finish()]);
       gliderRead.mapAsync(GPUMapMode.READ).then(() => {
         const g = new Float32Array(gliderRead.getMappedRange().slice(0));
         gliderRead.unmap();
         readingBack = false;
-        gliderLabel.textContent = 'glider: ' + (modeNames[Math.round(g[3])] || 'soaring') +
-          '  ·  ' + Math.round(g[2] * 3.28) + ' ft';
+        gLast = g;
+        gliderLabel.textContent = 'glider: ' + gliderText(g);
       }).catch(() => { readingBack = false; });
     } else {
       device.queue.submit([enc.finish()]);

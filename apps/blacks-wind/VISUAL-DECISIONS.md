@@ -190,3 +190,80 @@ date each entry. If you change a decision, add a new line saying so and why.**
   upright, 60 mph = visible eastward lean, plausible at the cap.
 - Perf: 121 fps unchanged (14k instances × 12 verts is nothing). Haze, reveal,
   streaklets, box, day mode, glider all verified unregressed by screenshot.
+
+## 2026-07-11 (Lane D: glider dramaturgy — story through the guy)
+
+**The story is now a full loop, not a freeze.** The single glider became a small cast
+(NG = 4). Failure is the drama; the guy negotiating the air is the whole point.
+
+**Modes (per-glider state, stride 32 floats).** 0 fly · 1 flare · 2 sit · 3 hike ·
+4 blown. Extra floats added over v0: 12 down-flag (0 mesa / 1 beach / 2 water),
+13 hike-stage, 14–16 carried velocity, 17 tumble angle, 18 launch-grace, 19 glide-out.
+
+**Sink-out → beach landing → sit → hike → relaunch (the wind-0 arc).**
+- Give-up rule: while flying, if he drops below ground+22 m in air with w < 0.4 and
+  horizontal flow < 13 m/s, he abandons the figure (`glideOut`) and makes for the sand
+  (target x = 0.345·DX), bleeding altitude in lazy S-turns along the shoreline. If he
+  catches lift on the way out (w > 1.8 or flow > 16) he cancels and soars again — the
+  save is part of the story.
+- Flare: within ground+5 m he levels, sheds speed (cvel damped exp(−1.1·dt)), settles to
+  ground+1.2 m. Box-strike = a softer flutter-down (cvel ×0.3), same landed mode.
+- Sit: 6–11 s (hashed per glider) catching his breath. down-flag from landing elevation
+  chooses the narration: beach / just-offshore-swim / mesa.
+- Hike: walks a real low-relief line — the ravine just south of the gliderport
+  (5 waypoints 835,830 → 1000,950), climbing terrain+2 m at 13 m/s. Beach landings walk
+  the whole trail (~25–30 s, watchable point rising up the face); mid-cliff and mesa
+  landings join partway (stage 2 / 4) for a shorter climb. At the lip he relaunches
+  facing west into the wind, with a 4 s grace so he doesn't instantly re-sink.
+- Honest note: gliding out from a mesa relaunch he often intercepts the rising cliff face
+  and settles on the shoulder (~60 m) rather than the sand — physically right (can't glide
+  through a cliff), but the narration still says "mesa"; the beach line only fires on a
+  genuine low landing (first sink-out from the hover usually reaches it). Left as-is —
+  a cliff-specific label wasn't worth the WGSL risk for a vista-distance speck.
+
+**Blown-away arc (the wind-1000 comedy beat).**
+- "Hopeless" trigger: behind the lip in big air (x > 0.75·DX & wind > 15, or x > 0.44·DX
+  & wind > 25) he's already lost — no need to wait for the domain edge. Also fires at the
+  actual edges/ceiling. He converts to mode 4 with a launch velocity kicked downwind
+  (inflowDir × wind × 0.8, floored) and hard up (z-vel ≥ max(wind·0.55, 7)): way up, then
+  away. 12 s of tumbling (wing rotates on two axes, rate 2.2–3.3/s), gravity arcs him back
+  over, he shrinks (last 1.5 s) and fog-fades to nothing, then respawns. Reads as a tiny
+  comet flung up into the churning marine haze over the back — exactly "blown way up and
+  away and back over la jolla." At max wind this loops ~15 s (he can't even complete a
+  launch — correct: 99 mph is unflyable).
+
+**The cast (NG = 4).**
+- Each glider works his own stretch of ridge — different hover A/B latitudes, hover
+  heights (40–78 m), figure periods (23–36 s), and start phases (0/.31/.57/.82) so the
+  skyline feels inhabited, never synchronized. They all share the one solved wind, so they
+  all sink out / blow away together when it turns.
+- Only glider 0 is the **protagonist**: he alone keeps the warm glow sprite, the trail
+  ring, and the dashed intent-ghost figure; the HUD narrates only him. Extras are quieter
+  — wings scaled 0.85× and dimmed ×0.72, no glow, no trail, no ghost. Verified from the
+  high oblique: protagonist reads clearly with his ghost loop; extras are faint white
+  specks along the crest — present, not distracting.
+
+**Protagonist glow follows the story.** Default warm dot (22 m, α 0.28); down = ember
+breathing slow (16 m, α 0.14 + 0.08·sin); hiking = a small warm point (9 m); blown =
+fades out with him over 6 s. The wing tints ember-red while down, fog-fades fully before
+respawn when blown.
+
+**Trail artifact fix.** The ring buffer is re-seeded (all TRAIL_N verts set to current
+pos, w = 0, head → 0) on every relaunch and every blown-respawn — kills the straight-line
+jumps across the mesa the old single-clearless buffer drew. Trail records only while the
+protagonist is airborne (modes 0/4), ~10 Hz.
+
+**Quiet HUD narration (protagonist only).** One line, no chrome: "soaring · N ft" /
+"sinking out — making for the beach · N ft" / "flaring to land" / "down on the beach —
+catching his breath" (or mesa / "splashed down just offshore — swimming in") /
+"hiking back up the trail · N ft" / "blown over the back — somewhere past la jolla by now".
+
+**Calm-air dissipation (supporting physics tweak).** Advection retention now
+mix(0.9965, 0.999) scaled by wind/5 — at dead calm residual motion actually dies in a few
+seconds instead of coasting, so the wind-0 "he just glides down, can't stay up" story is
+true. No effect above ~5 mph inflow.
+
+**Perf / regressions.** 121 fps at full res (4 gliders is 1 workgroup of 4 threads —
+nothing). Verified unregressed by screenshot at wind 0 / 150 / 300 / 1000: haze base,
+hold-W reveal, S streaklets, B obstacle box, jun-19 day mode, coastline surround, 14k
+trees, ocean, terrain. Zero page errors across all runs.
