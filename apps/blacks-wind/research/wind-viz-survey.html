@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Making 3D Air Visible — a visual survey for blacks-wind</title>
+<style>
+  :root {
+    --bg: #0c0e11;
+    --panel: #12151a;
+    --panel2: #171b21;
+    --ink: #d8d4cc;
+    --dim: #8a867e;
+    --faint: #565349;
+    --warm: #d9a05b;
+    --lift: #e8b86d;
+    --sink: #5fb8a8;
+    --line: #23272e;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 16px/1.6 Inter, -apple-system, "Helvetica Neue", sans-serif;
+    font-feature-settings: "ss01","cv11","tnum";
+    padding: 0 0 120px;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 0 32px; }
+  header { padding: 72px 0 36px; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .sub { color: var(--dim); margin-top: 8px; font-size: 15px; }
+  h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em;
+       color: var(--warm); margin: 64px 0 20px; }
+  h3 { font-size: 17px; font-weight: 600; margin: 32px 0 8px; letter-spacing: -0.01em; }
+  p { margin: 10px 0; }
+  a { color: #b9a880; text-decoration: none; border-bottom: 1px solid #3a3427; }
+  a:hover { color: var(--lift); }
+  .dim { color: var(--dim); }
+  .tldr {
+    background: linear-gradient(180deg, #16130d, #12151a);
+    border: 1px solid #2e2a20; border-radius: 10px;
+    padding: 26px 28px; margin: 8px 0 12px;
+  }
+  .tldr .rank { display:flex; gap: 14px; margin: 14px 0; align-items: baseline; }
+  .tldr .n { font-family: var(--mono); color: var(--warm); font-size: 14px; flex: 0 0 20px; }
+  .tldr strong { color: #efe9dd; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 14px; }
+  th { text-align: left; color: var(--faint); font-weight: 500; font-size: 12px;
+       text-transform: uppercase; letter-spacing: 0.08em; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); }
+  td { padding: 12px 12px 12px 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--dim); }
+  td:first-child { color: var(--ink); font-weight: 500; white-space: nowrap; }
+  .beauty { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .b5 { color: #e8b86d; } .b4 { color: #c9a86a; } .b3 { color: #8a867e; } .b2 { color: #5c5952; } .b1 { color: #45423c; }
+  figure { margin: 22px 0; }
+  figure img { width: 100%; border-radius: 8px; display: block; background: #000; }
+  figcaption { font-size: 13px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  .field { border-left: 2px solid var(--line); padding: 2px 0 2px 18px; margin: 22px 0; }
+  .field h4 { font-size: 15px; font-weight: 600; }
+  .field .where { color: var(--dim); font-size: 14px; }
+  .field .verdict { font-size: 13px; color: var(--faint); font-style: italic; margin-top: 6px; }
+  .chip { font-family: var(--mono); font-size: 12px; padding: 1px 8px; border-radius: 20px;
+          border: 1px solid var(--line); color: var(--dim); margin-left: 8px; vertical-align: 1px; }
+  .chip.hot { border-color: #4a3a22; color: var(--lift); }
+  .register {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 24px 26px; margin: 20px 0;
+  }
+  .register h3 { margin-top: 0; }
+  .register .tag { font-family: var(--mono); font-size: 12px; color: var(--faint); }
+  .rec { border-color: #3d3220; background: linear-gradient(180deg, #15120c, #12151a); }
+  code { font-family: var(--mono); font-size: 13.5px; color: #c9bfa8; }
+  .quiet { font-size: 13.5px; color: var(--faint); }
+  hr.sp { border:0; border-top:1px solid var(--line); margin: 48px 0; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Making 3D air visible</h1>
+  <div class="sub">A visual survey for <code>blacks-wind</code> — ridge lift over the Torrey Pines cliffs, WebGPU, one glider. Overnight research, July 11.</div>
+</header>
+
+<!-- ==================== TL;DR ==================== -->
+<div class="tldr">
+  <div style="font-family:var(--mono); font-size:12px; color:var(--warm); letter-spacing:0.1em; margin-bottom:4px;">TL;DR — RANKED</div>
+  <div class="rank"><span class="n">1</span><div><strong>Marine layer + sun</strong> (recommended base). Thin-air's restraint does survive the jump to 3D — but the dust becomes <em>haze</em>: a sparse volumetric wisp field advected by the real sim, lit by low sun. Air is visible only where moisture rides it. The lift band reveals itself the way it does in real life at Torrey: streamers of fog pulled up the cliff face. No color-as-data at all in this register; the physics is in the <em>motion and light</em>.</div></div>
+  <div class="rank"><span class="n">2</span><div><strong>The reveal key</strong> (do this too — it's thin-air's A-key, grown up). Hold a key and the haze re-lights by <strong>vertical velocity w</strong>: warm ember-glow where air rises, cold bioluminescent teal where it sinks, darkness where it merely moves sideways. One variable, and it's the variable the glider lives or dies by. Release the key, the color drains back to sunlight.</div></div>
+  <div class="rank"><span class="n">3</span><div><strong>Dense arrows: only if they stop being arrows.</strong> A literal glyph field reads as instrumentation and will never hit the register. But its cousin — short advected <em>streaklets</em> (comet-tailed line segments that live ~1s, earth.nullschool's trick lifted to 3D) — is the best-looking flow vis ever shipped to a mass audience. Worth building as a third mode, hugging the terrain surface like oil-flow.</div></div>
+  <div style="margin-top:14px; font-size:14px; color:var(--dim);">Physics-as-color ranking for a lay viewer watching a glider: <strong style="color:var(--ink)">w (vertical velocity)</strong> → shear → Q-criterion/vorticity → pressure deviation → speed. Details in §3.</div>
+</div>
+
+<!-- ==================== SECTION 1 ==================== -->
+<h2>1 · The vocabulary</h2>
+<p class="dim">The practiced techniques, judged for our register: real-time, one salient variable, organic over techy, beauty required. Costs assume a ~2–4M cell velocity field already resident on GPU; all of these are cheap relative to the pressure solve.</p>
+
+<table>
+  <tr><th>Technique</th><th>Shows / hides</th><th>Cost @ 60fps</th><th>Beauty (for us)</th></tr>
+  <tr>
+    <td>Particle advection<br><span class="quiet">dust, streaklines</span></td>
+    <td>Transport itself — where air <em>goes</em>. Hides magnitude unless you encode it (speed→tail length works naturally). This is thin-air's native tongue. 1M+ particles trivial in a compute pass; the entire art is in spawning, lifespan, and lighting.</td>
+    <td>Trivial<br><span class="quiet">&lt;1ms / 1M pts</span></td>
+    <td class="beauty b5">●●●●● the one</td>
+  </tr>
+  <tr>
+    <td>Streaklets<br><span class="quiet">comet-tail segments</span></td>
+    <td>Direction + coherence at a glance; the nullschool aesthetic. Short fading trails, particles die young and respawn. In 3D needs depth cues (fade with distance, thin ribbons oriented to camera) or it becomes spaghetti.</td>
+    <td>Trivial<br><span class="quiet">trail via fade-buffer or ribbon geo</span></td>
+    <td class="beauty b4">●●●●○ proven</td>
+  </tr>
+  <tr>
+    <td>Streamlines / ribbons / tubes</td>
+    <td>Instantaneous field structure — great for a <em>frozen</em> field, wrong for an unsteady one (they're not pathlines; lay viewers read them as trajectories and are misled). Ribbons twist to show local vorticity, which is genuinely lovely. Static → violates active-process taste unless regrown continuously.</td>
+    <td>Cheap<br><span class="quiet">compute-pass integration, few hundred seeds</span></td>
+    <td class="beauty b3">●●●○○ elegant, static</td>
+  </tr>
+  <tr>
+    <td>LIC on surfaces<br><span class="quiet">line integral convolution</span></td>
+    <td>Dense direction texture on the terrain skin — every pixel participates, zero clutter. Hides everything off-surface (which for ridge lift is most of the story). Animated LIC on the cliff face = wind-combed grass. Beautiful as a <em>ground layer</em>, not a headline.</td>
+    <td>Moderate<br><span class="quiet">1–2ms screen-space pass</span></td>
+    <td class="beauty b4">●●●●○ as texture</td>
+  </tr>
+  <tr>
+    <td>Volumetric fog / smoke</td>
+    <td>Air as a body — density advected by the sim, raymarched with sun scattering. Shows mass, entrainment, the shape of the lift. Hides fine structure; can go generic-game-fog if uniform. The marine layer is the <em>diegetic excuse</em>: at Torrey this is literally what the air looks like.</td>
+    <td>The budget item<br><span class="quiet">2–6ms: froxel grid or ½-res raymarch + temporal</span></td>
+    <td class="beauty b5">●●●●● if restrained</td>
+  </tr>
+  <tr>
+    <td>Isosurfaces<br><span class="quiet">of w, Q-criterion</span></td>
+    <td>The <em>shape</em> of a scalar field — e.g. the w=+1.5&nbsp;m/s shell is the lift band as a translucent membrane draped along the cliff. Q-isosurfaces give writhing vortex worms in the rotor. Marching cubes in compute is fine at our grid size. Risk: reads CFD-paper instantly if shaded flat.</td>
+    <td>Cheap-moderate<br><span class="quiet">1–3ms marching cubes, can run at ⅓ grid res</span></td>
+    <td class="beauty b3">●●●○○ shape yes, shading is everything</td>
+  </tr>
+  <tr>
+    <td>Arrow / glyph fields</td>
+    <td>The textbook "hedgehog." Legible per-glyph, incoherent in aggregate: 3D arrows occlude, foreshorten, and alias. The literature's own verdict is that density must drop so low the field goes sparse. Aggregate motion is lost — the exact thing we care about.</td>
+    <td>Trivial<br><span class="quiet">instanced geo</span></td>
+    <td class="beauty b1">●○○○○ instrumentation</td>
+  </tr>
+  <tr>
+    <td>Surface oil-flow</td>
+    <td>Wind-tunnel technique: paint streaks where flow hugs the skin. Shows separation and reattachment lines on the cliff — where the flow <em>lets go</em> of the terrain. Very organic (it looks like rain-streaks / sand ripples). A slow-accumulating layer, nearly free.</td>
+    <td>Trivial<br><span class="quiet">accumulate into terrain texture</span></td>
+    <td class="beauty b4">●●●●○ quiet, earned</td>
+  </tr>
+  <tr>
+    <td>Schlieren-style</td>
+    <td>Refraction of background by density gradients — the most physically honest "seeing air" there is, and monochrome-gorgeous (see §2). But our incompressible sim has no density field to refract; we'd fake it from ∇p or shear, and full-screen distortion fights terrain legibility. A cameo, not a register.</td>
+    <td>Cheap fake<br><span class="quiet">screen-space ∇-warp, &lt;1ms</span></td>
+    <td class="beauty b3">●●●○○ stunning elsewhere</td>
+  </tr>
+</table>
+
+<p class="quiet">Cost references: froxel/raymarch budgets from Wronski's SIGGRAPH volumetric-fog work (<a href="https://bartwronski.com/wp-content/uploads/2014/08/bwronski_volumetric_fog_siggraph2014.pdf">pdf</a>) and survey figures (~1–2ms half-res screen-space, 2–4ms froxel, 5–10ms full raymarch). Particle counts: mapbox demonstrated 1M particles at 60fps in <em>WebGL</em> in 2017 (<a href="https://github.com/mapbox/webgl-wind">webgl-wind</a>); our WebGPU compute budget is far larger. Glyph clutter literature: Telea's <a href="https://www.cs.rug.nl/svcg/DataVisualizationBook/Sc6">Data Visualization ch. 6</a>.</p>
+
+<!-- ==================== SECTION 2 ==================== -->
+<h2>2 · Worth stealing from</h2>
+
+<h3>The canon: particles win</h3>
+<p><a href="https://earth.nullschool.net">earth.nullschool.net</a> (Beccario, <a href="https://github.com/cambecc/earth">source</a>) and <a href="https://mapbox.github.io/webgl-wind/demo/">mapbox webgl-wind</a> (Agafonkin's <a href="https://blog.mapbox.com/how-i-built-a-wind-map-with-webgl-b63022b5537f">write-up</a> is the single best implementation doc) settled the question of mass-audience flow vis a decade ago: short-lived advected particles with fading trails, on a dark ground. The load-bearing details, all of which port to 3D:</p>
+<p class="dim">— particles die young (random lifespan) so divergent regions never empty out<br>
+— the trail is a <em>fade</em>, not stored geometry: previous frame drawn back at ~0.96 opacity<br>
+— color, when used, encodes speed along the trail — the trail itself is the glyph<br>
+— everything else is black. The restraint is structural, not decorative.</p>
+
+<h3>Weather apps: what color-mapping costs you</h3>
+<p><a href="https://www.windy.com">windy.com</a> and <a href="https://www.ventusky.com">ventusky.com</a> drape full-field color (speed, temp) under the particles. Instantly more "informative," instantly a dashboard. Ventusky's 16 altitude layers are the flatland version of our problem — they solve 3D by making you pick a slice. We get to do better: we have the volume. The lesson is negative but important: <strong>when the whole field is colored, nothing is salient.</strong></p>
+
+<h3>Soaring tools: our subject, zero aesthetics</h3>
+<p><a href="https://skysight.io/">SkySight</a> and <a href="https://github.com/sfalmo/rasp-viewer">RASP viewers</a> forecast exactly our physics — ridge lift, thermals, convergence — as flat colored overlays on maps. Pilots stare at these for hours; none are beautiful. This is the open niche: <em>nobody has ever shown a soaring pilot what the lift band actually looks like as a 3D body of moving air.</em> The sim is arguably the first chance to draw the thing every ridge pilot has a mental model of but has never seen.</p>
+
+<h3>Browser fluid art</h3>
+<p><a href="https://david.li/fluid/">david.li/fluid</a> (PIC/FLIP, ambient-occlusion-lit particles — proof that raw particles can look like matter, not confetti), <a href="https://github.com/PavelDoGreat/WebGL-Fluid-Simulation">PavelDoGreat</a> (the dye-advection look — gorgeous, but its beauty <em>is</em> the saturated dye; wrong palette for us), <a href="https://haxiomic.github.io/GPU-Fluid-Experiments/html5/">haxiomic</a>. Codrops' 2025 <a href="https://tympanus.net/codrops/2025/02/26/webgpu-fluid-simulations-high-performance-real-time-rendering/">WebGPU fluid roundup</a> for current technique. Nobody in this genre has done real terrain + real wind; the genre is all dye-in-a-box.</p>
+
+<h3>Film: wind as protagonist</h3>
+<p>Ghibli never renders air — it renders <em>consequences</em>: grass laid over in waves, a hat snatched, laundry lifting (<a href="https://guides.justwatch.com/us/studio-ghibli-the-wind-rises-animation-scene-explained">The Wind Rises</a>). Moana's ocean got character by being a <em>simulation puppeteered by an animator</em> (Disney's <a href="https://disneyanimation.com/publications/moana-performing-water/">"Performing Water"</a>) — physics for texture, intent for motion. And game VFX (BotW et al.) draws wind as sparse hand-authored streak-ribbons: one or two calligraphic strokes, never a field (<a href="https://realtimevfx.com/t/zelda-breath-of-the-wild-vfx/1439">realtimevfx threads</a>). The shared principle across all three: <strong>wind is shown at its edges and its victims, never as a medium.</strong> Our glider is the victim; the marine layer is the edge.</p>
+
+<h3>Nature's own renders</h3>
+<div class="grid2">
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Shockwave%20pattern%20around%20a%20T-38C%20observed%20with%20Background-Oriented%20Schlieren%20photography%20(1).jpg?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>NASA background-oriented schlieren of a T-38. Air made visible by nothing but bent light — monochrome, one variable (density gradient), zero legend. The high bar for "physics as image."</figcaption>
+  </figure>
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Vortex-street-1.jpg?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>Kármán vortex street in marine stratocumulus off an island — the atmosphere self-visualizing via cloud as passive tracer. This is literally our recommended register, photographed from orbit.</figcaption>
+  </figure>
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Anim%20ProfilSym%2C%20smokes.gif?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>Wind-tunnel smoke streaklines over an airfoil. Streaklines (dye released from fixed points) — not streamlines — are what humans intuitively read as "flow," and they're what advected particles give you for free.</figcaption>
+  </figure>
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Line%20integral%20convolution%20visualisation%20(color).png?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>LIC: every pixel combed along the field. Dense yet clutter-free — the honest answer to "a bunch of subtle arrows" is usually "you want LIC or streaklets instead."</figcaption>
+  </figure>
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Lenticular%20clouds%20over%20the%20mountains%20of%20the%20Antarctic%20Peninsula.jpg?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>Lenticular clouds: an isosurface rendered by the sky itself — condensation where rising air crosses its dew point. Precedent for "isosurface of w" that reads organic, not CFD.</figcaption>
+  </figure>
+  <figure>
+    <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Green%20aurora%20curtain%20over%20Levi%2C%20Kittil%C3%A4%2C%20Lapland%2C%20Finland%2C%202023%20September.jpg?width=900" onerror="this.parentElement.style.display='none'">
+    <figcaption>Aurora: the palette reference for the reveal mode — luminous field structure against darkness, emission not paint, one hue family per physical regime.</figcaption>
+  </figure>
+</div>
+<figure>
+  <img src="https://commons.wikimedia.org/wiki/Special:FilePath/Hang%20Gliding%20at%20Torrey%20Pines%20-%206738221439.jpg?width=1400" onerror="this.parentElement.style.display='none'">
+  <figcaption>The site itself. Note what the eye actually gets: cliff edge, haze layer over the water, one wing. The real place already practices our restraint.</figcaption>
+</figure>
+
+<!-- ==================== SECTION 3 ==================== -->
+<h2>3 · Physics as color</h2>
+<p class="dim">Every scalar we can derive from the sim, and what it <em>looks like</em> spatially in onshore flow over a 100m cliff. Ranked by interestingness for a lay viewer watching a glider work the band. The recurring finding: the fields that make the most <em>interesting</em> color are the ones with strong spatial structure and a story arc — not the ones engineers plot.</p>
+
+<div class="field">
+  <h4>1 · Vertical velocity w <span class="chip hot">the story itself</span></h4>
+  <p class="where"><strong>Where it lives:</strong> a leaning wall of positive w hugging the cliff face, thickest slightly upwind of the crest, extending maybe one cliff-height up and out — <em>the lift band</em>, the exact volume the glider must stay inside. Behind the crest: a mirror-image sink sheet and the rotor's downdraft. The zero-crossing surface is the glider's decision boundary.</p>
+  <p><strong>As color:</strong> diverging map, but resist blue-red CFD instinct — warm ember for lift, cool bioluminescent teal for sink, <em>transparent black for zero</em>. Because most of the volume is near zero, coloring w is naturally sparse: the image self-edits. This is why it ranks first — it's the one field where "color everything" still yields restraint.</p>
+  <p class="verdict">The lay story is perfect: "the orange glow is the elevator; watch her stay in it." Interestingness and legibility coincide, which almost never happens.</p>
+</div>
+
+<div class="field">
+  <h4>2 · Shear |∂u/∂z| <span class="chip">the invisible waterfall</span></h4>
+  <p class="where"><strong>Where it lives:</strong> a thin, intense sheet peeling off the crest lip — the shear layer between the fast free stream and the dead/reversed air of the lee. Also a carpet hugging the ground (boundary layer) and a bright rim along the separation line.</p>
+  <p><strong>As color:</strong> render only the top percentile and you get a single luminous membrane pouring off the cliff edge, flapping in the unsteadiness. Nothing else lights up.</p>
+  <p class="verdict">The most <em>surprising</em> image on this list — nobody's mental model of wind includes the shear sheet, and it looks like silk. Weak story connection to the glider though (she avoids it rather than rides it).</p>
+</div>
+
+<div class="field">
+  <h4>3 · Q-criterion / |vorticity| <span class="chip">the monsters in the lee</span></h4>
+  <p class="where"><strong>Where it lives:</strong> Q &gt; 0 isolates coherent vortices: the rotor tumbling behind the crest, shed eddies washing downstream, hairpins in the boundary layer, and — beautifully — the glider's own wingtip vortices if grid resolution allows near the wing. Raw |ω| is muddier: it lights the whole boundary layer and the shear sheet too, drowning the vortices (the reason the CFD world invented Q — see <a href="https://www.m4-engineering.com/q-criterion-for-vortex-visualization/">M4's explainer</a>).</p>
+  <p><strong>As color:</strong> don't color-map it — <em>isosurface</em> it, translucent, or seed extra fog density where Q is high so the rotor becomes visibly churning cloud. Q as fog-source is the most organic use of a derived quantity available to us.</p>
+  <p class="verdict">Maximum drama, and it draws the danger — the reason pilots don't land behind the crest. Second act of the story: the lift's evil twin.</p>
+</div>
+
+<div class="field">
+  <h4>4 · Pressure deviation p′ <span class="chip">the quiet one</span></h4>
+  <p class="where"><strong>Where it lives:</strong> smooth and large-scale — a high-pressure cushion on the windward cliff face, a low-pressure pool over the crest and in the lee. No fine structure (the solve smooths it by construction).</p>
+  <p><strong>As color:</strong> too smooth to headline, but lovely as a whisper: modulate the <em>terrain's own shading</em> by p′, so the cliff face brightens faintly where the wind presses on it. The mountain feels the wind.</p>
+  <p class="verdict">Not a viewer-facing field; a texture-of-the-world field. Steal it for the terrain material, don't caption it.</p>
+</div>
+
+<div class="field">
+  <h4>5 · TKE-proxy (velocity variance over ~seconds) <span class="chip">texture of danger</span></h4>
+  <p class="where"><strong>Where it lives:</strong> rotor and shear layer, same real estate as Q but blurrier — "how bumpy is the air here" rather than "where are the vortices."</p>
+  <p><strong>As color:</strong> better spent as particle <em>jitter</em> and fog <em>roughness</em> than as hue. Turbulence should look turbulent, not be labeled turbulent.</p>
+  <p class="verdict">Encode as behavior, not color.</p>
+</div>
+
+<div class="field">
+  <h4>6 · Speed |u| <span class="chip">skip</span></h4>
+  <p class="where"><strong>Where it lives:</strong> everywhere — fast aloft, slow near ground, accelerated over the crest (the venturi). Structurally the least interesting: it's big where air is high, which the viewer already assumes.</p>
+  <p class="verdict">The default choice of every weather app, and the reason weather apps look like weather apps. Already encoded for free in particle trail length. Don't spend color on it.</p>
+</div>
+
+<!-- ==================== SECTION 4 ==================== -->
+<h2>4 · Three registers, one recommendation</h2>
+
+<div class="register rec">
+  <h3>A · "Marine layer" — restraint, survived <span class="tag">recommended base</span></h3>
+  <p>Thin-air's principle translated, not transplanted. Dust motes don't scale to a cliff; <strong>haze does</strong>. A low-density wisp field — a few hundred thousand fog "parcels" splatted soft, plus an optional thin froxel layer over the water — advected by the real velocity field, lit by one low sun with proper forward scattering. Late-afternoon palette: warm light, blue-grey shadow air, near-black terrain mass.</p>
+  <p>What the physics does <em>visibly, uncolored</em>: streamers of haze climb the cliff face and pour over the crest; the rotor churns fog into a slow visible tumble (seed extra density by Q, from §3); lenticular-style condensation blooms where w peaks, if we want one flourish. The glider is the only crisp object in the frame. Surface oil-flow streaks accumulate silently on the cliff as a second, near-free layer.</p>
+  <p><strong>What's silent:</strong> everything. No hue means anything. No UI. You only see air where something — moisture, the wing — rides it.</p>
+  <p class="quiet">Cost: splats ~1–2ms, froxel layer 2–3ms. The risk is generic-game-fog; the defense is sparseness + sun + real advection (game fog never moves truthfully; ours will, and that difference is visible).</p>
+</div>
+
+<div class="register rec">
+  <h3>B · "The reveal" — physics color as an event <span class="tag">recommended companion — the A-key</span></h3>
+  <p>Same scene, one held key. The sun dims, and the haze re-lights from <em>within</em> by w: ember-orange emission in lift, deep teal in sink, darkness at zero (§3 field #1 — the only field whose color map is naturally sparse). The lift band appears as a leaning aurora against the cliff; the sink sheet as a cold cascade behind it. The glider's position <em>inside</em> the orange suddenly reads as skill. Release: color drains back to sunlight over ~2s.</p>
+  <p><strong>Why event, not mode:</strong> color that's always on is a dashboard; color you summon is an instrument. Thin-air already proved this grammar works. A second held key (Q-glow in the rotor) is defensible; a third is not.</p>
+  <p class="quiet">Cost: same volume pass, different emission term — effectively free. Build A and B together; B is ~50 lines of shader on top of A.</p>
+</div>
+
+<div class="register">
+  <h3>C · "Ten thousand compasses" — the glyph field, taken seriously <span class="tag">the honest answer to Brian's arrows question</span></h3>
+  <p>Can a dense arrow field look great? My take after the survey: <strong>a field of literal arrows, no — a field of things that behave like arrows, yes.</strong> The failure mode is geometric: 3D arrows occlude and foreshorten, and at density they alias into noise (the literature calls it the hedgehog problem and its only cure is sparseness). But replace each arrow with a 1-second streaklet — a comet with a fading tail, spawned on a jittered lattice, dying and respawning forever — and the aggregate becomes coherent silk while each element stays a readable direction glyph. That's not a compromise of the arrow idea; it's its perfected form, and it's exactly the move nullschool made in 2D. On the terrain surface it degenerates gracefully into animated LIC — grass combed by wind.</p>
+  <p>As a full register it's the weakest of the three — it shows direction everywhere and importance nowhere, and "everywhere" is the anti-taste. But as a <em>third summonable layer</em> (a brief pulse of streaklets washing through the volume, then gone) it could be genuinely beautiful — a murmuration-shaped gust.</p>
+  <p class="quiet">Cost: trivial. Verdict: build as a pulse, not a state.</p>
+</div>
+
+<p style="margin-top:36px;">So: <strong>one world, two ways of looking.</strong> Register A is the piece; Register B is the X-ray you hold up to it; C is a gesture A can borrow when a gust needs a face. The through-line from thin-air holds — you still only see air where something rides it — but in 3D the "something" graduates from dust to weather, and the reveal graduates from a debug view to the moment the machine shows you what the pilot feels.</p>
+
+<hr class="sp">
+<p class="quiet">Key sources: <a href="https://blog.mapbox.com/how-i-built-a-wind-map-with-webgl-b63022b5537f">Agafonkin, wind map write-up</a> · <a href="https://github.com/cambecc/earth">cambecc/earth</a> · <a href="https://bartwronski.com/wp-content/uploads/2014/08/bwronski_volumetric_fog_siggraph2014.pdf">Wronski, Volumetric Fog (SIGGRAPH 2014)</a> · <a href="https://blog.maximeheckel.com/posts/real-time-cloudscapes-with-volumetric-raymarching/">Heckel, real-time cloudscapes</a> · <a href="https://www.cs.rug.nl/svcg/DataVisualizationBook/Sc6">Telea, Vector Visualization</a> · <a href="https://www.sci.utah.edu/~vpegorar/research/2010_PacificVis.pdf">Brownlee et al., Interactive Schlieren Flow Vis</a> · <a href="https://www.m4-engineering.com/q-criterion-for-vortex-visualization/">Q-criterion explainer</a> · <a href="https://disneyanimation.com/publications/moana-performing-water/">Disney, Performing Water</a> · <a href="https://skysight.io/">SkySight</a> · <a href="https://david.li/fluid/">david.li/fluid</a> · <a href="https://tympanus.net/codrops/2025/02/26/webgpu-fluid-simulations-high-performance-real-time-rendering/">Codrops WebGPU fluids</a></p>
+
+</main>
+</body>
+</html>

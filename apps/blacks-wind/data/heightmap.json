@@ -1,0 +1,25 @@
+{
+ "width": 512,
+ "height": 432,
+ "originLon": -117.2619649,
+ "originLat": 32.8803576,
+ "origin": "southwest corner of domain; row 0 of the array is the NORTH edge",
+ "extentMetersX": 2400.0,
+ "extentMetersY": 2000.0,
+ "cellMetersX": 4.6875,
+ "cellMetersY": 4.62963,
+ "minElev": 0.0,
+ "maxElev": 136.3101043701172,
+ "rowOrder": "north-first",
+ "crs": "EPSG:26911",
+ "source": "USGS 3DEP 1m DEM, San_Diego_CA_2014_LiDAR (tiles x47y364,x47y365), area-averaged to 4.69x4.63 m grid; ocean/nodata/negative clamped to 0",
+ "gliderportLonLat": [
+  -117.2513,
+  32.8894
+ ],
+ "gliderportPixel": [
+  213.33,
+  216.0
+ ],
+ "gliderportElev": 97.23065185546875
+}

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>thin air — dust in a sunbeam</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #0b0806; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+  #caption {
+    position: fixed; left: 20px; bottom: 16px;
+    font: 12px/1.7 "Inter", -apple-system, system-ui, sans-serif;
+    font-feature-settings: "ss01", "cv11", "tnum";
+    color: rgba(255, 238, 214, 0.42);
+    letter-spacing: 0.02em;
+    user-select: none; -webkit-user-select: none;
+    transition: opacity 1.6s ease;
+    pointer-events: none;
+  }
+  #caption.dim { opacity: 0.25; }
+  #caption b { font-weight: 500; color: rgba(255, 238, 214, 0.62); }
+  #moods {
+    position: fixed; right: 20px; bottom: 22px;
+    display: flex; gap: 10px; align-items: center;
+    transition: opacity 1.6s ease;
+  }
+  #moods.dim { opacity: 0.2; }
+  .mood {
+    width: 11px; height: 11px; border-radius: 50%;
+    border: 1px solid rgba(255,238,214,0.25);
+    cursor: pointer; padding: 0; background-clip: padding-box;
+    transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .mood:hover { transform: scale(1.25); }
+  .mood.on { border-color: rgba(255,238,214,0.85); }
+  #err {
+    position: fixed; inset: 0; display: none; place-items: center;
+    color: rgba(255,238,214,0.6); font: 14px system-ui; text-align: center; padding: 2em;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="caption"><b>thin air</b> &nbsp;·&nbsp; dust in a sunbeam &nbsp;·&nbsp; drag to stir, click to puff &nbsp;·&nbsp; <b>A</b> see the air</div>
+<div id="moods">
+  <button class="mood" data-m="0" style="background:#c8cede" title="morning"></button>
+  <button class="mood on" data-m="1" style="background:#e8b96a" title="afternoon"></button>
+  <button class="mood" data-m="2" style="background:#c46a3a" title="evening"></button>
+</div>
+<div id="err">This piece needs WebGL2 with float textures.<br>Try Chrome or Safari on a laptop/desktop.</div>
+
+<script>
+'use strict';
+// ============================================================================
+// THIN AIR — dust in a sunbeam
+//
+// A cross-section of a quiet room. Sunlight enters through a window and
+// heats a patch of floor; the warm air rises and rolls the room into slow
+// convection. The air itself is a Navier-Stokes solve on the GPU — but you
+// can only see it where dust drifts through the light.
+// ============================================================================
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, depth: false, stencil: false });
+if (!gl || !gl.getExtension('EXT_color_buffer_float')) {
+  document.getElementById('err').style.display = 'grid';
+  throw new Error('webgl2/float unavailable');
+}
+gl.getExtension('OES_texture_float_linear');
+
+// ---------------------------------------------------------------- constants
+const SIM_H       = 208;        // sim grid height (width follows aspect)
+const P_TEX       = 512;        // particle texture side → 262,144 motes
+const JACOBI      = 30;
+const VEL_DISS    = 0.28;       // 1/sec exponential decay of velocity
+const TEMP_DISS   = 0.85;       // 1/sec decay of temperature
+const BUOYANCY    = 34.0;       // cells/sec^2 per unit temperature
+const VORTICITY   = 1.6;
+
+// moods
+const MOODS = [
+  { name:'morning',
+    beam:[0.92,0.96,1.05], mote:[0.95,0.97,1.0],
+    bgTop:[0.010,0.012,0.017], bgBot:[0.020,0.023,0.030],
+    exposure:1.05, beamGain:0.10, heat:0.85 },
+  { name:'afternoon',
+    beam:[1.05,0.86,0.58], mote:[1.0,0.88,0.66],
+    bgTop:[0.012,0.009,0.007], bgBot:[0.030,0.022,0.015],
+    exposure:1.0, beamGain:0.12, heat:1.0 },
+  { name:'evening',
+    beam:[1.10,0.52,0.24], mote:[1.0,0.62,0.36],
+    bgTop:[0.010,0.006,0.005], bgBot:[0.026,0.014,0.009],
+    exposure:0.92, beamGain:0.10, heat:0.8 },
+];
+let mood = MOODS[1];
+
+// ---------------------------------------------------------------- gl helpers
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(s) + '\n---\n' + src);
+  return s;
+}
+function program(vsSrc, fsSrc) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl.VERTEX_SHADER, vsSrc));
+  gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(p));
+  const uniforms = {};
+  const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const info = gl.getActiveUniform(p, i);
+    uniforms[info.name] = gl.getUniformLocation(p, info.name);
+  }
+  return { p, u: uniforms };
+}
+function createFBO(w, h, internal, format, type, filter, data = null) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, internal, w, h, 0, format, type, data);
+  const fbo = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+  if (!data) { gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); }
+  return { tex, fbo, w, h };
+}
+function createDouble(w, h, internal, format, type, filter, data = null) {
+  let a = createFBO(w, h, internal, format, type, filter, data);
+  let b = createFBO(w, h, internal, format, type, filter, data);
+  return {
+    get read()  { return a; },
+    get write() { return b; },
+    swap() { const t = a; a = b; b = t; },
+    w, h,
+  };
+}
+function bindTex(unit, tex) {
+  gl.activeTexture(gl.TEXTURE0 + unit);
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  return unit;
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+function drawQuad(target) {
+  if (target) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target.fbo);
+    gl.viewport(0, 0, target.w, target.h);
+  } else {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+
+// ---------------------------------------------------------------- shaders
+const QUAD_VS = `#version 300 es
+precision highp float;
+out vec2 vUv;
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUv = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const NOISE_GLSL = `
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1,0)), u.x),
+             mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++) { v += a * vnoise(p); p = p * 2.03 + vec2(17.3, 9.1); a *= 0.5; }
+  return v;
+}`;
+
+const BEAM_GLSL = `
+uniform vec2 uBeamA;      // entry anchor (top of beam)
+uniform vec2 uBeamD;      // unit direction, pointing down into the room
+uniform vec3 uShaftI;     // per-shaft intensity (clouds are uneven)
+float shaft(float s, float c, float w, float soft) {
+  return 1.0 - smoothstep(w - soft, w + soft, abs(s - c));
+}
+float beamMask(vec2 p) {
+  vec2 rel = p - uBeamA;
+  float t = dot(rel, uBeamD);
+  if (t < -0.02) return 0.0;
+  float s = dot(rel, vec2(-uBeamD.y, uBeamD.x));
+  float widen = 1.0 + t * 0.16;
+  float m = uShaftI.x * shaft(s, -0.085 * widen, 0.026 * widen, 0.014)
+          + uShaftI.y * shaft(s,  0.004 * widen, 0.032 * widen, 0.014)
+          + uShaftI.z * shaft(s,  0.093 * widen, 0.024 * widen, 0.014);
+  m *= smoothstep(-0.02, 0.10, t);
+  m *= 1.0 - 0.22 * clamp(t, 0.0, 1.5) / 1.5;
+  return m;
+}`;
+
+const SPLAT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTarget;
+uniform vec2 uPoint;
+uniform float uAspect;
+uniform vec3 uValue;
+uniform float uRadius;
+uniform float uRadial;
+in vec2 vUv; out vec4 frag;
+void main() {
+  vec2 p = vec2(vUv.x * uAspect, vUv.y);
+  vec2 d = p - uPoint;
+  float g = exp(-dot(d, d) / uRadius);
+  vec3 add = uValue;
+  if (uRadial > 0.5) add = vec3(normalize(d + 1e-5) * uValue.x, 0.0);
+  frag = vec4(texture(uTarget, vUv).xyz + add * g, 1.0);
+}`;
+
+const ADVECT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVelocity;
+uniform sampler2D uSource;
+uniform vec2 uTexel;
+uniform float uDt;
+uniform float uDiss;
+in vec2 vUv; out vec4 frag;
+void main() {
+  vec2 coord = vUv - uDt * texture(uVelocity, vUv).xy * uTexel;
+  frag = texture(uSource, coord) * exp(-uDiss * uDt);
+}`;
+
+const CURL_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVelocity;
+uniform vec2 uTexel;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float L = texture(uVelocity, vUv - vec2(uTexel.x, 0.0)).y;
+  float R = texture(uVelocity, vUv + vec2(uTexel.x, 0.0)).y;
+  float B = texture(uVelocity, vUv - vec2(0.0, uTexel.y)).x;
+  float T = texture(uVelocity, vUv + vec2(0.0, uTexel.y)).x;
+  frag = vec4(0.5 * (R - L - T + B), 0.0, 0.0, 1.0);
+}`;
+
+const VORT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVelocity;
+uniform sampler2D uCurl;
+uniform vec2 uTexel;
+uniform float uDt;
+uniform float uEps;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float L = texture(uCurl, vUv - vec2(uTexel.x, 0.0)).x;
+  float R = texture(uCurl, vUv + vec2(uTexel.x, 0.0)).x;
+  float B = texture(uCurl, vUv - vec2(0.0, uTexel.y)).x;
+  float T = texture(uCurl, vUv + vec2(0.0, uTexel.y)).x;
+  float C = texture(uCurl, vUv).x;
+  vec2 force = 0.5 * vec2(abs(T) - abs(B), abs(R) - abs(L));
+  force /= (length(force) + 1e-4);
+  force *= uEps * C * vec2(1.0, -1.0);
+  vec2 vel = texture(uVelocity, vUv).xy + force * uDt;
+  frag = vec4(vel, 0.0, 1.0);
+}`;
+
+const BUOY_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVelocity;
+uniform sampler2D uTemp;
+uniform float uDt;
+uniform float uBuoy;
+in vec2 vUv; out vec4 frag;
+void main() {
+  vec2 vel = texture(uVelocity, vUv).xy;
+  float t = texture(uTemp, vUv).x;
+  vel.y += uBuoy * t * uDt;
+  frag = vec4(vel, 0.0, 1.0);
+}`;
+
+const DIV_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uVelocity;
+uniform vec2 uTexel;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float L = texture(uVelocity, vUv - vec2(uTexel.x, 0.0)).x;
+  float R = texture(uVelocity, vUv + vec2(uTexel.x, 0.0)).x;
+  float B = texture(uVelocity, vUv - vec2(0.0, uTexel.y)).y;
+  float T = texture(uVelocity, vUv + vec2(0.0, uTexel.y)).y;
+  if (vUv.x - uTexel.x < 0.0) L = -texture(uVelocity, vUv).x;
+  if (vUv.x + uTexel.x > 1.0) R = -texture(uVelocity, vUv).x;
+  if (vUv.y - uTexel.y < 0.0) B = -texture(uVelocity, vUv).y;
+  if (vUv.y + uTexel.y > 1.0) T = -texture(uVelocity, vUv).y;
+  frag = vec4(0.5 * (R - L + T - B), 0.0, 0.0, 1.0);
+}`;
+
+const PRESSURE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uPressure;
+uniform sampler2D uDivergence;
+uniform vec2 uTexel;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float L = texture(uPressure, vUv - vec2(uTexel.x, 0.0)).x;
+  float R = texture(uPressure, vUv + vec2(uTexel.x, 0.0)).x;
+  float B = texture(uPressure, vUv - vec2(0.0, uTexel.y)).x;
+  float T = texture(uPressure, vUv + vec2(0.0, uTexel.y)).x;
+  float div = texture(uDivergence, vUv).x;
+  frag = vec4((L + R + B + T - div) * 0.25, 0.0, 0.0, 1.0);
+}`;
+
+const GRADIENT_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uPressure;
+uniform sampler2D uVelocity;
+uniform vec2 uTexel;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float L = texture(uPressure, vUv - vec2(uTexel.x, 0.0)).x;
+  float R = texture(uPressure, vUv + vec2(uTexel.x, 0.0)).x;
+  float B = texture(uPressure, vUv - vec2(0.0, uTexel.y)).x;
+  float T = texture(uPressure, vUv + vec2(0.0, uTexel.y)).x;
+  vec2 vel = texture(uVelocity, vUv).xy - 0.5 * vec2(R - L, T - B);
+  frag = vec4(vel, 0.0, 1.0);
+}`;
+
+const P_UPDATE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uParticles;
+uniform sampler2D uVelocity;
+uniform vec2 uSimTexel;
+uniform float uDt;
+uniform float uTime;
+${NOISE_GLSL}
+in vec2 vUv; out vec4 frag;
+void main() {
+  vec4 P = texture(uParticles, vUv);
+  vec2 pos = P.xy;
+  float seed = P.z;
+  float size = P.w;
+  vec2 vel = texture(uVelocity, pos).xy * uSimTexel;
+  float w1 = sin(uTime * (0.23 + 0.31 * fract(seed * 0.731)) + seed * 13.7);
+  float w2 = cos(uTime * (0.19 + 0.27 * fract(seed * 0.417)) + seed * 7.13);
+  vec2 wander = vec2(w1, w2) * 0.0018;
+  vec2 settle = vec2(0.0, -(0.0022 + 0.0058 * size));
+  pos += (vel + wander + settle) * uDt;
+  if (pos.x < -0.01) pos.x += 1.02;
+  if (pos.x >  1.01) pos.x -= 1.02;
+  if (pos.y < -0.015 || pos.y > 1.02) {
+    pos = vec2(hash21(vec2(seed, uTime)), hash21(vec2(seed * 1.71, uTime * 1.313)));
+  }
+  frag = vec4(pos, seed, size);
+}`;
+
+const P_RENDER_VS = `#version 300 es
+precision highp float;
+uniform sampler2D uParticles;
+uniform int uTexW;
+uniform float uAspect;
+uniform float uTime;
+uniform float uPtScale;
+uniform float uCloud;
+${BEAM_GLSL}
+out float vBright;
+void main() {
+  ivec2 tc = ivec2(gl_VertexID % uTexW, gl_VertexID / uTexW);
+  vec4 P = texelFetch(uParticles, tc, 0);
+  vec2 uv = P.xy;
+  float seed = P.z;
+  float size = P.w;
+  gl_Position = vec4(uv * 2.0 - 1.0, 0.0, 1.0);
+  float beam = beamMask(vec2(uv.x * uAspect, uv.y));
+  float spd = 0.5 + 2.2 * fract(seed * 0.617);
+  float tw = 0.5 + 0.5 * sin(uTime * spd + seed * 6.2831);
+  tw = 0.22 + 0.78 * tw * tw * tw;
+  float bokeh = step(0.965, size);
+  float px = mix(0.7 + size * 2.4, 4.5 + size * 7.0, bokeh) * uPtScale;
+  gl_PointSize = min(px, 48.0);
+  float lit = beam * uCloud * tw * 2.6;
+  vBright = (0.03 + lit) * mix(1.0, 0.14, bokeh);
+}`;
+
+const P_RENDER_FS = `#version 300 es
+precision highp float;
+uniform vec3 uMoteColor;
+in float vBright;
+out vec4 frag;
+void main() {
+  vec2 d = gl_PointCoord - 0.5;
+  float a = exp(-dot(d, d) * 16.0) - 0.018;
+  frag = vec4(uMoteColor * vBright * max(a, 0.0) * 2.2, 1.0);
+}`;
+
+const BG_FS = `#version 300 es
+precision highp float;
+uniform float uAspect;
+uniform float uTime;
+uniform float uCloud;
+uniform vec3 uBeamColor;
+uniform vec3 uBgTop;
+uniform vec3 uBgBot;
+uniform float uBeamGain;
+uniform vec2 uFloorHit;
+${NOISE_GLSL}
+${BEAM_GLSL}
+in vec2 vUv; out vec4 frag;
+void main() {
+  vec2 p = vec2(vUv.x * uAspect, vUv.y);
+  vec3 col = mix(uBgBot, uBgTop, smoothstep(0.0, 1.0, vUv.y));
+  col *= 0.9 + 0.2 * fbm(p * 3.1 + 5.0);
+  float bm = beamMask(p);
+  if (bm > 0.001) {
+    vec2 drift = uBeamD * uTime * 0.055;
+    float haze = fbm(p * 6.5 - drift) * 0.7 + fbm(p * 15.0 - drift * 2.3) * 0.3;
+    haze = pow(max(haze, 0.0), 1.8) * 1.6;
+    col += uBeamColor * bm * uCloud * uBeamGain * (0.25 + 0.9 * haze);
+  }
+  vec2 fh = p - uFloorHit;
+  float pool = exp(-fh.x * fh.x * 55.0) * exp(-max(p.y - 0.012, 0.0) * 34.0);
+  col += uBeamColor * pool * uCloud * 0.35;
+  col *= 1.0 - 0.35 * exp(-p.y * 60.0);
+  frag = vec4(col, 1.0);
+}`;
+
+const HAZE_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTemp;
+uniform sampler2D uVelocity;
+uniform vec2 uSimTexel;
+uniform vec3 uBeamColor;
+uniform float uAir;
+in vec2 vUv; out vec4 frag;
+void main() {
+  float t = texture(uTemp, vUv).x;
+  vec2 v = texture(uVelocity, vUv).xy * uSimTexel;
+  float speed = length(v);
+  vec3 col = uBeamColor * t * 0.55
+           + vec3(0.35, 0.48, 0.62) * smoothstep(0.0, 0.05, speed) * 0.16;
+  frag = vec4(col * uAir, 1.0);
+}`;
+
+const FINAL_FS = `#version 300 es
+precision highp float;
+uniform sampler2D uScene;
+uniform float uExposure;
+uniform float uTime;
+${NOISE_GLSL}
+in vec2 vUv; out vec4 frag;
+vec3 aces(vec3 x) {
+  return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
+}
+void main() {
+  vec3 hdr = texture(uScene, vUv).rgb * uExposure;
+  vec3 col = aces(hdr);
+  col = pow(col, vec3(1.0 / 2.2));
+  vec2 q = vUv - 0.5;
+  col *= 1.0 - 0.42 * smoothstep(0.25, 0.72, dot(q, q));
+  float g = hash21(vUv * vec2(1920.0, 1080.0) + fract(uTime) * 61.7) - 0.5;
+  col += g * 0.014;
+  frag = vec4(col, 1.0);
+}`;
+
+// ---------------------------------------------------------------- programs
+const progSplat    = program(QUAD_VS, SPLAT_FS);
+const progAdvect   = program(QUAD_VS, ADVECT_FS);
+const progCurl     = program(QUAD_VS, CURL_FS);
+const progVort     = program(QUAD_VS, VORT_FS);
+const progBuoy     = program(QUAD_VS, BUOY_FS);
+const progDiv      = program(QUAD_VS, DIV_FS);
+const progPressure = program(QUAD_VS, PRESSURE_FS);
+const progGradient = program(QUAD_VS, GRADIENT_FS);
+const progPUpdate  = program(QUAD_VS, P_UPDATE_FS);
+const progPRender  = program(P_RENDER_VS, P_RENDER_FS);
+const progBg       = program(QUAD_VS, BG_FS);
+const progHaze     = program(QUAD_VS, HAZE_FS);
+const progFinal    = program(QUAD_VS, FINAL_FS);
+
+// ---------------------------------------------------------------- state
+let simW, simH, velocity, temperature, pressure, divergence, curl;
+let particles, scene;
+let aspect = 1;
+let beamA = [0, 0], beamD = [0, 0], floorHit = [0, 0];
+let shaftHits = [0, 0, 0];
+
+function resize() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.floor(innerWidth * dpr), h = Math.floor(innerHeight * dpr);
+  if (canvas.width === w && canvas.height === h && velocity) return;
+  canvas.width = w; canvas.height = h;
+  aspect = w / h;
+
+  simH = SIM_H;
+  simW = Math.max(32, Math.round(SIM_H * aspect));
+  const HF = gl.HALF_FLOAT;
+  velocity    = createDouble(simW, simH, gl.RG16F,  gl.RG,  HF, gl.LINEAR);
+  temperature = createDouble(simW, simH, gl.R16F,   gl.RED, HF, gl.LINEAR);
+  pressure    = createDouble(simW, simH, gl.R16F,   gl.RED, HF, gl.LINEAR);
+  divergence  = createFBO(simW, simH, gl.R16F, gl.RED, HF, gl.LINEAR);
+  curl        = createFBO(simW, simH, gl.R16F, gl.RED, HF, gl.LINEAR);
+  scene       = createFBO(w, h, gl.RGBA16F, gl.RGBA, HF, gl.LINEAR);
+
+  beamD = [Math.cos(-1.145), Math.sin(-1.145)];
+  const hitX = 0.46 * aspect;
+  floorHit = [hitX, 0.02];
+  const tUp = (0.02 - 1.06) / beamD[1];
+  beamA = [hitX - beamD[0] * tUp, 0.02 - beamD[1] * tUp];
+  const perp = [-beamD[1], beamD[0]];
+  const k = perp[0] - beamD[0] * perp[1] / beamD[1];
+  shaftHits = [-0.118, 0.004, 0.128].map(c => hitX + c * 1.15 * k);
+}
+
+function initParticles() {
+  const data = new Float32Array(P_TEX * P_TEX * 4);
+  for (let i = 0; i < P_TEX * P_TEX; i++) {
+    data[i * 4 + 0] = Math.random();
+    data[i * 4 + 1] = Math.random();
+    data[i * 4 + 2] = Math.random() * 100.0 + 1.0;
+    data[i * 4 + 3] = Math.pow(Math.random(), 2.4);
+  }
+  particles = createDouble(P_TEX, P_TEX, gl.RGBA32F, gl.RGBA, gl.FLOAT, gl.NEAREST, data);
+}
+
+// ---------------------------------------------------------------- sim steps
+function splat(target, x, y, vx, vy, vz, radius, radial = 0) {
+  gl.useProgram(progSplat.p);
+  gl.uniform1i(progSplat.u.uTarget, bindTex(0, target.read.tex));
+  gl.uniform2f(progSplat.u.uPoint, x, y);
+  gl.uniform1f(progSplat.u.uAspect, aspect);
+  gl.uniform3f(progSplat.u.uValue, vx, vy, vz);
+  gl.uniform1f(progSplat.u.uRadius, radius);
+  gl.uniform1f(progSplat.u.uRadial, radial);
+  drawQuad(target.write);
+  target.swap();
+}
+
+function step(dt, time) {
+  gl.disable(gl.BLEND);
+  const texel = [1 / simW, 1 / simH];
+
+  gl.useProgram(progCurl.p);
+  gl.uniform1i(progCurl.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform2f(progCurl.u.uTexel, texel[0], texel[1]);
+  drawQuad(curl);
+
+  gl.useProgram(progVort.p);
+  gl.uniform1i(progVort.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform1i(progVort.u.uCurl, bindTex(1, curl.tex));
+  gl.uniform2f(progVort.u.uTexel, texel[0], texel[1]);
+  gl.uniform1f(progVort.u.uDt, dt);
+  gl.uniform1f(progVort.u.uEps, VORTICITY);
+  drawQuad(velocity.write);
+  velocity.swap();
+
+  gl.useProgram(progBuoy.p);
+  gl.uniform1i(progBuoy.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform1i(progBuoy.u.uTemp, bindTex(1, temperature.read.tex));
+  gl.uniform1f(progBuoy.u.uDt, dt);
+  gl.uniform1f(progBuoy.u.uBuoy, BUOYANCY);
+  drawQuad(velocity.write);
+  velocity.swap();
+
+  gl.useProgram(progDiv.p);
+  gl.uniform1i(progDiv.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform2f(progDiv.u.uTexel, texel[0], texel[1]);
+  drawQuad(divergence);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, pressure.read.fbo);
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  gl.useProgram(progPressure.p);
+  gl.uniform1i(progPressure.u.uDivergence, bindTex(1, divergence.tex));
+  gl.uniform2f(progPressure.u.uTexel, texel[0], texel[1]);
+  for (let i = 0; i < JACOBI; i++) {
+    gl.uniform1i(progPressure.u.uPressure, bindTex(0, pressure.read.tex));
+    drawQuad(pressure.write);
+    pressure.swap();
+  }
+
+  gl.useProgram(progGradient.p);
+  gl.uniform1i(progGradient.u.uPressure, bindTex(0, pressure.read.tex));
+  gl.uniform1i(progGradient.u.uVelocity, bindTex(1, velocity.read.tex));
+  gl.uniform2f(progGradient.u.uTexel, texel[0], texel[1]);
+  drawQuad(velocity.write);
+  velocity.swap();
+
+  gl.useProgram(progAdvect.p);
+  gl.uniform2f(progAdvect.u.uTexel, texel[0], texel[1]);
+  gl.uniform1f(progAdvect.u.uDt, dt);
+  gl.uniform1i(progAdvect.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform1i(progAdvect.u.uSource, bindTex(0, velocity.read.tex));
+  gl.uniform1f(progAdvect.u.uDiss, VEL_DISS);
+  drawQuad(velocity.write);
+  velocity.swap();
+
+  gl.uniform1i(progAdvect.u.uVelocity, bindTex(0, velocity.read.tex));
+  gl.uniform1i(progAdvect.u.uSource, bindTex(1, temperature.read.tex));
+  gl.uniform1f(progAdvect.u.uDiss, TEMP_DISS);
+  drawQuad(temperature.write);
+  temperature.swap();
+
+  // the sun heats the floor where each shaft lands — this drives everything
+  for (let i = 0; i < 3; i++) {
+    const flicker = 0.75 + 0.5 * Math.random();
+    const amt = 2.6 * dt * cloud * shaftI[i] * mood.heat * flicker;
+    splat(temperature, shaftHits[i], 0.015, amt, 0, 0, 0.0016);
+  }
+
+  gl.useProgram(progPUpdate.p);
+  gl.uniform1i(progPUpdate.u.uParticles, bindTex(0, particles.read.tex));
+  gl.uniform1i(progPUpdate.u.uVelocity, bindTex(1, velocity.read.tex));
+  gl.uniform2f(progPUpdate.u.uSimTexel, texel[0], texel[1]);
+  gl.uniform1f(progPUpdate.u.uDt, dt);
+  gl.uniform1f(progPUpdate.u.uTime, time);
+  drawQuad(particles.write);
+  particles.swap();
+}
+
+// ---------------------------------------------------------------- render
+let airMode = 0;
+let airTarget = 0;
+
+function render(time) {
+  gl.disable(gl.BLEND);
+  gl.useProgram(progBg.p);
+  gl.uniform1f(progBg.u.uAspect, aspect);
+  gl.uniform1f(progBg.u.uTime, time);
+  gl.uniform1f(progBg.u.uCloud, cloud);
+  gl.uniform3fv(progBg.u.uBeamColor, mood.beam);
+  gl.uniform3fv(progBg.u.uBgTop, mood.bgTop);
+  gl.uniform3fv(progBg.u.uBgBot, mood.bgBot);
+  gl.uniform1f(progBg.u.uBeamGain, mood.beamGain);
+  gl.uniform2fv(progBg.u.uFloorHit, floorHit);
+  gl.uniform2fv(progBg.u.uBeamA, beamA);
+  gl.uniform2fv(progBg.u.uBeamD, beamD);
+  gl.uniform3fv(progBg.u.uShaftI, shaftI);
+  drawQuad(scene);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.ONE, gl.ONE);
+
+  if (airMode > 0.003) {
+    gl.useProgram(progHaze.p);
+    gl.uniform1i(progHaze.u.uTemp, bindTex(0, temperature.read.tex));
+    gl.uniform1i(progHaze.u.uVelocity, bindTex(1, velocity.read.tex));
+    gl.uniform2f(progHaze.u.uSimTexel, 1 / simW, 1 / simH);
+    gl.uniform3fv(progHaze.u.uBeamColor, mood.beam);
+    gl.uniform1f(progHaze.u.uAir, airMode);
+    drawQuad(scene);
+  }
+
+  gl.useProgram(progPRender.p);
+  gl.uniform1i(progPRender.u.uParticles, bindTex(0, particles.read.tex));
+  gl.uniform1i(progPRender.u.uTexW, P_TEX);
+  gl.uniform1f(progPRender.u.uAspect, aspect);
+  gl.uniform1f(progPRender.u.uTime, time);
+  gl.uniform1f(progPRender.u.uPtScale, canvas.height / 950);
+  gl.uniform1f(progPRender.u.uCloud, cloud);
+  gl.uniform2fv(progPRender.u.uBeamA, beamA);
+  gl.uniform2fv(progPRender.u.uBeamD, beamD);
+  gl.uniform3fv(progPRender.u.uShaftI, shaftI);
+  gl.uniform3fv(progPRender.u.uMoteColor, mood.mote);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, scene.fbo);
+  gl.viewport(0, 0, scene.w, scene.h);
+  gl.drawArrays(gl.POINTS, 0, P_TEX * P_TEX);
+
+  gl.disable(gl.BLEND);
+  gl.useProgram(progFinal.p);
+  gl.uniform1i(progFinal.u.uScene, bindTex(0, scene.tex));
+  gl.uniform1f(progFinal.u.uExposure, mood.exposure);
+  gl.uniform1f(progFinal.u.uTime, time);
+  drawQuad(null);
+}
+
+// ---------------------------------------------------------------- weather
+let cloud = 1;
+const shaftI = new Float32Array([1, 1, 1]);
+function updateWeather(time) {
+  const n = 0.55 * Math.sin(time * 0.021 + 1.7)
+          + 0.30 * Math.sin(time * 0.047 + 0.3)
+          + 0.15 * Math.sin(time * 0.093 + 4.1);
+  const shaped = 0.14 + 0.86 * smooth01((n + 1) / 2 * 1.5 - 0.12);
+  cloud = Math.min(shaped, 1);
+  for (let i = 0; i < 3; i++) {
+    shaftI[i] = 0.75 + 0.25 * Math.sin(time * (0.11 + i * 0.023) + i * 2.4);
+  }
+}
+function smooth01(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+
+// ---------------------------------------------------------------- input
+const pointer = { x: 0.5, y: 0.5, px: 0.5, py: 0.5, down: false, moved: false };
+function toUv(e) {
+  return [e.clientX / innerWidth, 1 - e.clientY / innerHeight];
+}
+canvas.addEventListener('pointerdown', e => {
+  const [x, y] = toUv(e);
+  pointer.down = true;
+  pointer.x = pointer.px = x; pointer.y = pointer.py = y;
+  pointer.downT = performance.now();
+  pointer.travel = 0;
+  wakeUi();
+});
+canvas.addEventListener('pointermove', e => {
+  const [x, y] = toUv(e);
+  pointer.px = pointer.x; pointer.py = pointer.y;
+  pointer.x = x; pointer.y = y;
+  pointer.moved = true;
+  if (pointer.down) pointer.travel = (pointer.travel || 0) + Math.hypot(x - pointer.px, y - pointer.py);
+  wakeUi();
+});
+window.addEventListener('pointerup', e => {
+  if (pointer.down && (pointer.travel || 0) < 0.012 && performance.now() - pointer.downT < 320) {
+    const [x, y] = toUv(e);
+    splat(velocity, x * aspect, y, 55, 0, 0, 0.004, 1);
+    splat(temperature, x * aspect, y, 0.10, 0, 0, 0.003);
+  }
+  pointer.down = false;
+});
+window.addEventListener('keydown', e => {
+  if (e.key === 'a' || e.key === 'A') airTarget = airTarget > 0.5 ? 0 : 1;
+  if (e.key === 'p' || e.key === 'P') paused = !paused;
+  if (e.key === '1') setMood(0);
+  if (e.key === '2') setMood(1);
+  if (e.key === '3') setMood(2);
+  wakeUi();
+});
+
+function applyPointerForce(dt) {
+  if (!pointer.moved) return;
+  const dx = pointer.x - pointer.px, dy = pointer.y - pointer.py;
+  const strength = pointer.down ? 1.0 : 0.10;
+  const fx = dx * simW * 3.2 * strength;
+  const fy = dy * simH * 3.2 * strength;
+  if (Math.abs(fx) + Math.abs(fy) > 0.01) {
+    splat(velocity, pointer.x * aspect, pointer.y, fx, fy, 0, pointer.down ? 0.0035 : 0.0018);
+  }
+  pointer.moved = false;
+}
+
+let nextDraft = 25;
+function drafts(time, dt) {
+  if (time > nextDraft) {
+    nextDraft = time + 30 + Math.random() * 50;
+    const y = 0.15 + Math.random() * 0.6;
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const x = dir > 0 ? 0.02 : aspect - 0.02;
+    splat(velocity, x, y, dir * 14, 2 * (Math.random() - 0.5), 0, 0.012);
+  }
+}
+
+// ---------------------------------------------------------------- ui
+const captionEl = document.getElementById('caption');
+const moodsEl = document.getElementById('moods');
+let uiTimer;
+function wakeUi() {
+  captionEl.classList.remove('dim');
+  moodsEl.classList.remove('dim');
+  clearTimeout(uiTimer);
+  uiTimer = setTimeout(() => {
+    captionEl.classList.add('dim');
+    moodsEl.classList.add('dim');
+  }, 5000);
+}
+function setMood(i) {
+  mood = MOODS[i];
+  document.querySelectorAll('.mood').forEach((el, j) => el.classList.toggle('on', j === i));
+}
+document.querySelectorAll('.mood').forEach(el => {
+  el.addEventListener('click', () => { setMood(+el.dataset.m); wakeUi(); });
+});
+wakeUi();
+
+// ---------------------------------------------------------------- loop
+let paused = false;
+let last = performance.now();
+let simTime = 0;
+
+resize();
+initParticles();
+window.addEventListener('resize', resize);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) paused = true; else { paused = false; last = performance.now(); }
+});
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  if (paused) { last = now; return; }
+  let dt = Math.min((now - last) / 1000, 1 / 30);
+  last = now;
+  simTime += dt;
+
+  updateWeather(simTime);
+  applyPointerForce(dt);
+  drafts(simTime, dt);
+  step(dt, simTime);
+  airMode += (airTarget - airMode) * Math.min(1, dt * 3);
+  render(simTime);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
