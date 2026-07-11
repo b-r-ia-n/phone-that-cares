@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>understory — light through water</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #032430; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+  #caption {
+    position: fixed; left: 20px; bottom: 16px;
+    font: 12px/1.7 "Inter", -apple-system, system-ui, sans-serif;
+    color: rgba(220, 245, 250, 0.45); letter-spacing: 0.02em;
+    user-select: none; pointer-events: none;
+  }
+  #caption b { font-weight: 500; color: rgba(220, 245, 250, 0.7); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="caption"><b>understory</b> &nbsp;·&nbsp; sunlight on the floor of a shallow sea &nbsp;·&nbsp; click to drop a stone</div>
+<script>
+'use strict';
+// ============================================================================
+// UNDERSTORY — caustics on the floor of a shallow sea, seen from above.
+// Analytic voronoi caustics with per-channel refraction, god rays,
+// and click-ripples that bend the light web as they pass.
+// ============================================================================
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+if (!gl) throw new Error('no webgl2');
+
+const VS = `#version 300 es
+precision highp float;
+out vec2 vUv;
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUv = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime;
+uniform vec4 uRipples[8];   // x, y (aspect coords), t0, strength
+in vec2 vUv; out vec4 frag;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+vec2 hash22(vec2 p) {
+  return vec2(hash21(p), hash21(p + 19.19));
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1,0)), u.x),
+             mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++) { v += a * vnoise(p); p = p * 2.11 + 13.7; a *= 0.5; }
+  return v;
+}
+
+// bright web where voronoi cells meet — light focused by the wavy surface
+float caustic(vec2 p, float t) {
+  vec2 i = floor(p), f = fract(p);
+  float f1 = 8.0, f2 = 8.0;
+  for (int y = -1; y <= 1; y++)
+  for (int x = -1; x <= 1; x++) {
+    vec2 g = vec2(float(x), float(y));
+    vec2 h = hash22(i + g);
+    vec2 o = 0.5 + 0.42 * sin(t * (0.4 + 0.6 * h.x) + h * 6.2831);
+    float d = length(g + o - f);
+    if (d < f1) { f2 = f1; f1 = d; }
+    else if (d < f2) { f2 = d; }
+  }
+  float edge = f2 - f1;
+  return pow(max(1.0 - edge * 2.4, 0.0), 3.0);
+}
+
+float causticLayers(vec2 p, float t) {
+  float c1 = caustic(p * 3.4, t);
+  float c2 = caustic(p * 6.1 + 31.7, t * 1.37 + 3.0);
+  return c1 * 0.55 + c2 * 0.35 + c1 * c2 * 1.4;
+}
+
+void main() {
+  float aspect = uRes.x / uRes.y;
+  vec2 p = vec2(vUv.x * aspect, vUv.y);
+  float t = uTime;
+
+  // ripples displace the sampling point (light bent by rings on the surface)
+  vec2 disp = vec2(0.0);
+  float ringGlow = 0.0;
+  for (int k = 0; k < 8; k++) {
+    vec4 R = uRipples[k];
+    if (R.w <= 0.0) continue;
+    float age = t - R.z;
+    if (age < 0.0 || age > 6.0) continue;
+    vec2 d = p - R.xy;
+    float r = length(d) + 1e-4;
+    float wavefront = age * 0.22;
+    float envelope = exp(-abs(r - wavefront) * 9.0) * exp(-age * 0.8);
+    disp += (d / r) * sin(r * 42.0 - age * 9.0) * envelope * 0.05 * R.w;
+    ringGlow += envelope * 0.35 * R.w;
+  }
+
+  // slow ambient drift of the whole light field
+  vec2 drift = vec2(t * 0.016, t * 0.011);
+  vec2 q = p + disp + drift;
+
+  // per-channel refraction: the web splits into rainbow fringes
+  float cr = causticLayers(q + vec2(0.006, 0.0), t);
+  float cg = causticLayers(q, t);
+  float cb = causticLayers(q - vec2(0.006, 0.0), t);
+
+  // the sea floor: pale sand, mottled, a few darker patches
+  float sand = fbm(p * 7.0);
+  float patches = fbm(p * 1.8 + 40.0);
+  vec3 floorCol = mix(vec3(0.62, 0.60, 0.50), vec3(0.44, 0.46, 0.40), sand);
+  floorCol = mix(floorCol, vec3(0.25, 0.33, 0.31), smoothstep(0.55, 0.75, patches) * 0.7);
+
+  // depth: bluer and darker away from the light
+  float depth = 1.0 - vUv.y * 0.35 - length(vUv - vec2(0.45, 0.75)) * 0.25;
+  vec3 water = vec3(0.05, 0.32, 0.38);
+  vec3 col = floorCol * mix(vec3(0.10, 0.30, 0.36), vec3(0.55, 0.80, 0.78), depth);
+
+  // caustic light, warm-white with the rainbow split
+  vec3 light = vec3(cr, cg, cb) * vec3(1.0, 0.98, 0.90);
+  col += light * 0.55 * (0.5 + 0.5 * depth);
+  col += ringGlow * vec3(0.4, 0.7, 0.7);
+
+  // god rays slanting through the water
+  vec2 rp = vec2(p.x - p.y * 0.55, 0.0);
+  float rays = fbm(vec2(rp.x * 3.0 - t * 0.05, t * 0.02));
+  rays = pow(max(rays - 0.35, 0.0) * 1.9, 2.0);
+  col += vec3(0.55, 0.85, 0.85) * rays * smoothstep(0.1, 0.9, vUv.y) * 0.35;
+
+  // water absorption toward edges, gentle vignette
+  vec2 v = vUv - 0.5;
+  col = mix(col, water * 0.35, smoothstep(0.2, 0.85, dot(v, v) * 2.2));
+  col *= 1.0 - 0.3 * smoothstep(0.3, 0.8, dot(v, v));
+
+  // film grain
+  col += (hash21(vUv * uRes + fract(t) * 61.7) - 0.5) * 0.015;
+  frag = vec4(pow(col, vec3(0.92)), 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const uRes = gl.getUniformLocation(prog, 'uRes');
+const uTime = gl.getUniformLocation(prog, 'uTime');
+const uRipples = gl.getUniformLocation(prog, 'uRipples');
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+const ripples = new Float32Array(32);
+let rippleIdx = 0;
+canvas.addEventListener('pointerdown', e => {
+  const a = canvas.width / canvas.height;
+  ripples[rippleIdx * 4 + 0] = (e.clientX / innerWidth) * a;
+  ripples[rippleIdx * 4 + 1] = 1 - e.clientY / innerHeight;
+  ripples[rippleIdx * 4 + 2] = time;
+  ripples[rippleIdx * 4 + 3] = 1.0;
+  rippleIdx = (rippleIdx + 1) % 8;
+});
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(innerWidth * dpr);
+  canvas.height = Math.floor(innerHeight * dpr);
+}
+resize();
+addEventListener('resize', resize);
+
+let time = 0, last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  time += Math.min((now - last) / 1000, 0.05);
+  last = now;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform1f(uTime, time);
+  gl.uniform4fv(uRipples, ripples);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

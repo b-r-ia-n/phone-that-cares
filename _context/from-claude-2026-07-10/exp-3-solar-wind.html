@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>solar wind — aurora over a dark ridge</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #020308; overflow: hidden; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #caption {
+    position: fixed; left: 20px; bottom: 16px;
+    font: 12px/1.7 "Inter", -apple-system, system-ui, sans-serif;
+    color: rgba(200, 230, 220, 0.4); letter-spacing: 0.02em;
+    user-select: none; pointer-events: none;
+  }
+  #caption b { font-weight: 500; color: rgba(200, 230, 220, 0.65); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="caption"><b>solar wind</b> &nbsp;·&nbsp; charged particles falling into the sky &nbsp;·&nbsp; move the mouse to lean the curtains</div>
+<script>
+'use strict';
+// ============================================================================
+// SOLAR WIND — aurora curtains marched through altitude slices,
+// stars behind, a black ridge below, still water reflecting all of it.
+// ============================================================================
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+if (!gl) throw new Error('no webgl2');
+
+const VS = `#version 300 es
+precision highp float;
+out vec2 vUv;
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  vUv = p;
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}`;
+
+const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes;
+uniform float uTime;
+uniform vec2 uMouse;     // -1..1
+in vec2 vUv; out vec4 frag;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1,0)), u.x),
+             mix(hash21(i + vec2(0,1)), hash21(i + vec2(1,1)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++) { v += a * vnoise(p); p = p * 2.07 + 11.3; a *= 0.5; }
+  return v;
+}
+
+// aurora density along a curtain that wanders in x, with vertical ray structure
+vec3 aurora(vec2 uv, float t, float lean) {
+  vec3 acc = vec3(0.0);
+  float trans = 1.0;
+  const int N = 42;
+  for (int i = 0; i < N; i++) {
+    float f = float(i) / float(N);          // 0 = base of curtain, 1 = top
+    float alt = 0.12 + f * 0.85;            // screen height of this slice
+    // the curtain's horizontal path at this altitude — wanders, and higher
+    // slices trail behind lower ones (the classic folded-ribbon look)
+    float x = uv.x * (1.4 + f * 1.2) + lean * f * 0.9;
+    float path = fbm(vec2(x * 0.9 + t * 0.045, f * 0.6 + t * 0.02)) * 2.4
+               + fbm(vec2(x * 2.6 - t * 0.03, f * 1.4)) * 0.6;
+    float band = abs(fract(path) - 0.5) * 2.0;         // ridged
+    float d = exp(-band * band * 14.0);
+    // vertical ray striations
+    float rays = 0.55 + 0.45 * vnoise(vec2(x * 14.0, t * 0.4));
+    // emission falls off with altitude, but slower for the red top
+    float g = d * rays * exp(-f * 2.6);
+    float r = d * rays * exp(-f * 1.1) * f;
+    // altitude gate: this slice only lights pixels near its height
+    float gate = exp(-pow((uv.y - alt) * 9.0, 2.0));
+    vec3 c = vec3(0.10, 0.85, 0.45) * g + vec3(0.55, 0.15, 0.65) * r * 0.7;
+    acc += c * gate * trans * 0.16;
+    trans *= 1.0 - gate * d * 0.05;
+  }
+  return acc;
+}
+
+float ridge(vec2 uv) {
+  float h = 0.14 + fbm(vec2(uv.x * 2.2 + 7.0, 3.0)) * 0.14
+          - fbm(vec2(uv.x * 6.5, 9.0)) * 0.04;
+  return smoothstep(h, h - 0.004, uv.y);
+}
+
+vec3 stars(vec2 uv, float t) {
+  vec2 g = uv * 160.0;
+  vec2 id = floor(g);
+  float h = hash21(id);
+  vec3 col = vec3(0.0);
+  if (h > 0.985) {
+    vec2 c = fract(g) - 0.5;
+    float star = exp(-dot(c, c) * 18.0);
+    float tw = 0.6 + 0.4 * sin(t * (1.0 + h * 4.0) + h * 40.0);
+    float tint = fract(h * 91.7);
+    vec3 sc = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.85, 0.7), tint);
+    col = sc * star * tw * (0.3 + 0.7 * fract(h * 57.3));
+  }
+  return col;
+}
+
+void main() {
+  float aspect = uRes.x / uRes.y;
+  vec2 uv = vec2((vUv.x - 0.5) * aspect, vUv.y);
+  float t = uTime;
+  float lean = uMouse.x * 0.8;
+  float waterline = 0.13;
+
+  vec3 col;
+  if (vUv.y > waterline) {
+    // sky
+    vec2 sky = vec2(uv.x, (vUv.y - waterline) / (1.0 - waterline));
+    col = mix(vec3(0.012, 0.02, 0.045), vec3(0.004, 0.005, 0.015), sky.y);
+    col += stars(vec2(uv.x, sky.y), t);
+    col += aurora(vec2(uv.x, sky.y), t, lean);
+    // ridge silhouette swallows the bottom of the sky
+    float m = ridge(vec2(uv.x, sky.y));
+    col = mix(col, vec3(0.004, 0.006, 0.008), m);
+    // faint snow glow on the ridge top facing the aurora
+    float edge = ridge(vec2(uv.x, sky.y)) - ridge(vec2(uv.x, sky.y + 0.012));
+    col += vec3(0.05, 0.2, 0.12) * clamp(-edge, 0.0, 1.0) * 2.0;
+  } else {
+    // water: mirror the sky with vertical wobble and darkening
+    float depth = (waterline - vUv.y) / waterline;
+    vec2 muv = vec2(uv.x, (waterline + (waterline - vUv.y) * 1.0 - waterline) / (1.0 - waterline));
+    float wobble = vnoise(vec2(uv.x * 30.0, vUv.y * 90.0 - t * 0.6)) - 0.5;
+    muv.x += wobble * 0.04 * depth;
+    muv.y = max(muv.y + wobble * 0.05, 0.0);
+    vec3 sky = mix(vec3(0.012, 0.02, 0.045), vec3(0.004, 0.005, 0.015), muv.y);
+    sky += stars(vec2(muv.x, muv.y), t) * 0.4;
+    sky += aurora(vec2(muv.x, muv.y), t, lean);
+    float m = ridge(vec2(muv.x, muv.y));
+    sky = mix(sky, vec3(0.004, 0.006, 0.008), m);
+    col = sky * (0.55 - depth * 0.35);
+    // horizontal streaks of broken reflection
+    float streak = smoothstep(0.75, 1.0, vnoise(vec2(uv.x * 8.0 + t * 0.1, vUv.y * 220.0)));
+    col *= 1.0 - streak * 0.5;
+  }
+
+  // gentle vignette + grain
+  vec2 v = vUv - 0.5;
+  col *= 1.0 - 0.4 * smoothstep(0.2, 0.75, dot(v, v));
+  col += (hash21(vUv * uRes + fract(t) * 43.7) - 0.5) * 0.012;
+  frag = vec4(pow(max(col, 0.0), vec3(0.85)), 1.0);
+}`;
+
+function compile(type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const uRes = gl.getUniformLocation(prog, 'uRes');
+const uTime = gl.getUniformLocation(prog, 'uTime');
+const uMouse = gl.getUniformLocation(prog, 'uMouse');
+gl.bindVertexArray(gl.createVertexArray());
+
+let mx = 0, my = 0, tx = 0, ty = 0;
+addEventListener('pointermove', e => {
+  tx = (e.clientX / innerWidth) * 2 - 1;
+  ty = (e.clientY / innerHeight) * 2 - 1;
+});
+
+function resize() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  canvas.width = Math.floor(innerWidth * dpr);
+  canvas.height = Math.floor(innerHeight * dpr);
+}
+resize();
+addEventListener('resize', resize);
+
+let time = 0, last = performance.now();
+function frame(now) {
+  requestAnimationFrame(frame);
+  time += Math.min((now - last) / 1000, 0.05);
+  last = now;
+  mx += (tx - mx) * 0.03;
+  my += (ty - my) * 0.03;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+  gl.uniform2f(uRes, canvas.width, canvas.height);
+  gl.uniform1f(uTime, time);
+  gl.uniform2f(uMouse, mx, my);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
