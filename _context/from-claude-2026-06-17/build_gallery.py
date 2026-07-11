@@ -14,7 +14,8 @@ THUMB_MAX = 1_600_000   # don't try to screenshot files bigger than this
 
 SKIP_DIRS = ("/node_modules/","/.git/","/.vercel/","/.astro/","/dist/","/build/",
              "/.cache/","/Library/","/.Trash/","/Delete/","/Screenshots/",
-             "/.next/","/.svelte-kit/","/coverage/","/Administrative/")
+             "/.next/","/.svelte-kit/","/coverage/","/Administrative/",
+             "/.claude/")  # worktree copies + session files would double-list artifacts
 SKIP_NAMES = ("gallery.html",)  # don't list the gallery in itself
 
 # category order + classifier (first match wins)
@@ -208,7 +209,7 @@ button:focus-visible,.card:focus-visible{outline:none;box-shadow:0 0 0 3px var(-
 <p class="note">Served from <code>~/Desktop</code> on localhost so every link resolves (including spaced folders like <code>Jlab portfolio 2026</code>). Build/test reports, <code>Delete/</code>, and <code>Screenshots/</code> are excluded. A card with no thumbnail was too heavy to screenshot — the link still works. Re-run <code>build_gallery.py</code> to pick up new artifacts.</p>
 </div>
 <script>
-var DATA=__DATA__, CATS=__CATS__, RECENT_N=12;
+var DATA=__DATA__, CATS=__CATS__, RECENT_N=24;
 var KEY='ptc-gallery-v2';
 var st=JSON.parse(localStorage.getItem(KEY)||'{}'); st.pinned=st.pinned||[]; st.archived=st.archived||[];
 function save(){localStorage.setItem(KEY,JSON.stringify(st));}
